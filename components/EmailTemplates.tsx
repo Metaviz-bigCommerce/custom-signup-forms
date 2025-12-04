@@ -1,13 +1,15 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Eye, Mail, Check, X, Send } from 'lucide-react';
+import { useSession } from '@/context/session';
 
 type TemplateKey = 'signup' | 'approval' | 'rejection' | 'moreInfo';
 
 type Templates = Record<TemplateKey, { subject: string; body: string }>;
 
 const EmailTemplates: React.FC = () => {
+  const { context } = useSession();
   const [emailTemplates, setEmailTemplates] = useState<Templates>({
     signup: { 
       subject: 'Notification from {{platform_name}}: Your Signup Request Has Been Received', 
@@ -27,6 +29,37 @@ const EmailTemplates: React.FC = () => {
     }
   });
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey>('signup');
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!context) return;
+      try {
+        const res = await fetch(`/api/email-templates?context=${encodeURIComponent(context)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.templates) setEmailTemplates(json.templates);
+        }
+      } catch {}
+      setLoaded(true);
+    };
+    load();
+  }, [context]);
+
+  const save = async () => {
+    if (!context) return;
+    setSaving(true);
+    try {
+      await fetch(`/api/email-templates?context=${encodeURIComponent(context)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templates: emailTemplates }),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -107,8 +140,8 @@ const EmailTemplates: React.FC = () => {
                   <Eye className="w-5 h-5" />
                   Preview Email
                 </button>
-                <button className="bg-emerald-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-emerald-600 transition-colors">
-                  Save Template
+                <button onClick={save} disabled={!loaded || saving} className={`px-6 py-3 rounded-lg font-medium transition-colors ${saving ? 'bg-emerald-300 text-white' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}>
+                  {saving ? 'Saving…' : 'Save Template'}
                 </button>
               </div>
             </div>

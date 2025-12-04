@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, X, Mail } from 'lucide-react';
 import { useSession } from '@/context/session';
 
 type RequestItem = {
@@ -9,6 +9,7 @@ type RequestItem = {
   submittedAt?: { seconds?: number; nanoseconds?: number } | string;
   status: 'pending' | 'approved' | 'rejected';
   data: Record<string, any>;
+  files?: Array<{ name: string; url: string; contentType?: string; size?: number }>;
 };
 
 const RequestsManager: React.FC = () => {
@@ -18,6 +19,8 @@ const RequestsManager: React.FC = () => {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'pending' | 'approved' | 'rejected'>('');
   const [selected, setSelected] = useState<RequestItem | null>(null);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [detailsSearch, setDetailsSearch] = useState('');
   const pageSize = 10;
 
   const load = async (cursor?: string | null, replace = false) => {
@@ -73,6 +76,17 @@ const RequestsManager: React.FC = () => {
       setSelected(null);
     }
   };
+  const requestInfo = async (id: string) => {
+    if (!context) return;
+    const details = prompt('What information do you need from the user?');
+    if (details == null) return;
+    await fetch(`/api/signup-requests/info-request?id=${encodeURIComponent(id)}&context=${encodeURIComponent(context)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ required_information: details }),
+    });
+    alert('Info request email sent (if email configured).');
+  };
 
   const formatDate = (ts?: any) => {
     if (!ts) return '';
@@ -80,6 +94,40 @@ const RequestsManager: React.FC = () => {
     if (typeof ts?.seconds === 'number') return new Date(ts.seconds * 1000).toLocaleString();
     return '';
     };
+  const isImage = (f?: { url?: string; contentType?: string }) => {
+    const t = (f?.contentType || '').toLowerCase();
+    if (t.startsWith('image/')) return true;
+    const u = (f?.url || '').toLowerCase();
+    return /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/.test(u);
+  };
+  const copyToClipboard = async (text: string) => {
+    try { await navigator.clipboard.writeText(text); } catch {}
+  };
+  const basename = (v: unknown) => {
+    const s = String(v ?? '');
+    if (!s) return s;
+    // If looks like URL or path, reduce to filename
+    if (s.includes('/') || s.includes('\\')) {
+      const parts = s.split(/[/\\]/);
+      return parts[parts.length - 1] || s;
+    }
+    return s;
+  };
+  const remove = async (id: string) => {
+    if (!context) return;
+    const ok = confirm('Delete this request? This action cannot be undone.');
+    if (!ok) return;
+    const res = await fetch(`/api/signup-requests?id=${encodeURIComponent(id)}&context=${encodeURIComponent(context)}`, {
+      method: 'DELETE',
+    });
+    if (res.ok) {
+      setSelected(null);
+      // Reload first page to reflect deletion quickly
+      setItems([]);
+      setNextCursor(null);
+      await load(null, true);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -161,56 +209,158 @@ const RequestsManager: React.FC = () => {
       </div>
 
       {selected && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-xl font-bold text-gray-800">Request Details</h3>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 sticky top-0 bg-white/90 backdrop-blur z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Request Details</h3>
+                  <p className="text-xs text-gray-500">ID: <span className="font-mono">{selected.id}</span></p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    selected.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                    selected.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                    'bg-rose-100 text-rose-700'
+                  }`}>
+                    {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
+                  </span>
+                  <button onClick={() => setSelected(null)} className="text-gray-500 hover:text-gray-700 rounded-lg px-2 py-1">✕</button>
+                </div>
+              </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(selected.data || {}).map(([k, v]) => (
-                  <div key={k}>
-                    <div className="text-xs text-gray-500 mb-1">{k}</div>
-                    <div className="text-sm text-gray-800 break-words">{String(v)}</div>
+            <div className="px-6 py-5 overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                <div className="p-4 rounded-xl border border-gray-100 bg-gray-50">
+                  <div className="text-xs text-gray-500 mb-1">Submitted</div>
+                  <div className="text-sm font-medium text-gray-800">{formatDate(selected.submittedAt)}</div>
+                </div>
+                <div className="p-4 rounded-xl border border-gray-100 bg-gray-50 md:col-span-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-xs text-gray-500">Search fields</div>
+                    <div className="flex-1" />
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={detailsSearch}
+                        onChange={(e) => setDetailsSearch(e.target.value)}
+                        placeholder="Filter by field or value…"
+                        className="w-[240px] px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                      />
+                      <button
+                        onClick={() => setDetailsExpanded((s) => !s)}
+                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
+                      >
+                        {detailsExpanded ? 'Collapse' : 'Expand all'}
+                      </button>
+                    </div>
                   </div>
-                ))}
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Submitted</label>
-                <p className="text-base text-gray-800">{formatDate(selected.submittedAt)}</p>
+
+              <div className="rounded-xl border border-gray-100">
+                <div className="p-4 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+                  <div className="text-sm font-semibold text-gray-700">Submitted Fields</div>
+                </div>
+                <div className="p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {Object.entries(selected.data || {})
+                      .filter(([k, v]) => {
+                        if (!detailsSearch.trim()) return true;
+                        const s = detailsSearch.toLowerCase();
+                        return (k.toLowerCase().includes(s) || String(v ?? '').toLowerCase().includes(s));
+                      })
+                      .slice(0, detailsExpanded ? undefined : 12)
+                      .map(([k, v]) => (
+                        <div key={k} className="group rounded-lg border border-gray-100 hover:border-blue-200 transition-colors p-3 overflow-hidden">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="text-[11px] uppercase tracking-wide text-gray-500">{k}</div>
+                              <div className="text-sm text-gray-900 break-words whitespace-pre-wrap break-all">{basename(v) || '—'}</div>
+                            </div>
+                            <button
+                              onClick={() => copyToClipboard(String(v ?? ''))}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-600"
+                              title="Copy value"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                  {!detailsExpanded && Object.keys(selected.data || {}).length > 12 && (
+                    <div className="mt-4">
+                      <button
+                        onClick={() => setDetailsExpanded(true)}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        Show all {Object.keys(selected.data || {}).length} fields
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Current Status</label>
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                  selected.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                  selected.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                  'bg-rose-100 text-rose-700'
-                }`}>
-                  {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
-                </span>
-              </div>
+
+              {selected.files?.length ? (
+                <div className="mt-5 rounded-xl border border-gray-100">
+                  <div className="p-4 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+                    <div className="text-sm font-semibold text-gray-700">Files ({selected.files.length})</div>
+                  </div>
+                  <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selected.files.map((f, idx) => (
+                      <a key={idx} href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-colors">
+                        <div className="w-12 h-12 rounded-md bg-gray-100 flex items-center justify-center overflow-hidden">
+                          {isImage(f) ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img alt={f.name} src={f.url} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-gray-500 text-xs">FILE</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm text-blue-700 underline truncate">{f.name}</div>
+                          <div className="text-xs text-gray-500">{f.size ? `${Math.round((f.size / 1024) * 10) / 10} KB` : ''}</div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
-            <div className="p-6 border-t border-gray-100 flex gap-3">
-              <button
-                onClick={() => approve(selected.id)}
-                className="flex-1 bg-emerald-500 text-white px-4 py-3 rounded-lg font-medium hover:bg-emerald-600 flex items-center justify-center gap-2 transition-colors"
-              >
-                <Check className="w-5 h-5" />
-                Approve
-              </button>
-              <button
-                onClick={() => reject(selected.id)}
-                className="flex-1 bg-rose-500 text-white px-4 py-3 rounded-lg font-medium hover:bg-rose-600 flex items-center justify-center gap-2 transition-colors"
-              >
-                <X className="w-5 h-5" />
-                Reject
-              </button>
-              <button
-                onClick={() => setSelected(null)}
-                className="px-6 py-3 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-              >
-                Close
-              </button>
+
+            <div className="px-6 py-4 border-t border-gray-100 bg-white sticky bottom-0">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => approve(selected.id)}
+                  className="flex-1 bg-emerald-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-emerald-700 transition-colors"
+                >
+                  <span className="inline-flex items-center gap-2"><Check className="w-5 h-5" /> Approve</span>
+                </button>
+                <button
+                  onClick={() => reject(selected.id)}
+                  className="flex-1 bg-rose-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-rose-700 transition-colors"
+                >
+                  <span className="inline-flex items-center gap-2"><X className="w-5 h-5" /> Reject</span>
+                </button>
+                <button
+                  onClick={() => requestInfo(selected.id)}
+                  className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  <span className="inline-flex items-center gap-2"><Mail className="w-5 h-5" /> Request Info</span>
+                </button>
+                <button
+                  onClick={() => remove(selected.id)}
+                  className="px-6 py-3 text-rose-600 bg-white border border-rose-300 rounded-lg font-medium hover:bg-rose-50 transition-colors"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setSelected(null)}
+                  className="px-6 py-3 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

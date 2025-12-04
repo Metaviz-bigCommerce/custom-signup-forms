@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
+    "@vercel/blob": "^2.0.0",
     "firebase": "^12.3.0",
+    "firebase-admin": "^13.6.0",
+    "nodemailer": "^6.9.14",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.555.0",
     "next": "15.5.2",

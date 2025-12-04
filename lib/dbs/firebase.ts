@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, setDoc, updateDoc, deleteField, addDoc, serverTimestamp, query, orderBy, limit as fsLimit, startAfter, where } from 'firebase/firestore';
 import { SessionProps, UserData } from '../../types';
+import type { EmailTemplates } from '../email';
 
 // Firebase config and initialization
 // Prod applications might use config file
@@ -165,6 +166,7 @@ export async function getStoreSettings(storeHash: string) {
     signupForm: data?.signupForm,
     signupFormActive: data?.signupFormActive ?? false,
     signupScriptUuid: data?.signupScriptUuid || '',
+    emailTemplates: data?.emailTemplates || null,
   };
 }
 
@@ -193,8 +195,20 @@ export async function resolveStoreHashByPublicId(publicId: string) {
 export async function createSignupRequest(storeHash: string, payload: Record<string, any>) {
   if (!storeHash) throw new Error('Missing storeHash');
   const colRef = collection(db, 'stores', storeHash, 'signupRequests');
+  // Duplicate check by canonical email if provided
+  const email = (payload as any)?.email ? String((payload as any).email).toLowerCase() : '';
+  if (email) {
+    const dupQ = query(colRef, where('email', '==', email), fsLimit(1));
+    const dupSnap = await getDocs(dupQ);
+    if (!dupSnap.empty) {
+      const err: any = new Error('duplicate_signup');
+      err.code = 'DUPLICATE';
+      throw err;
+    }
+  }
   const docRef = await addDoc(colRef, {
     data: payload?.data || {},
+    email: email || null,
     submittedAt: serverTimestamp(),
     status: 'pending' as SignupRequestStatus,
     meta: {
@@ -238,4 +252,64 @@ export async function updateSignupRequestStatus(storeHash: string, id: string, s
   const ref = doc(db, 'stores', storeHash, 'signupRequests', id);
   await updateDoc(ref, { status });
   return { ok: true };
+}
+
+export async function addSignupRequestFiles(storeHash: string, id: string, files: Array<{ name: string; url: string; contentType?: string; size?: number; path?: string }>) {
+  if (!storeHash || !id) throw new Error('Missing storeHash or id');
+  const ref = doc(db, 'stores', storeHash, 'signupRequests', id);
+  const snap = await getDoc(ref);
+  const existing = (snap.exists() ? (snap.data() as any).files : undefined) || [];
+  await updateDoc(ref, { files: [...existing, ...files] });
+}
+
+export async function deleteSignupRequest(storeHash: string, id: string) {
+  if (!storeHash || !id) throw new Error('Missing storeHash or id');
+  const ref = doc(db, 'stores', storeHash, 'signupRequests', id);
+  await deleteDoc(ref);
+  return { ok: true };
+}
+
+export async function getSignupRequest(storeHash: string, id: string) {
+  if (!storeHash || !id) throw new Error('Missing storeHash or id');
+  const ref = doc(db, 'stores', storeHash, 'signupRequests', id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...(snap.data() as any) };
+}
+
+export async function getEmailTemplates(storeHash: string) {
+  if (!storeHash) throw new Error('Missing storeHash');
+  const ref = doc(db, 'stores', storeHash);
+  const snap = await getDoc(ref);
+  const defaults: EmailTemplates = {
+    signup: {
+      subject: 'Notification from {{platform_name}}: Your Signup Request Has Been Received',
+      body:
+        'Hi {{name}},\nWe have received your signup request and initiated the review process. Our team is currently validating the information you provided to ensure it meets our account requirements. You will receive an update once this review is complete.',
+    },
+    approval: {
+      subject: '{{platform_name}} Account Update: Your Application Has Been Approved',
+      body:
+        'Hi {{name}},\nYour signup request has been approved, and your account is now active. You may now log in to begin configuring your store.',
+    },
+    rejection: {
+      subject: '{{platform_name}} Review Outcome: Status of Your Signup Request',
+      body:
+        'Hi {{name}},\nAfter a thorough review of your signup information, we are unable to approve your request at this time.',
+    },
+    moreInfo: {
+      subject: 'Action Required from {{platform_name}}: Additional Details Needed to Proceed',
+      body:
+        'Hi {{name}},\nTo proceed with your signup review, we require the following information: {{required_information}}.',
+    },
+  };
+  if (!snap.exists()) return defaults;
+  const data = snap.data() as any;
+  return { ...defaults, ...(data?.emailTemplates || {}) } as EmailTemplates;
+}
+
+export async function setEmailTemplates(storeHash: string, templates: EmailTemplates) {
+  if (!storeHash) throw new Error('Missing storeHash');
+  const ref = doc(db, 'stores', storeHash);
+  await setDoc(ref, { emailTemplates: templates }, { merge: true } as any);
 }
