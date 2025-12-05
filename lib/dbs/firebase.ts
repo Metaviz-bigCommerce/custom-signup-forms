@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, setDoc, updateDoc, deleteField, addDoc, serverTimestamp, query, orderBy, limit as fsLimit, startAfter, where } from 'firebase/firestore';
 import { SessionProps, UserData } from '../../types';
-import type { EmailTemplates } from '../email';
+import type { EmailConfig, EmailTemplates } from '../email';
 
 // Firebase config and initialization
 // Prod applications might use config file
@@ -167,6 +167,7 @@ export async function getStoreSettings(storeHash: string) {
     signupFormActive: data?.signupFormActive ?? false,
     signupScriptUuid: data?.signupScriptUuid || '',
     emailTemplates: data?.emailTemplates || null,
+    emailConfig: data?.emailConfig || null,
   };
 }
 
@@ -312,4 +313,35 @@ export async function setEmailTemplates(storeHash: string, templates: EmailTempl
   if (!storeHash) throw new Error('Missing storeHash');
   const ref = doc(db, 'stores', storeHash);
   await setDoc(ref, { emailTemplates: templates }, { merge: true } as any);
+}
+
+export async function getEmailConfig(storeHash: string) {
+  if (!storeHash) throw new Error('Missing storeHash');
+  const ref = doc(db, 'stores', storeHash);
+  const snap = await getDoc(ref);
+  const data = (snap.exists() ? (snap.data() as any) : {}) || {};
+  const cfg: EmailConfig = {
+    useShared: data?.emailConfig?.useShared ?? true,
+    fromEmail: data?.emailConfig?.fromEmail || null,
+    fromName: data?.emailConfig?.fromName || null,
+    replyTo: data?.emailConfig?.replyTo || null,
+    smtp: data?.emailConfig?.smtp || null,
+  };
+  return cfg;
+}
+
+export async function setEmailConfig(storeHash: string, config: EmailConfig) {
+  if (!storeHash) throw new Error('Missing storeHash');
+  const ref = doc(db, 'stores', storeHash);
+  // Persist creds regardless of useShared so merchants can toggle without retyping
+  const payload = {
+    emailConfig: {
+      useShared: config?.useShared ?? true,
+      fromEmail: config?.fromEmail || null,
+      fromName: config?.fromName || null,
+      replyTo: config?.replyTo || null,
+      smtp: config?.smtp || null,
+    },
+  };
+  await setDoc(ref, payload as any, { merge: true } as any);
 }

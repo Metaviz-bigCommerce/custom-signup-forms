@@ -33,4 +33,6 @@ export interface Db {
     getSignupRequest(storeHash: string, id: string): Promise<any | null>;
     getEmailTemplates(storeHash: string): Promise<any>;
     setEmailTemplates(storeHash: string, templates: any): Promise<void>;
+    getEmailConfig(storeHash: string): Promise<any>;
+    setEmailConfig(storeHash: string, config: any): Promise<void>;
 }

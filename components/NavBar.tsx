@@ -23,10 +23,10 @@ const NavBar: React.FC = () => {
             <div className="flex gap-1">
               <Link
                 href={`/dashboard?context=${context}`}
-                className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 font-medium rounded-md transition-colors border ${
                   isActive('/dashboard')
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-blue-50 text-blue-700 border-blue-400'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent'
                 }`}
               >
                 <Home className="w-4 h-4" />
@@ -34,10 +34,10 @@ const NavBar: React.FC = () => {
               </Link>
               <Link
                 href={`/builder?context=${context}`}
-                className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 font-medium rounded-md transition-colors border ${
                   isActive('/builder')
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-blue-50 text-blue-700 border-blue-400'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent'
                 }`}
               >
                 <Settings className="w-4 h-4" />
@@ -45,10 +45,10 @@ const NavBar: React.FC = () => {
               </Link>
               <Link
                 href={`/requests?context=${context}`}
-                className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 font-medium rounded-md transition-colors border ${
                   isActive('/requests')
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-blue-50 text-blue-700 border-blue-400'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent'
                 }`}
               >
                 <Users className="w-4 h-4" />
@@ -56,14 +56,14 @@ const NavBar: React.FC = () => {
               </Link>
               <Link
                 href={`/emails?context=${context}`}
-                className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 font-medium rounded-md transition-colors border ${
                   isActive('/emails')
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-blue-50 text-blue-700 border-blue-400'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent'
                 }`}
               >
                 <Mail className="w-4 h-4" />
-                Email Templates
+                Email
               </Link>
             </div>
           </div>

@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
 		const request = await db.getSignupRequest(storeHash, id);
 		if (!request) return NextResponse.json({ message: 'Request not found' }, { status: 404 });
 		const templates = await db.getEmailTemplates(storeHash);
+		const config = await db.getEmailConfig(storeHash);
 		const name = extractName(request?.data || {});
 		const email = request?.email || null;
 		const platformName = process.env.PLATFORM_NAME || storeHash || 'Store';
@@ -29,6 +30,8 @@ export async function POST(req: NextRequest) {
 				platform_name: platformName,
 				required_information: requiredInformation || '',
 			},
+			replyTo: config?.replyTo || undefined,
+			config,
 		});
 		return NextResponse.json({ ok: true }, { status: 200 });
 	} catch (e: any) {

@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
       // send signup confirmation (best-effort)
       try {
         const templates = await db.getEmailTemplates(storeHash);
+        const config = await db.getEmailConfig(storeHash);
         const name = extractName(data);
         const platformName = process.env.PLATFORM_NAME || storeHash || 'Store';
         await trySendTemplatedEmail({
@@ -61,6 +62,8 @@ export async function POST(req: NextRequest) {
             store_name: platformName,
             platform_name: platformName,
           },
+          replyTo: config?.replyTo || undefined,
+          config,
         });
       } catch {}
       return cors(NextResponse.json({ ok: true, id: created.id, files: filesMeta }, { status: 200 }));
@@ -86,6 +89,7 @@ export async function POST(req: NextRequest) {
       // best-effort email
       try {
         const templates = await db.getEmailTemplates(storeHash);
+        const config = await db.getEmailConfig(storeHash);
         const name = extractName(payload?.data || {});
         const platformName = process.env.PLATFORM_NAME || storeHash || 'Store';
         await trySendTemplatedEmail({
@@ -98,6 +102,8 @@ export async function POST(req: NextRequest) {
             store_name: platformName,
             platform_name: platformName,
           },
+          replyTo: config?.replyTo || undefined,
+          config,
         });
       } catch {}
       return cors(NextResponse.json({ ok: true, id: created.id }, { status: 200 }));

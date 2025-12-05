@@ -48,6 +48,7 @@ export async function PATCH(req: NextRequest) {
     try {
       const request = await db.getSignupRequest(storeHash, id);
       const templates = await db.getEmailTemplates(storeHash);
+      const config = await db.getEmailConfig(storeHash);
       const name = extractName(request?.data || {});
       const email = request?.email || null;
       const platformName = process.env.PLATFORM_NAME || storeHash || 'Store';
@@ -63,6 +64,8 @@ export async function PATCH(req: NextRequest) {
             store_name: platformName,
             platform_name: platformName,
           },
+          replyTo: config?.replyTo || undefined,
+          config,
         });
       }
     } catch {}

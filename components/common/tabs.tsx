@@ -32,12 +32,14 @@ export function Tabs({ tabs, defaultTab, className, onTabChange }: TabsProps) {
           <button
             key={tab.id}
             onClick={() => handleTabClick(tab.id)}
-            className={`px-4 py-3 text-sm font-medium transition-colors relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              activeTab === tab.id ? "text-gray-900" : "text-gray-500 hover:text-gray-700"
+            className={`px-4 py-3 text-sm font-medium transition-colors relative focus:outline-none rounded-lg border ${
+              activeTab === tab.id
+                ? "bg-blue-50 text-blue-700 border-blue-400"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent"
             }`}
           >
             {tab.label}
-            {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />}
+            {activeTab === tab.id && null}
           </button>
         ))}
       </div>
