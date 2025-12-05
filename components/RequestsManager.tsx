@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, X, Mail } from 'lucide-react';
+import { Check, X, Mail, Search, XCircle } from 'lucide-react';
 import { useSession } from '@/context/session';
 
 type RequestItem = {
@@ -9,15 +9,17 @@ type RequestItem = {
   submittedAt?: { seconds?: number; nanoseconds?: number } | string;
   status: 'pending' | 'approved' | 'rejected';
   data: Record<string, any>;
+  email?: string | null;
   files?: Array<{ name: string; url: string; contentType?: string; size?: number }>;
 };
 
 const RequestsManager: React.FC = () => {
   const { context } = useSession();
   const [loading, setLoading] = useState(false);
-  const [items, setItems] = useState<RequestItem[]>([]);
+  const [allItems, setAllItems] = useState<RequestItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'pending' | 'approved' | 'rejected'>('');
+  const [searchFilter, setSearchFilter] = useState('');
   const [selected, setSelected] = useState<RequestItem | null>(null);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [detailsSearch, setDetailsSearch] = useState('');
@@ -35,7 +37,8 @@ const RequestsManager: React.FC = () => {
       const res = await fetch(`/api/signup-requests?` + params.toString());
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
-      setItems(replace ? json.items : [...items, ...json.items]);
+      const newItems = replace ? json.items : [...allItems, ...json.items];
+      setAllItems(newItems);
       setNextCursor(json.nextCursor || null);
     } catch (e) {
       // noop simple UI
@@ -46,7 +49,7 @@ const RequestsManager: React.FC = () => {
 
   useEffect(() => {
     // initial load and when filter changes
-    setItems([]);
+    setAllItems([]);
     setNextCursor(null);
     load(null, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,7 +63,7 @@ const RequestsManager: React.FC = () => {
       body: JSON.stringify({ status: 'approved' }),
     });
     if (res.ok) {
-      setItems(items.map(it => it.id === id ? { ...it, status: 'approved' } : it));
+      setAllItems(allItems.map(it => it.id === id ? { ...it, status: 'approved' } : it));
       setSelected(null);
     }
   };
@@ -72,7 +75,7 @@ const RequestsManager: React.FC = () => {
       body: JSON.stringify({ status: 'rejected' }),
     });
     if (res.ok) {
-      setItems(items.map(it => it.id === id ? { ...it, status: 'rejected' } : it));
+      setAllItems(allItems.map(it => it.id === id ? { ...it, status: 'rejected' } : it));
       setSelected(null);
     }
   };
@@ -113,6 +116,72 @@ const RequestsManager: React.FC = () => {
     }
     return s;
   };
+
+  const extractName = (data: Record<string, any>): string => {
+    const entries = Object.entries(data || {});
+    const candidates = ['name', 'full_name', 'full name', 'first_name', 'first name'];
+    for (const key of candidates) {
+      const found = entries.find(([k]) => k.toLowerCase() === key);
+      if (found) return String(found[1] ?? '');
+    }
+    const fuzzy = entries.find(([k]) => /name/i.test(k));
+    if (fuzzy) return String(fuzzy[1] ?? '');
+    return '';
+  };
+
+  const extractNameForFilter = (data: Record<string, any>): string => {
+    const entries = Object.entries(data || {});
+    const candidates = ['name', 'full_name', 'full name', 'first_name', 'first name'];
+    for (const key of candidates) {
+      const found = entries.find(([k]) => k.toLowerCase() === key);
+      if (found) return String(found[1] ?? '').toLowerCase();
+    }
+    const fuzzy = entries.find(([k]) => /name/i.test(k));
+    if (fuzzy) return String(fuzzy[1] ?? '').toLowerCase();
+    return '';
+  };
+
+  const extractEmail = (item: RequestItem): string => {
+    if (item.email) return item.email;
+    const entries = Object.entries(item.data || {});
+    const candidates = ['email', 'e-mail', 'email_address', 'email address'];
+    for (const key of candidates) {
+      const found = entries.find(([k]) => k.toLowerCase() === key);
+      if (found) return String(found[1] ?? '');
+    }
+    const fuzzy = entries.find(([k]) => /email/i.test(k));
+    if (fuzzy) return String(fuzzy[1] ?? '');
+    return '';
+  };
+
+  const extractEmailForFilter = (item: RequestItem): string => {
+    if (item.email) return item.email.toLowerCase();
+    const entries = Object.entries(item.data || {});
+    const candidates = ['email', 'e-mail', 'email_address', 'email address'];
+    for (const key of candidates) {
+      const found = entries.find(([k]) => k.toLowerCase() === key);
+      if (found) return String(found[1] ?? '').toLowerCase();
+    }
+    const fuzzy = entries.find(([k]) => /email/i.test(k));
+    if (fuzzy) return String(fuzzy[1] ?? '').toLowerCase();
+    return '';
+  };
+
+  // Filter items based on search criteria
+  const filteredItems = useMemo(() => {
+    let filtered = allItems;
+    
+    if (searchFilter.trim()) {
+      const searchLower = searchFilter.toLowerCase();
+      filtered = filtered.filter(item => {
+        const name = extractNameForFilter(item.data);
+        const email = extractEmailForFilter(item);
+        return name.includes(searchLower) || email.includes(searchLower);
+      });
+    }
+    
+    return filtered;
+  }, [allItems, searchFilter]);
   const remove = async (id: string) => {
     if (!context) return;
     const ok = confirm('Delete this request? This action cannot be undone.');
@@ -123,7 +192,7 @@ const RequestsManager: React.FC = () => {
     if (res.ok) {
       setSelected(null);
       // Reload first page to reflect deletion quickly
-      setItems([]);
+      setAllItems([]);
       setNextCursor(null);
       await load(null, true);
     }
@@ -131,44 +200,108 @@ const RequestsManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">Signup Requests</h2>
-        <div className="flex gap-3">
-          <button onClick={() => setStatusFilter('')} className={`px-4 py-2 text-sm font-medium rounded-lg border ${statusFilter===''?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Signup Requests</h2>
+          <p className="text-sm text-gray-600 mt-1">Manage and review all signup submissions</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <span className="text-xs font-medium text-gray-500 self-center mr-1">Status:</span>
+          <button 
+            onClick={() => setStatusFilter('')} 
+            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
+              statusFilter === '' 
+                ? 'bg-gray-900 text-white border-gray-900 shadow-sm' 
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+            }`}
+          >
             All
           </button>
-          <button onClick={() => setStatusFilter('pending')} className={`px-4 py-2 text-sm font-medium rounded-lg border ${statusFilter==='pending'?'bg-amber-600 text-white border-amber-600':'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}>
+          <button 
+            onClick={() => setStatusFilter('pending')} 
+            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
+              statusFilter === 'pending' 
+                ? 'bg-amber-600 text-white border-amber-600 shadow-sm' 
+                : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+            }`}
+          >
             Pending
           </button>
-          <button onClick={() => setStatusFilter('approved')} className={`px-4 py-2 text-sm font-medium rounded-lg border ${statusFilter==='approved'?'bg-emerald-600 text-white border-emerald-600':'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'}`}>
+          <button 
+            onClick={() => setStatusFilter('approved')} 
+            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
+              statusFilter === 'approved' 
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
+                : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
+            }`}
+          >
             Approved
           </button>
-          <button onClick={() => setStatusFilter('rejected')} className={`px-4 py-2 text-sm font-medium rounded-lg border ${statusFilter==='rejected'?'bg-rose-600 text-white border-rose-600':'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'}`}>
+          <button 
+            onClick={() => setStatusFilter('rejected')} 
+            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
+              statusFilter === 'rejected' 
+                ? 'bg-rose-600 text-white border-rose-600 shadow-sm' 
+                : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:border-rose-300'
+            }`}
+          >
             Rejected
           </button>
         </div>
       </div>
 
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div className="flex items-center gap-2 text-sm text-gray-600 min-w-fit">
+            <Search className="w-4 h-4" />
+            <span className="font-medium">Search:</span>
+          </div>
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+            <input
+              type="text"
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Search by name or email..."
+              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+            />
+            {searchFilter && (
+              <button
+                onClick={() => setSearchFilter('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XCircle className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          {searchFilter && (
+            <div className="text-xs text-gray-600 whitespace-nowrap">
+              <span className="font-semibold text-gray-900">{filteredItems.length}</span> of <span className="font-semibold text-gray-900">{allItems.length}</span> results
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Summary</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-        </table>
-        <div className="max-h-[70vh] overflow-y-auto">
+        <div className="overflow-x-auto">
           <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-gray-100">
-              {items.map(request => {
-                const firstKey = Object.keys(request.data || {})[0];
-                const summary = firstKey ? `${firstKey}: ${String(request.data[firstKey])}` : 'Submission';
+              {filteredItems.map(request => {
+                const name = extractName(request.data);
+                const email = extractEmail(request);
                 return (
                   <tr key={request.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800">{summary}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{name || '—'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{email || '—'}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{formatDate(request.submittedAt)}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
@@ -182,7 +315,7 @@ const RequestsManager: React.FC = () => {
                     <td className="px-6 py-4 text-right">
                       <button 
                         onClick={() => setSelected(request)}
-                        className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+                        className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
                       >
                         View Details
                       </button>
@@ -190,14 +323,19 @@ const RequestsManager: React.FC = () => {
                   </tr>
                 );
               })}
-              {!items.length && !loading && (
-                <tr><td className="px-6 py-8 text-center text-gray-500" colSpan={4}>No requests found.</td></tr>
+              {!filteredItems.length && !loading && (
+                <tr><td className="px-6 py-8 text-center text-gray-500" colSpan={5}>
+                  {allItems.length === 0 ? 'No requests found.' : 'No requests match your filters.'}
+                </td></tr>
               )}
             </tbody>
           </table>
         </div>
         <div className="p-4 border-t border-gray-100 flex items-center justify-between">
-          <div className="text-sm text-gray-500">{items.length} loaded</div>
+          <div className="text-sm text-gray-500">
+            {filteredItems.length} {filteredItems.length === 1 ? 'request' : 'requests'} shown
+            {filteredItems.length !== allItems.length && ` (${allItems.length} total loaded)`}
+          </div>
           <button
             onClick={() => load(nextCursor || undefined)}
             disabled={loading || !nextCursor}
