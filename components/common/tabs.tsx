@@ -25,9 +25,9 @@ export function Tabs({ tabs, defaultTab, className, onTabChange }: TabsProps) {
   }
 
   return (
-    <div className={`w-full ${className || ""}`}>
+    <div className={`w-full flex flex-col ${className || ""}`}>
       {/* Tab Headers */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-gray-200 mb-4">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -45,9 +45,9 @@ export function Tabs({ tabs, defaultTab, className, onTabChange }: TabsProps) {
       </div>
 
       {/* Tab Content */}
-      <div className="mt-4">
+      <div className="flex-1 overflow-hidden">
         {tabs.map((tab) => (
-          <div key={tab.id} className={`transition-opacity duration-200 ${activeTab === tab.id ? "block" : "hidden"}`}>
+          <div key={tab.id} className={`h-full transition-opacity duration-200 ${activeTab === tab.id ? "block" : "hidden"}`}>
             {tab.content}
           </div>
         ))}

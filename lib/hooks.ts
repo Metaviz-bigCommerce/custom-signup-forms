@@ -116,3 +116,76 @@ export function useStoreFormActions() {
   };
   return { saveForm, setActive };
 }
+
+export function useFormVersions() {
+  const encodedContext = useSession()?.context;
+  const { data, error, mutate } = useSWR(
+    encodedContext ? ["/api/form-versions", encodedContext] : null,
+    fetcher
+  );
+  return {
+    versions: data?.versions || [],
+    isError: error,
+    mutate,
+  };
+}
+
+export function useFormVersionActions() {
+  const encodedContext = useSession()?.context;
+  
+  const saveAsVersion = async (name: string, type: 'draft' | 'version', form: any) => {
+    if (!encodedContext) throw new Error("Missing BigCommerce session context");
+    const res = await fetch(`/api/form-versions?context=${encodedContext}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, type, form }),
+    });
+    if (!res.ok) throw new Error(`Failed to save version: ${res.status} ${await res.text()}`);
+    const data = await res.json();
+    return { ...data, id: data.id }; // Ensure id is returned
+  };
+  
+  const loadVersion = async (versionId: string) => {
+    if (!encodedContext) throw new Error("Missing BigCommerce session context");
+    // Fetch all versions and find the one we need
+    const versionsRes = await fetch(`/api/form-versions?context=${encodedContext}`);
+    if (!versionsRes.ok) throw new Error(`Failed to fetch versions: ${versionsRes.status}`);
+    const versionsData = await versionsRes.json();
+    const version = versionsData.versions?.find((v: any) => v.id === versionId);
+    if (!version) throw new Error('Version not found');
+    return version;
+  };
+  
+  const deleteVersion = async (versionId: string) => {
+    if (!encodedContext) throw new Error("Missing BigCommerce session context");
+    const res = await fetch(`/api/form-versions?context=${encodedContext}&versionId=${versionId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error(`Failed to delete version: ${res.status} ${await res.text()}`);
+    return res.json();
+  };
+  
+  const setActiveVersion = async (versionId: string) => {
+    if (!encodedContext) throw new Error("Missing BigCommerce session context");
+    const res = await fetch(`/api/form-versions?context=${encodedContext}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'setActive', versionId }),
+    });
+    if (!res.ok) throw new Error(`Failed to set active version: ${res.status} ${await res.text()}`);
+    return res.json();
+  };
+  
+  const updateVersion = async (versionId: string, updates: { name?: string; form?: any }) => {
+    if (!encodedContext) throw new Error("Missing BigCommerce session context");
+    const res = await fetch(`/api/form-versions?context=${encodedContext}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', versionId, ...updates }),
+    });
+    if (!res.ok) throw new Error(`Failed to update version: ${res.status} ${await res.text()}`);
+    return res.json();
+  };
+  
+  return { saveAsVersion, loadVersion, deleteVersion, setActiveVersion, updateVersion };
+}

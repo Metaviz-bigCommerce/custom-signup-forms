@@ -1,9 +1,13 @@
 'use client'
 
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { Plus, Trash2, GripVertical, Settings, X, Palette, RotateCcw, PanelLeftClose, PanelRight, ChevronDown, ChevronUp, Type, Layout, MousePointerClick, Image, Eye, Save, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-import { useBcScriptsActions, useStoreForm, useStoreFormActions } from '@/lib/hooks';
+import { Plus, Trash2, GripVertical, Settings, X, Palette, RotateCcw, PanelLeftClose, PanelRight, ChevronDown, ChevronUp, Type, Layout, MousePointerClick, Image, Eye, Save, CheckCircle2, XCircle, Loader2, Link2, Unlink, Columns, Edit2, Check } from 'lucide-react';
+import { useBcScriptsActions, useStoreForm, useStoreFormActions, useFormVersionActions, useFormVersions } from '@/lib/hooks';
 import Skeleton from '@/components/Skeleton';
+import SaveFormDropdown from '@/components/SaveFormDropdown';
+import VersionsList from '@/components/VersionsList';
+import { Tabs } from '@/components/common/tabs';
+import LoadVersionConfirmModal from '@/components/LoadVersionConfirmModal';
 
 type FieldType = 'text' | 'email' | 'phone' | 'number' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date' | 'file' | 'url';
 
@@ -27,6 +31,8 @@ type FormField = {
   role?: 'first_name' | 'last_name' | 'email' | 'password' | 'country' | 'state';
   locked?: boolean;
   options?: Array<{ label: string; value: string }>;
+  // Row grouping for 2-column layout
+  rowGroup?: number | null;
 };
 
 const FormBuilder: React.FC = () => {
@@ -39,6 +45,15 @@ const FormBuilder: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
+  const [draggedFieldId, setDraggedFieldId] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<number>(1);
+  const [showLoadVersionConfirm, setShowLoadVersionConfirm] = useState<boolean>(false);
+  const [pendingVersion, setPendingVersion] = useState<any>(null);
+  const [currentFormName, setCurrentFormName] = useState<string>('Unnamed');
+  const [currentFormVersionId, setCurrentFormVersionId] = useState<string | null>(null);
+  const [isEditingName, setIsEditingName] = useState<boolean>(false);
+  const [editingName, setEditingName] = useState<string>('');
   const defaultTheme = {
     title: 'Create your account',
     subtitle: 'Please fill in the form to continue',
@@ -54,6 +69,8 @@ const FormBuilder: React.FC = () => {
   const { addScript, updateScript, deleteScript } = useBcScriptsActions();
   const { form, active, scriptUuid, mutate } = useStoreForm();
   const { saveForm, setActive } = useStoreFormActions();
+  const { saveAsVersion, updateVersion } = useFormVersionActions();
+  const { versions, mutate: mutateVersions } = useFormVersions();
 
   const fieldTypes: FieldType[] = ['text', 'email', 'phone', 'number', 'textarea', 'select', 'radio', 'checkbox', 'date', 'file', 'url'];
 
@@ -81,6 +98,33 @@ const FormBuilder: React.FC = () => {
     }
   }, [form]);
 
+  // Check if current form matches any saved version to get its name
+  useEffect(() => {
+    if (!form || !versions?.length) {
+      // If no form or versions, check if we have a current version ID
+      if (!currentFormVersionId) {
+        setCurrentFormName('Unnamed');
+      }
+      return;
+    }
+
+    // Try to find a matching version by comparing form data
+    const formDataStr = JSON.stringify({ fields: form.fields, theme: form.theme });
+    const matchingVersion = versions.find((v: any) => {
+      if (!v.form) return false;
+      const versionDataStr = JSON.stringify({ fields: v.form.fields, theme: v.form.theme });
+      return versionDataStr === formDataStr;
+    });
+
+    if (matchingVersion) {
+      setCurrentFormName(matchingVersion.name || 'Unnamed');
+      setCurrentFormVersionId(matchingVersion.id);
+    } else if (!currentFormVersionId) {
+      // Only set to Unnamed if we don't have a tracked version ID
+      setCurrentFormName('Unnamed');
+    }
+  }, [form, versions, currentFormVersionId]);
+
   const isDirty = useMemo(() => {
     if (!form) return false;
     try {
@@ -101,13 +145,43 @@ const FormBuilder: React.FC = () => {
   ];
 
   const ensureCoreFields = (fields: FormField[]): FormField[] => {
-    const next = [...fields];
-    const hasRole = (r: string) =>
-      next.some(f => f.role === r) ||
-      next.some(f => (f.label || '').trim().toLowerCase() === (coreFieldConfigs.find(cf => cf.role === r)?.label || '').toLowerCase());
+    // Separate core and non-core fields
+    const coreFields: FormField[] = [];
+    const nonCoreFields: FormField[] = [];
+    
+    // Helper to check if a field matches a core role
+    const matchesCoreRole = (field: FormField, role: string): boolean => {
+      return field.role === role || 
+        (field.label || '').trim().toLowerCase() === (coreFieldConfigs.find(cf => cf.role === role)?.label || '').toLowerCase();
+    };
+    
+    // Separate existing fields
+    for (const field of fields) {
+      const isCore = coreFieldConfigs.some(cfg => matchesCoreRole(field, cfg.role!));
+      if (isCore) {
+        coreFields.push(field);
+      } else {
+        nonCoreFields.push(field);
+      }
+    }
+    
+    // Build ordered core fields array
+    const orderedCoreFields: FormField[] = [];
     for (const cfg of coreFieldConfigs) {
-      if (!hasRole(cfg.role!)) {
-        next.unshift({
+      const existingField = coreFields.find(f => matchesCoreRole(f, cfg.role!));
+      if (existingField) {
+        // Update existing field to ensure it has correct properties
+        orderedCoreFields.push({
+          ...existingField,
+          required: true,
+          locked: true,
+          role: cfg.role as any,
+          type: cfg.type as any,
+          placeholder: existingField.placeholder || cfg.placeholder,
+        });
+      } else {
+        // Create new core field
+        orderedCoreFields.push({
           id: Date.now() + Math.floor(Math.random() * 100000),
           type: cfg.type,
           label: cfg.label,
@@ -126,23 +200,11 @@ const FormBuilder: React.FC = () => {
           role: cfg.role as any,
           locked: true,
         });
-      } else {
-        const idx = next.findIndex(
-          f => f.role === cfg.role || (f.label || '').trim().toLowerCase() === cfg.label.toLowerCase()
-        );
-        if (idx >= 0) {
-          next[idx] = {
-            ...next[idx],
-            required: true,
-            locked: true,
-            role: cfg.role as any,
-            type: cfg.type as any,
-            placeholder: next[idx].placeholder || cfg.placeholder,
-          };
-        }
       }
     }
-    return next;
+    
+    // Return core fields first (in correct order), then non-core fields
+    return [...orderedCoreFields, ...nonCoreFields];
   };
 
   const handleReset = () => {
@@ -151,6 +213,10 @@ const FormBuilder: React.FC = () => {
     
     // Reset theme to defaults
     setTheme({ ...defaultTheme });
+    
+    // Reset form name
+    setCurrentFormName('Unnamed');
+    setCurrentFormVersionId(null);
     
     // Close any open popups
     setShowFieldEditor(false);
@@ -230,6 +296,18 @@ const FormBuilder: React.FC = () => {
       const normalizedTheme = normalizeThemeLayout(theme);
       const withCore = ensureCoreFields(formFields);
       await saveForm({ fields: withCore, theme: normalizedTheme });
+      
+      // If current form matches a version, update that version's timestamp
+      if (currentFormVersionId) {
+        try {
+          await updateVersion(currentFormVersionId, { form: { fields: withCore, theme: normalizedTheme } });
+          await mutateVersions();
+        } catch (e) {
+          // Silently fail - version update is not critical
+          console.error('Failed to update version timestamp:', e);
+        }
+      }
+      
       // If a script exists, regenerate JS and update the script
       if (active && scriptUuid) {
         await fetch('/api/generate-signup-script', {
@@ -249,12 +327,153 @@ const FormBuilder: React.FC = () => {
           consent_category: "essential"
         });
       }
+      // When saving main form, check if it matches any version to update name
       await mutate();
+      // The useEffect will automatically update the name if it matches a version
       alert('Form saved.');
     } catch (e: any) {
       alert('Failed to save form: ' + (e?.message || 'Unknown error'));
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleSaveAsDraft(name: string) {
+    setIsSaving(true);
+    try {
+      const normalizedTheme = normalizeThemeLayout(theme);
+      const withCore = ensureCoreFields(formFields);
+      const result = await saveAsVersion(name || `Draft ${new Date().toLocaleDateString()}`, 'draft', { fields: withCore, theme: normalizedTheme });
+      // Update form name if we got a version ID back
+      if (result?.id) {
+        setCurrentFormName(name || `Draft ${new Date().toLocaleDateString()}`);
+        setCurrentFormVersionId(result.id);
+      }
+      await mutate();
+      alert('Draft saved successfully.');
+    } catch (e: any) {
+      alert('Failed to save draft: ' + (e?.message || 'Unknown error'));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleSaveAsVersion(name: string) {
+    setIsSaving(true);
+    try {
+      // If name is empty and form is not unnamed, use current form name
+      const finalName = name.trim() || (currentFormName !== 'Unnamed' ? currentFormName : '');
+      if (!finalName) {
+        alert('Version name is required');
+        setIsSaving(false);
+        return;
+      }
+      const normalizedTheme = normalizeThemeLayout(theme);
+      const withCore = ensureCoreFields(formFields);
+      const result = await saveAsVersion(finalName, 'version', { fields: withCore, theme: normalizedTheme });
+      // Update form name if we got a version ID back
+      if (result?.id) {
+        setCurrentFormName(finalName);
+        setCurrentFormVersionId(result.id);
+      }
+      await mutate();
+      alert('Version saved successfully.');
+    } catch (e: any) {
+      alert('Failed to save version: ' + (e?.message || 'Unknown error'));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function handleLoadVersion(version: any) {
+    if (isDirty) {
+      // Show confirmation modal if there are unsaved changes
+      setPendingVersion(version);
+      setShowLoadVersionConfirm(true);
+      return;
+    }
+    // Load version directly if no unsaved changes
+    loadVersionData(version);
+  }
+
+  function loadVersionData(version: any, goToBuilder: boolean = false) {
+    if (version?.form?.fields) {
+      setFormFields(ensureCoreFields(version.form.fields));
+    }
+    if (version?.form?.theme) {
+      const loadedTheme = { ...defaultTheme, ...version.form.theme };
+      setTheme(normalizeThemeLayout(loadedTheme));
+    }
+    // Update form name and version ID
+    setCurrentFormName(version?.name || 'Unnamed');
+    setCurrentFormVersionId(version?.id || null);
+    if (goToBuilder) {
+      setActiveTab(1); // Switch to Builder tab
+    }
+    setShowLoadVersionConfirm(false);
+    setPendingVersion(null);
+  }
+
+  function handleConfirmLoadVersion() {
+    if (pendingVersion) {
+      loadVersionData(pendingVersion, false);
+    }
+  }
+
+  function handleConfirmLoadAndGoToBuilder() {
+    if (pendingVersion) {
+      loadVersionData(pendingVersion, true);
+    }
+  }
+
+  async function handleSaveName() {
+    if (!editingName.trim()) {
+      alert('Name cannot be empty');
+      return;
+    }
+
+    const trimmedName = editingName.trim();
+    const previousName = currentFormName;
+    
+    // Optimistically update UI immediately for instant feedback
+    setCurrentFormName(trimmedName);
+    setIsEditingName(false);
+    setEditingName('');
+
+    // Save in background (non-blocking)
+    try {
+      // If we have a version ID, update that version
+      if (currentFormVersionId) {
+        updateVersion(currentFormVersionId, { name: trimmedName })
+          .then(() => {
+            mutateVersions().catch(() => {}); // Silently fail mutate
+          })
+          .catch((e: any) => {
+            // Revert on error
+            setCurrentFormName(previousName);
+            alert('Failed to save name: ' + (e?.message || 'Unknown error'));
+          });
+      } else {
+        // If it's unnamed, save as a new draft with this name
+        const normalizedTheme = normalizeThemeLayout(theme);
+        const withCore = ensureCoreFields(formFields);
+        saveAsVersion(trimmedName, 'draft', { fields: withCore, theme: normalizedTheme })
+          .then((result) => {
+            if (result?.id) {
+              setCurrentFormVersionId(result.id);
+              mutateVersions().catch(() => {}); // Silently fail mutate
+            }
+          })
+          .catch((e: any) => {
+            // Revert on error
+            setCurrentFormName('Unnamed');
+            alert('Failed to save name: ' + (e?.message || 'Unknown error'));
+          });
+      }
+    } catch (e: any) {
+      // Revert on error
+      setCurrentFormName(previousName);
+      alert('Failed to save name: ' + (e?.message || 'Unknown error'));
     }
   }
 
@@ -341,11 +560,162 @@ const FormBuilder: React.FC = () => {
       alert('This field is required and cannot be removed.');
       return;
     }
-    setFormFields(formFields.filter(ff => ff.id !== id));
+    // If field is paired, unpair its partner
+    if (f?.rowGroup != null) {
+      const partner = formFields.find(ff => ff.id !== id && ff.rowGroup === f.rowGroup);
+      if (partner) {
+        setFormFields(formFields.map(ff => 
+          ff.id === partner.id ? { ...ff, rowGroup: null } : ff
+        ).filter(ff => ff.id !== id));
+      } else {
+        setFormFields(formFields.filter(ff => ff.id !== id));
+      }
+    } else {
+      setFormFields(formFields.filter(ff => ff.id !== id));
+    }
     if (selectedField?.id === id) {
       setSelectedField(null);
       setShowFieldEditor(false);
     }
+  };
+
+  const togglePairWithNext = (fieldId: number) => {
+    const fieldIndex = formFields.findIndex(f => f.id === fieldId);
+    if (fieldIndex === -1 || fieldIndex === formFields.length - 1) return; // Can't pair if it's the last field
+    
+    const field = formFields[fieldIndex];
+    const nextField = formFields[fieldIndex + 1];
+    
+    // If already paired, unpair both
+    if (field.rowGroup != null && nextField.rowGroup === field.rowGroup) {
+      setFormFields(formFields.map(f => 
+        f.id === fieldId || f.id === nextField.id 
+          ? { ...f, rowGroup: null }
+          : f
+      ));
+    } else {
+      // Create new pair - generate unique group ID
+      const newGroupId = Date.now();
+      setFormFields(formFields.map(f => {
+        if (f.id === fieldId || f.id === nextField.id) {
+          return { ...f, rowGroup: newGroupId };
+        }
+        // If nextField was already in a pair, unpair its old partner
+        if (f.rowGroup === nextField.rowGroup && f.id !== nextField.id) {
+          return { ...f, rowGroup: null };
+        }
+        return f;
+      }));
+    }
+  };
+
+  const unpairField = (fieldId: number) => {
+    const field = formFields.find(f => f.id === fieldId);
+    if (!field || field.rowGroup == null) return;
+    
+    const groupId = field.rowGroup;
+    setFormFields(formFields.map(f => 
+      f.rowGroup === groupId ? { ...f, rowGroup: null } : f
+    ));
+  };
+
+  const handleDragStart = (e: React.DragEvent, fieldId: number) => {
+    setDraggedFieldId(fieldId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(fieldId));
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    
+    if (draggedFieldId === null) return;
+    
+    const draggedIndex = formFields.findIndex(f => f.id === draggedFieldId);
+    if (draggedIndex === -1) {
+      setDraggedFieldId(null);
+      return;
+    }
+
+    // Get the dragged field and check if it's paired
+    const draggedField = formFields[draggedIndex];
+    const isPaired = draggedField.rowGroup != null;
+    
+    // If paired, we need to move both fields together
+    if (isPaired) {
+      const partnerIndex = formFields.findIndex(f => 
+        f.id !== draggedFieldId && f.rowGroup === draggedField.rowGroup
+      );
+      
+      if (partnerIndex === -1) {
+        // Partner not found, just move the single field
+        const newFields = [...formFields];
+        const [removed] = newFields.splice(draggedIndex, 1);
+        // Adjust drop index if dragging from before the drop position
+        const adjustedDropIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
+        newFields.splice(adjustedDropIndex, 0, removed);
+        setFormFields(newFields);
+      } else {
+        // Move both fields together - keep them adjacent
+        const newFields = [...formFields];
+        const indices = [draggedIndex, partnerIndex].sort((a, b) => a - b);
+        const [firstIdx, secondIdx] = indices;
+        
+        // Get both fields
+        const field1 = newFields[firstIdx];
+        const field2 = newFields[secondIdx];
+        
+        // Remove both fields (remove from higher index first to maintain indices)
+        newFields.splice(secondIdx, 1);
+        newFields.splice(firstIdx, 1);
+        
+        // Calculate adjusted drop index
+        let adjustedDropIndex = dropIndex;
+        if (dropIndex > secondIdx) {
+          adjustedDropIndex = dropIndex - 2;
+        } else if (dropIndex > firstIdx) {
+          adjustedDropIndex = dropIndex - 1;
+        }
+        
+        // Ensure adjusted index is not negative
+        adjustedDropIndex = Math.max(0, adjustedDropIndex);
+        
+        // Insert both fields at new position, maintaining their relative order
+        // Determine which field should come first based on original order
+        if (draggedIndex < partnerIndex) {
+          newFields.splice(adjustedDropIndex, 0, field1, field2);
+        } else {
+          newFields.splice(adjustedDropIndex, 0, field2, field1);
+        }
+        
+        setFormFields(newFields);
+      }
+    } else {
+      // Single field, just reorder
+      const newFields = [...formFields];
+      const [removed] = newFields.splice(draggedIndex, 1);
+      // Adjust drop index if dragging from before the drop position
+      const adjustedDropIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
+      newFields.splice(adjustedDropIndex, 0, removed);
+      setFormFields(newFields);
+    }
+    
+    setDraggedFieldId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedFieldId(null);
+    setDragOverIndex(null);
   };
 
   const handleFieldClick = (field: FormField) => {
@@ -440,7 +810,56 @@ const FormBuilder: React.FC = () => {
         
         {/* Form - exact match from script */}
         <form style={{ display: 'grid', gap: '14px' }}>
-          {formFields.map(field => {
+          {(() => {
+            // Group fields by rowGroup for 2-column layout
+            const groupedFields: Array<{ fields: FormField[]; rowGroup: number | null }> = [];
+            const processedIds = new Set<number>();
+            
+            for (let i = 0; i < formFields.length; i++) {
+              if (processedIds.has(formFields[i].id)) continue;
+              
+              const field = formFields[i];
+              if (field.rowGroup != null) {
+                // Find all fields with the same rowGroup
+                const groupFields = formFields.filter(f => f.rowGroup === field.rowGroup);
+                groupedFields.push({ fields: groupFields, rowGroup: field.rowGroup });
+                groupFields.forEach(f => processedIds.add(f.id));
+              } else {
+                // Single field, full width
+                groupedFields.push({ fields: [field], rowGroup: null });
+                processedIds.add(field.id);
+              }
+            }
+            
+            return groupedFields.map((group, groupIndex) => {
+              const isMobile = viewMode === 'mobile';
+              const isPaired = group.rowGroup != null && group.fields.length === 2 && !isMobile;
+              
+              if (isPaired) {
+                // Render paired fields side-by-side
+                return (
+                  <div 
+                    key={`group-${group.rowGroup}`}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '14px'
+                    }}
+                  >
+                    {group.fields.map(field => renderField(field))}
+                  </div>
+                );
+              } else {
+                // Render single field or mobile (stacked)
+                return (
+                  <React.Fragment key={group.rowGroup || `single-${group.fields[0].id}`}>
+                    {group.fields.map(field => renderField(field))}
+                  </React.Fragment>
+                );
+              }
+            });
+            
+            function renderField(field: FormField) {
             // Default values matching script
             const borderColor = field.borderColor || '#e5e7eb';
             const borderWidth = field.borderWidth || '1';
@@ -616,7 +1035,8 @@ const FormBuilder: React.FC = () => {
                 />
               </div>
             );
-          })}
+            }
+          })()}
           
           {/* Submit Button - exact match from script */}
           {formFields.length > 0 && (
@@ -1537,290 +1957,560 @@ const FormBuilder: React.FC = () => {
   };
 
   return (
-    <div className="h-full">
-      {/* Top Action Bar */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-4 overflow-hidden">
-        <div className="px-6 py-4 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-          {/* Left Section - Status & Info */}
-          <div className="flex items-center gap-4">
-            {/* Status Badge */}
-            <div className="flex items-center gap-2">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${
-                active 
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                  : 'bg-slate-100 text-slate-600 border border-slate-200'
-              }`}>
-                {active ? (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Active</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="w-3.5 h-3.5" />
-                    <span>Inactive</span>
-                  </>
-                )}
-              </div>
-              {isDirty && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 text-xs font-medium border border-amber-200">
-                  <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></div>
-                  <span>Unsaved changes</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Section - Actions */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Secondary Actions */}
-            <div className="flex items-center gap-2 border-r border-slate-200 pr-2">
-              <button
-                onClick={() => setShowResetConfirm(true)}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 hover:border-slate-400 hover:shadow-sm active:scale-[0.98]"
-                title="Reset form to default"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>Reset</span>
-              </button>
-            </div>
-
-            {/* Primary Actions */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleSaveForm}
-                disabled={!isDirty || isSaving}
-                className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                  isDirty && !isSaving
-                    ? 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-lg active:scale-[0.98] shadow-md' 
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                }`}
-                title={!isDirty ? 'No changes to save' : 'Save form changes'}
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Saving…</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    <span>Save Form</span>
-                  </>
-                )}
-              </button>
-
-              {active ? (
-                <button
-                  onClick={handleDeactivate}
-                  disabled={isToggling}
-                  className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                    isToggling
-                      ? 'bg-rose-300 text-white cursor-not-allowed' 
-                      : 'bg-rose-600 text-white hover:bg-rose-700 hover:shadow-lg active:scale-[0.98] shadow-md'
-                  }`}
-                  title="Deactivate form"
-                >
-                  {isToggling ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Deactivating…</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="w-4 h-4" />
-                      <span>Deactivate</span>
-                    </>
-                  )}
-                </button>
-              ) : (
-                <button
-                  onClick={handleActivate}
-                  disabled={isToggling}
-                  className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                    isToggling
-                      ? 'bg-emerald-300 text-white cursor-not-allowed' 
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg active:scale-[0.98] shadow-md'
-                  }`}
-                  title="Activate form"
-                >
-                  {isToggling ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Activating…</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Activate</span>
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
+    <div className="h-full flex flex-col">
+      {/* Tabs Headers - Always on top */}
+      <div className="mb-4">
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab(1)}
+            className={`px-4 py-3 text-sm font-medium transition-colors relative focus:outline-none rounded-lg border ${
+              activeTab === 1
+                ? "bg-blue-50 text-blue-700 border-blue-400"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent"
+            }`}
+          >
+            Builder
+          </button>
+          <button
+            onClick={() => setActiveTab(2)}
+            className={`px-4 py-3 text-sm font-medium transition-colors relative focus:outline-none rounded-lg border ${
+              activeTab === 2
+                ? "bg-blue-50 text-blue-700 border-blue-400"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent"
+            }`}
+          >
+            Versions
+          </button>
         </div>
       </div>
-      <div className={`flex h-full transition-all duration-300 ease-in-out relative ${sidebarOpen ? 'gap-6' : 'gap-0'}`}>
-        {/* Floating toggle button when sidebar is closed - positioned on left edge */}
-        {!sidebarOpen && (
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="fixed left-0 top-1/2 -translate-y-1/2 z-30 w-11 h-16 bg-white border-r border-t border-b border-slate-200 rounded-r-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center hover:bg-gray-50 group backdrop-blur-sm bg-white/95"
-            aria-label="Show sidebar"
-            title="Show sidebar"
-          >
-            <PanelRight className="w-5 h-5 text-gray-500 group-hover:text-gray-700 transition-colors" />
-          </button>
-        )}
 
-        {/* Sidebar */}
-        <aside 
-          className={`bg-white rounded-xl shadow-md border border-slate-200 h-full overflow-hidden transition-all duration-300 ease-in-out relative ${
-            sidebarOpen 
-              ? 'w-[25%] min-w-[280px] opacity-100' 
-              : 'w-0 min-w-0 opacity-0 overflow-hidden border-0'
-          }`}
-        >
-          {sidebarOpen && (
-            <>
-              {/* Sidebar Header with Toggle */}
-              <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10 backdrop-blur-sm bg-white/95">
-                <h3 className="text-lg font-semibold text-gray-800">Form Builder</h3>
+      {/* Top Action Bar - Only show in Builder tab */}
+      {activeTab === 1 && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-4">
+          <div className="px-6 py-4 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between relative">
+            {/* Left Section - Status & Info */}
+            <div className="flex items-center gap-4">
+              {/* Form Name */}
+              <div className="flex items-center gap-2">
+                {isEditingName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSaveName();
+                        } else if (e.key === 'Escape') {
+                          setIsEditingName(false);
+                          setEditingName('');
+                        }
+                      }}
+                      className="px-3 py-1.5 text-lg font-semibold text-gray-800 border-2 border-blue-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleSaveName}
+                      className="p-1.5 text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                      title="Save name"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditingName(false);
+                        setEditingName('');
+                      }}
+                      className="p-1.5 text-gray-600 hover:bg-gray-50 rounded-md transition-colors"
+                      title="Cancel"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 group">
+                    <h2 
+                      className="text-lg font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors"
+                      onClick={() => {
+                        setEditingName(currentFormName);
+                        setIsEditingName(true);
+                      }}
+                      title="Click to edit name"
+                    >
+                      {currentFormName}
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setEditingName(currentFormName);
+                        setIsEditingName(true);
+                      }}
+                      className="p-1 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 rounded-md transition-all"
+                      title="Edit name"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* Status Badge */}
+              <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${
+                  active 
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                }`}>
+                  {active ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Active</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>Inactive</span>
+                    </>
+                  )}
+                </div>
+                {isDirty && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 text-xs font-medium border border-amber-200">
+                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></div>
+                    <span>Unsaved changes</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Section - Actions */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Secondary Actions */}
+              <div className="flex items-center gap-2 border-r border-slate-200 pr-2">
                 <button
-                  onClick={() => setSidebarOpen(false)}
-                  className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all duration-200"
-                  aria-label="Hide sidebar"
-                  title="Hide sidebar"
+                  onClick={() => setShowResetConfirm(true)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 hover:border-slate-400 hover:shadow-sm active:scale-[0.98]"
+                  title="Reset form to default"
                 >
-                  <PanelLeftClose className="w-5 h-5" />
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Reset</span>
                 </button>
               </div>
 
-              {/* Sidebar Content */}
-              <div className="p-6 h-[calc(100%-73px)] overflow-y-auto">
-                <div className="mb-6">
-                  <h4 className="text-xs font-semibold uppercase text-gray-500 mb-3">Add New Field</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-[10px] uppercase text-gray-400 mb-1.5 font-medium">Basic Inputs</div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {['text', 'email', 'phone', 'number'].map(type => (
-                      <button
-                        key={type}
-                            onClick={() => addField(type as FieldType)}
-                            className="text-xs bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-1.5 rounded-md border border-slate-200 hover:border-blue-300 transition-all capitalize"
-                      >
-                        <Plus className="w-3 h-3 inline mr-1" />
-                        {type}
-                      </button>
-                    ))}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase text-gray-400 mb-1.5 font-medium">Selection Fields</div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {['textarea', 'select', 'radio', 'checkbox'].map(type => (
-                          <button
-                            key={type}
-                            onClick={() => addField(type as FieldType)}
-                            className="text-xs bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-1.5 rounded-md border border-slate-200 hover:border-blue-300 transition-all capitalize"
-                          >
-                            <Plus className="w-3 h-3 inline mr-1" />
-                            {type}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase text-gray-400 mb-1.5 font-medium">Address Fields</div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <button
-                          onClick={() => addAddressField('country')}
-                          className="text-xs bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-1.5 rounded-md border border-slate-200 hover:border-blue-300 transition-all"
-                        >
-                          <Plus className="w-3 h-3 inline mr-1" />
-                          Country
-                        </button>
-                        <button
-                          onClick={() => addAddressField('state')}
-                          className="text-xs bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-1.5 rounded-md border border-slate-200 hover:border-blue-300 transition-all"
-                        >
-                          <Plus className="w-3 h-3 inline mr-1" />
-                          State / Province
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase text-gray-400 mb-1.5 font-medium">Special Fields</div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {['date', 'file', 'url'].map(type => (
-                          <button
-                            key={type}
-                            onClick={() => addField(type as FieldType)}
-                            className="text-xs bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-1.5 rounded-md border border-slate-200 hover:border-blue-300 transition-all capitalize"
-                          >
-                            <Plus className="w-3 h-3 inline mr-1" />
-                            {type}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              {/* Primary Actions */}
+              <div className="flex items-center gap-2">
+                <SaveFormDropdown
+                  isDirty={isDirty}
+                  isSaving={isSaving}
+                  currentFormName={currentFormName}
+                  onSave={handleSaveForm}
+                  onSaveAsDraft={handleSaveAsDraft}
+                  onSaveAsVersion={handleSaveAsVersion}
+                />
 
-                <div className="mb-6">
+                {active ? (
                   <button
-                    onClick={() => setShowThemeEditor(true)}
-                    className="w-full px-4 py-2 rounded-md text-sm font-medium text-gray-700 bg-white border border-slate-300 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                    onClick={handleDeactivate}
+                    disabled={isToggling}
+                    className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                      isToggling
+                        ? 'bg-rose-300 text-white cursor-not-allowed' 
+                        : 'bg-rose-600 text-white hover:bg-rose-700 hover:shadow-lg active:scale-[0.98] shadow-md'
+                    }`}
+                    title="Deactivate form"
                   >
-                    <Palette className="w-4 h-4" />
-                    Edit Theme
+                    {isToggling ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Deactivating…</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-4 h-4" />
+                        <span>Deactivate</span>
+                      </>
+                    )}
                   </button>
-                </div>
+                ) : (
+                  <button
+                    onClick={handleActivate}
+                    disabled={isToggling}
+                    className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+                      isToggling
+                        ? 'bg-emerald-300 text-white cursor-not-allowed' 
+                        : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg active:scale-[0.98] shadow-md'
+                    }`}
+                    title="Activate form"
+                  >
+                    {isToggling ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Activating…</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Activate</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-                <div className="border-t border-slate-200 pt-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Form Fields</h3>
-                  <div className="space-y-2">
-                    {formFields.map(field => (
-                      <div 
-                        key={field.id} 
-                        onClick={() => handleFieldClick(field)}
-                        className={`flex items-center gap-3 p-3 rounded-md border-2 cursor-pointer transition-all ${
-                          selectedField?.id === field.id 
-                            ? 'border-l-4 border-blue-400 border-r-2 border-t-2 border-b-2 bg-blue-50 pl-2' 
-                            : 'border-slate-200 hover:border-slate-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        <GripVertical className="w-4 h-4 text-gray-400" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-800 truncate">{field.label}</div>
-                          <div className="text-xs text-gray-500">{field.type}</div>
-                        </div>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); deleteField(field.id); }}
-                          className="text-red-400 hover:text-red-600 p-1"
+      {/* Tab Content Area */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === 1 ? (
+          <div className={`flex h-full transition-all duration-300 ease-in-out relative ${sidebarOpen ? 'gap-6' : 'gap-0'}`}>
+            {/* Floating toggle button when sidebar is closed - positioned on left edge */}
+                {!sidebarOpen && (
+                  <button
+                    onClick={() => setSidebarOpen(true)}
+                    className="fixed left-0 top-1/2 -translate-y-1/2 z-30 w-11 h-16 bg-white border-r border-t border-b border-slate-200 rounded-r-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center hover:bg-gray-50 group backdrop-blur-sm bg-white/95"
+                    aria-label="Show sidebar"
+                    title="Show sidebar"
+                  >
+                    <PanelRight className="w-5 h-5 text-gray-500 group-hover:text-gray-700 transition-colors" />
+                  </button>
+                )}
+
+                {/* Sidebar */}
+                <aside 
+                  className={`bg-white rounded-xl shadow-md border border-slate-200 h-full overflow-hidden transition-all duration-300 ease-in-out relative ${
+                    sidebarOpen 
+                      ? 'w-[25%] min-w-[280px] opacity-100' 
+                      : 'w-0 min-w-0 opacity-0 overflow-hidden border-0'
+                  }`}
+                >
+                  {sidebarOpen && (
+                    <>
+                      {/* Sidebar Header with Toggle */}
+                      <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10 backdrop-blur-sm bg-white/95">
+                        <h3 className="text-lg font-semibold text-gray-800">Form Builder</h3>
+                        <button
+                          onClick={() => setSidebarOpen(false)}
+                          className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all duration-200"
+                          aria-label="Hide sidebar"
+                          title="Hide sidebar"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <PanelLeftClose className="w-5 h-5" />
                         </button>
                       </div>
-                    ))}
-                    {formFields.length === 0 && (
-                      <div className="text-center py-8 text-gray-400">
-                        <p className="text-sm">No fields yet. Add a field to get started.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </aside>
 
-        {/* Preview Area */}
-        <div className={`h-full overflow-y-auto transition-all duration-300 ease-in-out flex-1`}>
-          <FormPreview />
-        </div>
+                      {/* Sidebar Content */}
+                      <div className="p-6 h-[calc(100%-73px)] overflow-y-auto">
+                        <div className="mb-6">
+                          <h4 className="text-xs font-semibold uppercase text-gray-500 mb-3">Add New Field</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <div className="text-[10px] uppercase text-gray-400 mb-1.5 font-medium">Basic Inputs</div>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {['text', 'email', 'phone', 'number'].map(type => (
+                              <button
+                                key={type}
+                                    onClick={() => addField(type as FieldType)}
+                                    className="text-xs bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-1.5 rounded-md border border-slate-200 hover:border-blue-300 transition-all capitalize"
+                              >
+                                <Plus className="w-3 h-3 inline mr-1" />
+                                {type}
+                              </button>
+                            ))}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] uppercase text-gray-400 mb-1.5 font-medium">Selection Fields</div>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {['textarea', 'select', 'radio', 'checkbox'].map(type => (
+                                  <button
+                                    key={type}
+                                    onClick={() => addField(type as FieldType)}
+                                    className="text-xs bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-1.5 rounded-md border border-slate-200 hover:border-blue-300 transition-all capitalize"
+                                  >
+                                    <Plus className="w-3 h-3 inline mr-1" />
+                                    {type}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] uppercase text-gray-400 mb-1.5 font-medium">Address Fields</div>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <button
+                                  onClick={() => addAddressField('country')}
+                                  className="text-xs bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-1.5 rounded-md border border-slate-200 hover:border-blue-300 transition-all"
+                                >
+                                  <Plus className="w-3 h-3 inline mr-1" />
+                                  Country
+                                </button>
+                                <button
+                                  onClick={() => addAddressField('state')}
+                                  className="text-xs bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-1.5 rounded-md border border-slate-200 hover:border-blue-300 transition-all"
+                                >
+                                  <Plus className="w-3 h-3 inline mr-1" />
+                                  State / Province
+                                </button>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] uppercase text-gray-400 mb-1.5 font-medium">Special Fields</div>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {['date', 'file', 'url'].map(type => (
+                                  <button
+                                    key={type}
+                                    onClick={() => addField(type as FieldType)}
+                                    className="text-xs bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-700 px-2 py-1.5 rounded-md border border-slate-200 hover:border-blue-300 transition-all capitalize"
+                                  >
+                                    <Plus className="w-3 h-3 inline mr-1" />
+                                    {type}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mb-6">
+                          <button
+                            onClick={() => setShowThemeEditor(true)}
+                            className="w-full px-4 py-2 rounded-md text-sm font-medium text-gray-700 bg-white border border-slate-300 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Palette className="w-4 h-4" />
+                            Edit Theme
+                          </button>
+                        </div>
+
+                        <div className="border-t border-slate-200 pt-4">
+                          <h3 className="text-sm font-semibold text-gray-700 mb-4">Form Fields</h3>
+                          <div className="space-y-3">
+                            {(() => {
+                              // Group fields by rowGroup for rendering
+                              const processedIds = new Set<number>();
+                              const fieldGroups: Array<{ fields: FormField[]; isPaired: boolean; rowGroup: number | null }> = [];
+                              
+                              for (let i = 0; i < formFields.length; i++) {
+                                if (processedIds.has(formFields[i].id)) continue;
+                                
+                                const field = formFields[i];
+                                if (field.rowGroup != null) {
+                                  // Find all fields with the same rowGroup
+                                  const groupFields = formFields.filter(f => f.rowGroup === field.rowGroup);
+                                  fieldGroups.push({ fields: groupFields, isPaired: true, rowGroup: field.rowGroup });
+                                  groupFields.forEach(f => processedIds.add(f.id));
+                                } else {
+                                  // Single unpaired field
+                                  fieldGroups.push({ fields: [field], isPaired: false, rowGroup: null });
+                                  processedIds.add(field.id);
+                                }
+                              }
+                              
+                              return fieldGroups.map((group, groupIndex) => {
+                                const groupStartIndex = formFields.findIndex(f => f.id === group.fields[0].id);
+                                
+                                if (group.isPaired && group.fields.length === 2) {
+                                  // Render paired fields in a single purple container
+                                  const [field1, field2] = group.fields;
+                                  const isDragging1 = draggedFieldId === field1.id;
+                                  const isDragging2 = draggedFieldId === field2.id;
+                                  const isDragging = isDragging1 || isDragging2;
+                                  const isDragOver = dragOverIndex === groupStartIndex;
+                                  
+                                  return (
+                                    <div 
+                                      key={`pair-${group.rowGroup}`}
+                                      className="border-2 border-purple-400 bg-purple-50/50 rounded-lg p-3 shadow-sm hover:shadow-md transition-all duration-200"
+                                    >
+                                      {/* Container header */}
+                                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-purple-200">
+                                        <Columns className="w-4 h-4 text-purple-600" />
+                                        <span className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Paired Fields</span>
+                                      </div>
+                                      
+                                      {/* Paired fields */}
+                                      <div className="space-y-2">
+                                        {group.fields.map((field, fieldIndex) => {
+                                          const fieldIndexInList = formFields.findIndex(f => f.id === field.id);
+                                          const isDraggingField = draggedFieldId === field.id;
+                                          const isDragOverField = dragOverIndex === fieldIndexInList;
+                                          const nextFieldInList = fieldIndexInList < formFields.length - 1 ? formFields[fieldIndexInList + 1] : null;
+                                          const isPairedWithNext = nextFieldInList && field.rowGroup != null && nextFieldInList.rowGroup === field.rowGroup;
+                                          
+                                          return (
+                                            <div
+                                              key={field.id}
+                                              draggable
+                                              onDragStart={(e) => handleDragStart(e, field.id)}
+                                              onDragOver={(e) => handleDragOver(e, fieldIndexInList)}
+                                              onDragLeave={handleDragLeave}
+                                              onDrop={(e) => handleDrop(e, fieldIndexInList)}
+                                              onDragEnd={handleDragEnd}
+                                              onClick={() => handleFieldClick(field)}
+                                              className={`flex items-center gap-3 p-2.5 rounded-md border cursor-move transition-all duration-200 ${
+                                                isDraggingField
+                                                  ? 'opacity-50 bg-gray-100 border-gray-300'
+                                                  : isDragOverField
+                                                    ? 'border-blue-500 bg-blue-50 scale-[1.02] shadow-sm'
+                                                    : selectedField?.id === field.id
+                                                      ? 'border-blue-400 bg-blue-50 shadow-sm'
+                                                      : 'border-purple-200 bg-white hover:border-purple-300 hover:shadow-sm'
+                                              }`}
+                                            >
+                                              <GripVertical className="w-4 h-4 text-purple-500 cursor-grab active:cursor-grabbing flex-shrink-0" />
+                                              <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-medium text-gray-800 truncate">{field.label}</div>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                  <div className="text-xs text-gray-500 capitalize">{field.type}</div>
+                                                  {field.locked && (
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-medium border border-gray-200">
+                                                      Required
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center gap-1 flex-shrink-0">
+                                                {/* Only show pair button on first field in pair, and only if not already paired */}
+                                                {fieldIndex === 0 && fieldIndexInList < formFields.length - 1 && !isPairedWithNext && (
+                                                  <button
+                                                    onClick={(e) => { 
+                                                      e.stopPropagation(); 
+                                                      togglePairWithNext(field.id);
+                                                    }}
+                                                    className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                                    title="Pair with next field"
+                                                  >
+                                                    <Link2 className="w-4 h-4" />
+                                                  </button>
+                                                )}
+                                                {/* Show unpair button for all fields in a pair */}
+                                                <button 
+                                                  onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    unpairField(field.id);
+                                                  }}
+                                                  className="p-1.5 rounded-md text-purple-600 hover:text-purple-700 hover:bg-purple-100 transition-colors"
+                                                  title="Unpair field"
+                                                >
+                                                  <Unlink className="w-4 h-4" />
+                                                </button>
+                                                <button 
+                                                  onClick={(e) => { e.stopPropagation(); deleteField(field.id); }}
+                                                  className="p-1.5 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                  title="Delete field"
+                                                >
+                                                  <Trash2 className="w-4 h-4" />
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                } else {
+                                  // Render unpaired field normally
+                                  const field = group.fields[0];
+                                  const fieldIndex = formFields.findIndex(f => f.id === field.id);
+                                  const isPaired = field.rowGroup != null;
+                                  const nextField = fieldIndex < formFields.length - 1 ? formFields[fieldIndex + 1] : null;
+                                  const isPairedWithNext = nextField && field.rowGroup != null && nextField.rowGroup === field.rowGroup;
+                                  const isDragging = draggedFieldId === field.id;
+                                  const isDragOver = dragOverIndex === fieldIndex;
+                                  
+                                  return (
+                                    <div key={field.id}>
+                                      <div 
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, field.id)}
+                                        onDragOver={(e) => handleDragOver(e, fieldIndex)}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={(e) => handleDrop(e, fieldIndex)}
+                                        onDragEnd={handleDragEnd}
+                                        onClick={() => handleFieldClick(field)}
+                                        className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-move transition-all duration-200 ${
+                                          isDragging
+                                            ? 'opacity-50 bg-gray-100 border-gray-300'
+                                            : isDragOver
+                                              ? 'border-blue-500 bg-blue-50 scale-[1.02] shadow-md ring-2 ring-blue-200'
+                                              : selectedField?.id === field.id 
+                                                ? 'border-blue-400 bg-blue-50 shadow-sm' 
+                                                : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-sm'
+                                        }`}
+                                      >
+                                        <GripVertical className="w-4 h-4 text-gray-400 cursor-grab active:cursor-grabbing flex-shrink-0 hover:text-blue-500 transition-colors" />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm font-medium text-gray-800 truncate">{field.label}</div>
+                                          <div className="flex items-center gap-2 mt-0.5">
+                                            <div className="text-xs text-gray-500 capitalize">{field.type}</div>
+                                            {field.locked && (
+                                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-medium border border-gray-200">
+                                                Required
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                          {/* Only show pair button if field is not already paired */}
+                                          {!isPaired && fieldIndex < formFields.length - 1 && (
+                                            <button
+                                              onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                togglePairWithNext(field.id);
+                                              }}
+                                              className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                              title="Pair with next field"
+                                            >
+                                              <Link2 className="w-4 h-4" />
+                                            </button>
+                                          )}
+                                          {/* Show unpair button only if field is paired */}
+                                          {isPaired && (
+                                            <button
+                                              onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                unpairField(field.id);
+                                              }}
+                                              className="p-1.5 rounded-md text-purple-600 hover:text-purple-700 hover:bg-purple-100 transition-colors"
+                                              title="Unpair field"
+                                            >
+                                              <Unlink className="w-4 h-4" />
+                                            </button>
+                                          )}
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); deleteField(field.id); }}
+                                            className="p-1.5 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                            title="Delete field"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                              });
+                            })()}
+                            {formFields.length === 0 && (
+                              <div className="text-center py-8 text-gray-400">
+                                <p className="text-sm">No fields yet. Add a field to get started.</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+            </aside>
+
+            {/* Preview Area */}
+            <div className={`h-full overflow-y-auto transition-all duration-300 ease-in-out flex-1 min-w-0`}>
+              <FormPreview />
+            </div>
+          </div>
+        ) : (
+          <VersionsList
+            onLoadVersion={handleLoadVersion}
+            onVersionLoaded={() => mutate()}
+          />
+        )}
       </div>
       
       <FieldEditorPopup />
@@ -1853,6 +2543,18 @@ const FormBuilder: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Load Version Confirmation Modal */}
+      <LoadVersionConfirmModal
+        isOpen={showLoadVersionConfirm}
+        onClose={() => {
+          setShowLoadVersionConfirm(false);
+          setPendingVersion(null);
+        }}
+        onConfirm={handleConfirmLoadVersion}
+        onConfirmAndGoToBuilder={handleConfirmLoadAndGoToBuilder}
+        versionName={pendingVersion?.name}
+      />
     </div>
   );
 };

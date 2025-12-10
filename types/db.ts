@@ -35,4 +35,10 @@ export interface Db {
     setEmailTemplates(storeHash: string, templates: any): Promise<void>;
     getEmailConfig(storeHash: string): Promise<any>;
     setEmailConfig(storeHash: string, config: any): Promise<void>;
+    saveFormVersion(storeHash: string, versionData: { name: string; type: 'published' | 'draft' | 'version'; form: any }): Promise<{ id: string }>;
+    listFormVersions(storeHash: string): Promise<any[]>;
+    getFormVersion(storeHash: string, versionId: string): Promise<any | null>;
+    deleteFormVersion(storeHash: string, versionId: string): Promise<{ ok: boolean }>;
+    setActiveFormVersion(storeHash: string, versionId: string): Promise<{ ok: boolean }>;
+    updateFormVersion(storeHash: string, versionId: string, updates: { name?: string; form?: any }): Promise<{ ok: boolean }>;
 }

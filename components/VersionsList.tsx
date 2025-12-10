@@ -1,0 +1,537 @@
+'use client'
+
+import React, { useState } from 'react';
+import { useFormVersions, useFormVersionActions } from '@/lib/hooks';
+import { Loader2, Trash2, CheckCircle2, FileEdit, Power, Pencil, Search, LayoutGrid, ListChecks } from 'lucide-react';
+import VersionNameModal from './VersionNameModal';
+
+// Form Preview Thumbnail Component - Compact preview showing just a small portion
+const FormPreviewThumbnail: React.FC<{ form: any }> = ({ form }) => {
+  const fields = form?.fields || [];
+  const theme = form?.theme || {};
+  
+  const primaryColor = theme.primaryColor || '#2563eb';
+  const title = theme.title || 'Create your account';
+  const subtitle = theme.subtitle || 'Please fill in the form to continue';
+  const buttonBg = theme.buttonBg || primaryColor;
+  const buttonColor = theme.buttonColor || '#fff';
+  const buttonRadius = theme.buttonRadius ?? 10;
+  
+  // Get first 2 fields for preview
+  const previewFields = fields.slice(0, 2);
+  
+  return (
+    <div style={{ 
+      padding: '8px 12px',
+      background: theme.background || '#ffffff',
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'flex-start',
+      fontSize: '8px',
+      lineHeight: '1.2'
+    }}>
+      {/* Title */}
+      <div style={{ 
+        fontSize: '10px', 
+        fontWeight: '700', 
+        color: '#0f172a', 
+        marginBottom: '3px',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis'
+      }}>
+        {title}
+      </div>
+      
+      {/* Subtitle */}
+      <div style={{ 
+        fontSize: '7px', 
+        color: '#64748b', 
+        marginBottom: '6px',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis'
+      }}>
+        {subtitle}
+      </div>
+      
+      {/* Fields Preview */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '4px' }}>
+        {previewFields.map((field: any, idx: number) => {
+          const borderColor = field.borderColor || '#e5e7eb';
+          const borderRadius = field.borderRadius || '8';
+          return (
+            <div key={field.id || idx} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ 
+                fontSize: '6px', 
+                color: field.labelColor || '#374151',
+                fontWeight: '500'
+              }}>
+                {field.label || 'Field'}
+              </div>
+              <div style={{
+                border: `0.5px solid ${borderColor}`,
+                borderRadius: borderRadius + 'px',
+                backgroundColor: field.type === 'password' 
+                  ? 'repeating-linear-gradient(45deg, transparent, transparent 1px, #e5e7eb 1px, #e5e7eb 2px)'
+                  : (field.bgColor || '#fff'),
+                height: '8px',
+                minHeight: '8px'
+              }} />
+            </div>
+          );
+        })}
+      </div>
+      
+      {/* Button Preview */}
+      <div style={{
+        backgroundColor: buttonBg,
+        borderRadius: buttonRadius + 'px',
+        height: '10px',
+        minHeight: '10px',
+        marginTop: 'auto',
+        width: '60%'
+      }} />
+    </div>
+  );
+};
+
+type ViewMode = 'grid' | 'list';
+
+interface VersionsListProps {
+  onLoadVersion: (version: any) => void;
+  onVersionLoaded?: () => void;
+}
+
+export default function VersionsList({ onLoadVersion, onVersionLoaded }: VersionsListProps) {
+  const { versions, mutate, isError } = useFormVersions();
+  const { deleteVersion, setActiveVersion, updateVersion } = useFormVersionActions();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+
+  const filteredVersions = versions.filter((v: any) =>
+    v.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    v.type?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleDelete = async (versionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this version? This action cannot be undone.')) {
+      return;
+    }
+    setDeletingId(versionId);
+    try {
+      await deleteVersion(versionId);
+      await mutate();
+    } catch (error: any) {
+      alert('Failed to delete version: ' + (error?.message || 'Unknown error'));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleSetActive = async (versionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActivatingId(versionId);
+    try {
+      await setActiveVersion(versionId);
+      await mutate();
+      if (onVersionLoaded) onVersionLoaded();
+    } catch (error: any) {
+      alert('Failed to set active version: ' + (error?.message || 'Unknown error'));
+    } finally {
+      setActivatingId(null);
+    }
+  };
+
+  const handleLoad = (version: any) => {
+    onLoadVersion(version);
+    if (onVersionLoaded) onVersionLoaded();
+  };
+
+  const handleEdit = (version: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingId(version.id);
+    setEditName(version.name);
+  };
+
+  const handleUpdateName = async (name: string) => {
+    if (!editingId) return;
+    try {
+      await updateVersion(editingId, { name });
+      await mutate();
+      setEditingId(null);
+      setEditName('');
+    } catch (error: any) {
+      alert('Failed to update version name: ' + (error?.message || 'Unknown error'));
+    }
+  };
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'Unknown';
+    try {
+      let date: Date;
+      
+      // Handle Firestore Timestamp object (client-side)
+      if (timestamp && typeof timestamp.toDate === 'function') {
+        date = timestamp.toDate();
+      }
+      // Handle Firestore Timestamp serialized as object with seconds/nanoseconds (or _seconds/_nanoseconds)
+      else if (timestamp && (typeof timestamp.seconds === 'number' || typeof (timestamp as any)._seconds === 'number')) {
+        const seconds = timestamp.seconds || (timestamp as any)._seconds || 0;
+        const nanoseconds = timestamp.nanoseconds || (timestamp as any)._nanoseconds || 0;
+        date = new Date(seconds * 1000 + nanoseconds / 1000000);
+      }
+      // Handle ISO string or number
+      else if (typeof timestamp === 'string' || typeof timestamp === 'number') {
+        date = new Date(timestamp);
+      }
+      // Already a Date object
+      else if (timestamp instanceof Date) {
+        date = timestamp;
+      }
+      // Try to parse as date if it's an object with a value property
+      else if (timestamp && typeof timestamp === 'object' && 'value' in timestamp) {
+        date = new Date(timestamp.value);
+      }
+      else {
+        return 'Unknown';
+      }
+
+      // Check if date is valid
+      if (!date || isNaN(date.getTime()) || date.getTime() === 0) {
+        return 'Unknown';
+      }
+
+      const dateStr = date.toLocaleDateString();
+      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      // Double-check that we didn't get "Invalid Date"
+      if (dateStr === 'Invalid Date' || timeStr === 'Invalid Date') {
+        return 'Unknown';
+      }
+
+      return dateStr + ' ' + timeStr;
+    } catch (e) {
+      console.error('Error formatting date:', e, timestamp);
+      return 'Unknown';
+    }
+  };
+
+  const getTypeBadge = (type: string) => {
+    const styles = {
+      published: 'bg-green-100 text-green-700 border-green-300',
+      draft: 'bg-amber-100 text-amber-700 border-amber-300',
+      version: 'bg-blue-100 text-blue-700 border-blue-300',
+    };
+    return styles[type as keyof typeof styles] || 'bg-gray-100 text-gray-700 border-gray-300';
+  };
+
+  if (isError) {
+    return (
+      <div className="p-6 text-center text-red-600">
+        Failed to load versions. Please try again.
+      </div>
+    );
+  }
+
+  const renderGridView = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {filteredVersions.map((version: any) => (
+        <div
+          key={version.id}
+          className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer group relative overflow-hidden"
+          onClick={() => handleLoad(version)}
+        >
+          {/* Active indicator bar */}
+          {version.isActive && (
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-green-600" />
+          )}
+          
+          <div className="flex flex-col h-full">
+            {/* Form Preview Thumbnail */}
+            {version.form && (
+              <div className="mb-4 -mx-5 -mt-5 bg-slate-50 border-b border-slate-200 overflow-hidden rounded-t-xl" style={{ height: '90px', position: 'relative' }}>
+                <div className="relative w-full h-full" style={{ overflow: 'hidden' }}>
+                  <FormPreviewThumbnail form={version.form} />
+                </div>
+              </div>
+            )}
+            
+            {/* Header */}
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-semibold text-gray-900 truncate mb-2 group-hover:text-blue-600 transition-colors">
+                  {version.name || 'Unnamed'}
+                </h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${getTypeBadge(version.type)}`}>
+                    {version.type || 'version'}
+                  </span>
+                  {version.isActive && (
+                    <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-green-100 text-green-700 border border-green-300 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Active
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Dates */}
+            <div className="text-sm text-gray-600 space-y-1 mb-4 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-400">Updated:</span>
+                <span className="font-medium">{formatDate(version.updatedAt)}</span>
+              </div>
+              {version.createdAt && version.createdAt !== version.updatedAt && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-400">Created:</span>
+                  <span className="font-medium">{formatDate(version.createdAt)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => handleLoad(version)}
+                className="px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                title="Load into Builder - Open this version in the form builder"
+              >
+                <FileEdit className="w-4 h-4" />
+                Load
+              </button>
+              <div className="flex items-center gap-1">
+                {!version.isActive && (
+                  <button
+                    onClick={(e) => handleSetActive(version.id, e)}
+                    disabled={activatingId === version.id}
+                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                    title="Activate Version - Set this version as the active form"
+                  >
+                    {activatingId === version.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Power className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+                <button
+                  onClick={(e) => handleEdit(version, e)}
+                  className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                  title="Rename Version - Change the name of this version"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={(e) => handleDelete(version.id, e)}
+                  disabled={deletingId === version.id}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                  title="Delete Version - Permanently remove this version"
+                >
+                  {deletingId === version.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderListView = () => (
+    <div className="space-y-2">
+      {filteredVersions.map((version: any) => (
+        <div
+          key={version.id}
+          className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer group"
+          onClick={() => handleLoad(version)}
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              {/* Active indicator */}
+              {version.isActive && (
+                <div className="w-1 h-12 bg-gradient-to-b from-green-400 to-green-600 rounded-full flex-shrink-0" />
+              )}
+              
+              {/* Form Preview Thumbnail - List View */}
+              {version.form && (
+                <div className="w-20 h-16 bg-slate-50 border border-slate-200 rounded-lg overflow-hidden flex-shrink-0 shadow-sm" style={{ minWidth: '80px', position: 'relative' }}>
+                  <div className="relative w-full h-full" style={{ overflow: 'hidden' }}>
+                    <FormPreviewThumbnail form={version.form} />
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-1.5">
+                  <h3 className="text-base font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                    {version.name || 'Unnamed'}
+                  </h3>
+                  <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border flex-shrink-0 ${getTypeBadge(version.type)}`}>
+                    {version.type || 'version'}
+                  </span>
+                  {version.isActive && (
+                    <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-green-100 text-green-700 border border-green-300 flex items-center gap-1.5 flex-shrink-0">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Active
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-400">Updated:</span>
+                    <span className="font-medium">{formatDate(version.updatedAt)}</span>
+                  </div>
+                  {version.createdAt && version.createdAt !== version.updatedAt && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-400">Created:</span>
+                      <span className="font-medium">{formatDate(version.createdAt)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => handleLoad(version)}
+                className="px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                title="Load into Builder - Open this version in the form builder"
+              >
+                <FileEdit className="w-4 h-4" />
+                <span className="hidden sm:inline">Load</span>
+              </button>
+              {!version.isActive && (
+                <button
+                  onClick={(e) => handleSetActive(version.id, e)}
+                  disabled={activatingId === version.id}
+                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                  title="Activate Version - Set this version as the active form"
+                >
+                  {activatingId === version.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Power className="w-4 h-4" />
+                  )}
+                </button>
+              )}
+              <button
+                onClick={(e) => handleEdit(version, e)}
+                className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                title="Rename Version - Change the name of this version"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={(e) => handleDelete(version.id, e)}
+                disabled={deletingId === version.id}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                title="Delete Version - Permanently remove this version"
+              >
+                {deletingId === version.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="p-6">
+      {/* Header with Search and View Toggle */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search versions..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+          
+          {/* View Toggle */}
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-md transition-all duration-200 ${
+                viewMode === 'grid'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-slate-50'
+              }`}
+              title="Grid View - Display versions in a card grid layout"
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-md transition-all duration-200 ${
+                viewMode === 'list'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-slate-50'
+              }`}
+              title="List View - Display versions in a compact list layout"
+              aria-label="List view"
+            >
+              <ListChecks className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      {filteredVersions.length === 0 ? (
+        <div className="text-center py-16">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
+            <Search className="w-8 h-8 text-slate-400" />
+          </div>
+          <p className="text-gray-500 text-lg font-medium">
+            {searchQuery ? 'No versions found matching your search.' : 'No saved versions or drafts yet.'}
+          </p>
+          <p className="text-gray-400 text-sm mt-2">
+            {searchQuery ? 'Try adjusting your search terms.' : 'Create your first version or draft to get started.'}
+          </p>
+        </div>
+      ) : (
+        <div className="transition-all duration-300">
+          {viewMode === 'grid' ? renderGridView() : renderListView()}
+        </div>
+      )}
+
+      <VersionNameModal
+        isOpen={editingId !== null}
+        onClose={() => {
+          setEditingId(null);
+          setEditName('');
+        }}
+        onConfirm={handleUpdateName}
+        title="Rename Version"
+        placeholder="Enter new name"
+        required={true}
+        initialName={editName}
+      />
+    </div>
+  );
+}
+

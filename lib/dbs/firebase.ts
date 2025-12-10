@@ -225,23 +225,44 @@ export async function listSignupRequests(storeHash: string, options?: { pageSize
   if (!storeHash) throw new Error('Missing storeHash');
   const { pageSize = 10, cursor, status } = options || {};
   const colRef = collection(db, 'stores', storeHash, 'signupRequests');
-  let q = query(colRef, orderBy('submittedAt', 'desc'));
+  
+  // Build base query with status filter if provided
+  let q;
   if (status) {
     q = query(colRef, where('status', '==', status), orderBy('submittedAt', 'desc'));
+  } else {
+    q = query(colRef, orderBy('submittedAt', 'desc'));
   }
+  
   // For cursor-based pagination we expect cursor to be an ISO string timestamp or Firestore Timestamp seconds
   if (cursor) {
     // We cannot directly use a string in startAfter without the document snapshot.
     // Strategy: fetch the document by id passed as cursor, then startAfter(snapshot).
     const cursorDoc = await getDoc(doc(db, 'stores', storeHash, 'signupRequests', cursor));
     if (cursorDoc.exists()) {
-      q = query(q, fsLimit(pageSize), startAfter(cursorDoc));
+      // Rebuild query with cursor - need to include all constraints
+      if (status) {
+        q = query(colRef, where('status', '==', status), orderBy('submittedAt', 'desc'), fsLimit(pageSize), startAfter(cursorDoc));
+      } else {
+        q = query(colRef, orderBy('submittedAt', 'desc'), fsLimit(pageSize), startAfter(cursorDoc));
+      }
     } else {
-      q = query(q, fsLimit(pageSize));
+      // Cursor doc doesn't exist, just apply limit
+      if (status) {
+        q = query(colRef, where('status', '==', status), orderBy('submittedAt', 'desc'), fsLimit(pageSize));
+      } else {
+        q = query(colRef, orderBy('submittedAt', 'desc'), fsLimit(pageSize));
+      }
     }
   } else {
-    q = query(q, fsLimit(pageSize));
+    // No cursor, just apply limit
+    if (status) {
+      q = query(colRef, where('status', '==', status), orderBy('submittedAt', 'desc'), fsLimit(pageSize));
+    } else {
+      q = query(colRef, orderBy('submittedAt', 'desc'), fsLimit(pageSize));
+    }
   }
+  
   const snapshot = await getDocs(q);
   const items = snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
   const nextCursor = snapshot.docs.length ? snapshot.docs[snapshot.docs.length - 1].id : null;
@@ -344,4 +365,84 @@ export async function setEmailConfig(storeHash: string, config: EmailConfig) {
     },
   };
   await setDoc(ref, payload as any, { merge: true } as any);
+}
+
+// Form Versions Management
+export type FormVersionType = 'published' | 'draft' | 'version';
+
+export interface FormVersion {
+  id: string;
+  name: string;
+  type: FormVersionType;
+  form: { fields: any[]; theme: any };
+  createdAt: any;
+  updatedAt: any;
+  isActive?: boolean;
+}
+
+export async function saveFormVersion(storeHash: string, versionData: { name: string; type: FormVersionType; form: any }) {
+  if (!storeHash) throw new Error('Missing storeHash');
+  const colRef = collection(db, 'stores', storeHash, 'formVersions');
+  const docRef = await addDoc(colRef, {
+    name: versionData.name,
+    type: versionData.type,
+    form: versionData.form,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    isActive: false,
+  });
+  return { id: docRef.id };
+}
+
+export async function listFormVersions(storeHash: string) {
+  if (!storeHash) throw new Error('Missing storeHash');
+  const colRef = collection(db, 'stores', storeHash, 'formVersions');
+  const q = query(colRef, orderBy('updatedAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) } as FormVersion));
+}
+
+export async function getFormVersion(storeHash: string, versionId: string) {
+  if (!storeHash || !versionId) throw new Error('Missing storeHash or versionId');
+  const ref = doc(db, 'stores', storeHash, 'formVersions', versionId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...(snap.data() as any) } as FormVersion;
+}
+
+export async function deleteFormVersion(storeHash: string, versionId: string) {
+  if (!storeHash || !versionId) throw new Error('Missing storeHash or versionId');
+  const ref = doc(db, 'stores', storeHash, 'formVersions', versionId);
+  await deleteDoc(ref);
+  return { ok: true };
+}
+
+export async function setActiveFormVersion(storeHash: string, versionId: string) {
+  if (!storeHash || !versionId) throw new Error('Missing storeHash or versionId');
+  
+  // Get the version
+  const version = await getFormVersion(storeHash, versionId);
+  if (!version) throw new Error('Version not found');
+  
+  // Update main signupForm
+  await setStoreForm(storeHash, version.form);
+  
+  // Set all versions to inactive, then set this one as active
+  const allVersions = await listFormVersions(storeHash);
+  for (const v of allVersions) {
+    const vRef = doc(db, 'stores', storeHash, 'formVersions', v.id);
+    await updateDoc(vRef, { isActive: v.id === versionId, updatedAt: serverTimestamp() });
+  }
+  
+  return { ok: true };
+}
+
+export async function updateFormVersion(storeHash: string, versionId: string, updates: { name?: string; form?: any }) {
+  if (!storeHash || !versionId) throw new Error('Missing storeHash or versionId');
+  const ref = doc(db, 'stores', storeHash, 'formVersions', versionId);
+  const updateData: any = { updatedAt: serverTimestamp() };
+  if (updates.name !== undefined) updateData.name = updates.name;
+  if (updates.form !== undefined) updateData.form = updates.form;
+  await updateDoc(ref, updateData);
+  return { ok: true };
 }

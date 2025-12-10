@@ -24,7 +24,22 @@ export async function PUT(req: NextRequest) {
     if (!session) return NextResponse.json({ message: 'Session not found' }, { status: 401 });
     const { storeHash } = session;
     const body = await req.json();
-    const { form } = body || {};
+    const { form, versionName, saveType } = body || {};
+    
+    // If versionName and saveType are provided, save as version/draft
+    if (versionName && saveType && (saveType === 'draft' || saveType === 'version')) {
+      await db.saveFormVersion(storeHash, {
+        name: versionName,
+        type: saveType as 'draft' | 'version',
+        form: form || {}
+      });
+      return NextResponse.json({ ok: true }, { status: 200 });
+    }
+    
+    // Otherwise, save to main form (backward compatible)
+    if (!form) {
+      return NextResponse.json({ message: 'Missing form data' }, { status: 400 });
+    }
     await db.setStoreForm(storeHash, form);
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (e: any) {
