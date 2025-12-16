@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { trySendTemplatedEmail } from '@/lib/email';
 import { uploadSignupFile } from '@/lib/storage';
 import { applyCorsHeaders, handleCorsPreflight } from '@/lib/middleware/cors';
 import { errorResponse, successResponse, apiErrors, ErrorCode } from '@/lib/api-response';
-import { signupRequestBodySchema, signupRequestFormDataSchema, validateFile, MAX_FILE_SIZE } from '@/lib/validation';
+import { signupRequestBodySchema, signupRequestDataSchema, publicIdSchema, validateFile } from '@/lib/validation';
 import { extractName } from '@/lib/utils';
 import { generateRequestId } from '@/lib/utils';
 import { logger } from '@/lib/logger';
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       }
       
       const publicId = publicIdRaw.trim();
-      const publicIdValidation = signupRequestFormDataSchema.shape.pub.safeParse(publicId);
+      const publicIdValidation = publicIdSchema.safeParse(publicId);
       if (!publicIdValidation.success) {
         const res = errorResponse('Invalid store identifier', 400, ErrorCode.VALIDATION_ERROR, requestId);
         return applyCorsHeaders(req, res);
@@ -55,10 +55,10 @@ export async function POST(req: NextRequest) {
       let data: Record<string, unknown> = {};
       try {
         const parsed = JSON.parse(dataStr);
-        const validation = signupRequestFormDataSchema.shape.data.safeParse(parsed);
+        const validation = signupRequestDataSchema.safeParse(parsed);
         if (!validation.success) {
           const res = errorResponse(
-            `Invalid form data: ${validation.error.errors.map(e => e.message).join(', ')}`,
+            `Invalid form data: ${validation.error.issues.map((e) => e.message).join(', ')}`,
             400,
             ErrorCode.VALIDATION_ERROR,
             requestId
@@ -175,28 +175,13 @@ export async function POST(req: NextRequest) {
       if (uploadErrors.length > 0) {
         logger.warn('Some files failed to upload', { ...logContext, errors: uploadErrors, requestId: created.id });
       }
-      } catch (createError: unknown) {
-        // Rollback: delete uploaded files if request creation failed
-        // Note: In production, you might want to implement a cleanup job
-        logger.error('Failed to create signup request, files may need cleanup', createError, logContext);
-        
-        if ((createError as { code?: string })?.code === 'DUPLICATE') {
-          const res = apiErrors.duplicate(
-            'You have already submitted a request. Please wait for approval or contact the store admin.',
-            requestId
-          );
-          return applyCorsHeaders(req, res);
-        }
-        
-        throw createError;
-      }
       
       // Send signup confirmation email (best-effort, don't fail request)
       try {
         const templates = await db.getEmailTemplates(storeHash);
         const config = await db.getEmailConfig(storeHash);
         const name = extractName(data);
-        const platformName = env.PLATFORM_NAME || storeHash || 'Store';
+        const platformName = process.env.PLATFORM_NAME || storeHash || 'Store';
         
         await trySendTemplatedEmail({
           to: email || null,
@@ -237,7 +222,7 @@ export async function POST(req: NextRequest) {
       const validation = signupRequestBodySchema.safeParse(body);
       if (!validation.success) {
         const res = errorResponse(
-          `Validation error: ${validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
+          `Validation error: ${validation.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
           400,
           ErrorCode.VALIDATION_ERROR,
           requestId
@@ -292,7 +277,7 @@ export async function POST(req: NextRequest) {
         const templates = await db.getEmailTemplates(storeHash);
         const config = await db.getEmailConfig(storeHash);
         const name = extractName(data);
-        const platformName = env.PLATFORM_NAME || storeHash || 'Store';
+        const platformName = process.env.PLATFORM_NAME || storeHash || 'Store';
         
         await trySendTemplatedEmail({
           to: email || null,
@@ -329,5 +314,3 @@ export async function POST(req: NextRequest) {
     return applyCorsHeaders(req, res);
   }
 }
-
-

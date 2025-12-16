@@ -108,7 +108,7 @@ export async function PATCH(req: NextRequest) {
     const statusValidation = signupRequestStatusSchema.safeParse(body);
     if (!statusValidation.success) {
       return errorResponse(
-        `Validation error: ${statusValidation.error.errors.map(e => e.message).join(', ')}`,
+        `Validation error: ${statusValidation.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
         400,
         ErrorCode.VALIDATION_ERROR,
         requestId

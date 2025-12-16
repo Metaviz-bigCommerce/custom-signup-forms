@@ -61,12 +61,12 @@ function getFieldValue(
   return fuzzyCandidates.sort((a, b) => a.key.length - b.key.length)[0].value;
 }
 
+// Note: BigCommerce form_fields must match actual custom fields defined in the store
+// Sending arbitrary fields will cause a 422 error, so we skip form_fields for now
 function toFormFields(data: Record<string, any>): Array<{ name: string; value: string }> {
-  const entries = Object.entries(data || {});
-  return entries.map(([name, value]) => ({
-    name: String(name),
-    value: typeof value === 'object' ? JSON.stringify(value) : String(value ?? ''),
-  }));
+  // Return empty array - form_fields should only contain fields that are
+  // configured as custom customer fields in BigCommerce admin
+  return [];
 }
 
 function splitName(full: string): { first_name?: string; last_name?: string } {
@@ -207,14 +207,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Cannot create customer: email is missing in request' }, { status: 400 });
     }
 
-    // Create BC customer (v3 Customers API; supports form_fields)
+    // Create BC customer (v3 Customers API)
     const createUrl = `https://api.bigcommerce.com/stores/${storeHash}/v3/customers`;
     const baseCustomer: any = {
       email,
       first_name: first_name || '',
       last_name: last_name || '',
       ...(customer_group_id ? { customer_group_id } : {}),
-      form_fields,
+      // Only include form_fields if there are actual custom fields configured
+      ...(form_fields.length > 0 ? { form_fields } : {}),
       ...(phone ? { phone } : {}),
       ...(company ? { company } : {}),
     };
@@ -256,19 +257,39 @@ export async function POST(req: NextRequest) {
         });
         createData = await createRes.json();
         if (!createRes.ok && createRes.status !== 409) {
-          const msg =
-            createData?.message ||
-            createData?.title ||
-            (Array.isArray(createData?.errors) ? createData.errors.join(', ') : '') ||
-            'Failed to create customer';
+          let msg = 'Failed to create customer';
+          if (createData?.errors && typeof createData.errors === 'object' && !Array.isArray(createData.errors)) {
+            const errorMessages = Object.entries(createData.errors)
+              .map(([field, error]) => `${field}: ${error}`)
+              .join('; ');
+            if (errorMessages) msg = errorMessages;
+          } else if (Array.isArray(createData?.errors)) {
+            msg = createData.errors.join(', ');
+          } else if (createData?.message) {
+            msg = createData.message;
+          } else if (createData?.title) {
+            msg = createData.title;
+          }
+          console.error('BigCommerce customer creation failed (retry):', JSON.stringify(createData, null, 2));
           return NextResponse.json({ message: msg }, { status: createRes.status });
         }
       } else {
-        const msg =
-          createData?.message ||
-          createData?.title ||
-          (Array.isArray(createData?.errors) ? createData.errors.join(', ') : '') ||
-          'Failed to create customer';
+        // Extract detailed error message from BigCommerce response
+        let msg = 'Failed to create customer';
+        if (createData?.errors && typeof createData.errors === 'object') {
+          // Handle object-style errors like { "email": "error message" }
+          const errorMessages = Object.entries(createData.errors)
+            .map(([field, error]) => `${field}: ${error}`)
+            .join('; ');
+          if (errorMessages) msg = errorMessages;
+        } else if (Array.isArray(createData?.errors)) {
+          msg = createData.errors.join(', ');
+        } else if (createData?.message) {
+          msg = createData.message;
+        } else if (createData?.title) {
+          msg = createData.title;
+        }
+        console.error('BigCommerce customer creation failed:', JSON.stringify(createData, null, 2));
         return NextResponse.json({ message: msg }, { status: createRes.status });
       }
     }

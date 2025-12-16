@@ -23,7 +23,7 @@ export const publicIdSchema = z.string().min(1).max(100).trim();
 export const requestIdSchema = z.string().min(1).max(200);
 
 // Signup request data schema
-export const signupRequestDataSchema = z.record(z.unknown()).refine(
+export const signupRequestDataSchema = z.record(z.string(), z.unknown()).refine(
   (data) => Object.keys(data).length <= 100,
   'Too many fields in request data'
 );
@@ -169,7 +169,7 @@ export function safeJsonParse<T>(str: string, schema: z.ZodSchema<T>): { success
     if (result.success) {
       return { success: true, data: result.data };
     }
-    return { success: false, error: result.error.errors.map(e => e.message).join(', ') };
+    return { success: false, error: result.error.issues.map((e) => e.message).join(', ') };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Invalid JSON' };
   }
