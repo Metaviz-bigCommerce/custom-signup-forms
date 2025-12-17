@@ -22,6 +22,83 @@ type SignupRequestItem = {
   files?: Array<{ name: string; url: string; contentType?: string; size?: number }>;
 };
 
+// Avatar gradient colors - attractive and diverse
+const avatarGradients = [
+  'from-violet-500 to-purple-600',
+  'from-pink-500 to-rose-500',
+  'from-cyan-500 to-blue-500',
+  'from-emerald-500 to-teal-500',
+  'from-orange-500 to-amber-500',
+  'from-indigo-500 to-blue-600',
+  'from-fuchsia-500 to-pink-500',
+  'from-teal-500 to-cyan-500',
+];
+
+// Get consistent gradient based on name/id
+const getAvatarGradient = (name: string, id: string) => {
+  const str = name || id;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return avatarGradients[Math.abs(hash) % avatarGradients.length];
+};
+
+// Format date to user-friendly format with time
+const formatFriendlyDate = (dateVal: { seconds?: number; nanoseconds?: number } | string | undefined): { relative: string; time: string } => {
+  if (!dateVal) return { relative: '—', time: '' };
+  
+  let date: Date;
+  if (typeof dateVal === 'string') {
+    date = new Date(dateVal);
+  } else if (dateVal.seconds) {
+    date = new Date(dateVal.seconds * 1000);
+  } else {
+    return { relative: '—', time: '' };
+  }
+  
+  if (isNaN(date.getTime())) return { relative: '—', time: '' };
+  
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  
+  // Format time
+  const timeStr = date.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: true 
+  });
+  
+  // Today
+  if (diffDays === 0) {
+    if (diffHours === 0) {
+      if (diffMins < 1) return { relative: 'Just now', time: timeStr };
+      if (diffMins === 1) return { relative: '1 min ago', time: timeStr };
+      return { relative: `${diffMins} mins ago`, time: timeStr };
+    }
+    if (diffHours === 1) return { relative: '1 hour ago', time: timeStr };
+    return { relative: `Today`, time: timeStr };
+  }
+  
+  // Yesterday
+  if (diffDays === 1) return { relative: 'Yesterday', time: timeStr };
+  
+  // Within a week
+  if (diffDays < 7) return { relative: `${diffDays} days ago`, time: timeStr };
+  
+  // Otherwise show formatted date
+  const dateOptions: Intl.DateTimeFormatOptions = { 
+    month: 'short', 
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  };
+  return { relative: date.toLocaleDateString('en-US', dateOptions), time: timeStr };
+};
+
 const Dashboard: React.FC = () => {
   const { context } = useSession();
   const [allRequests, setAllRequests] = useState<SignupRequestItem[]>([]);
@@ -316,7 +393,7 @@ const Dashboard: React.FC = () => {
                   <span className="text-sm text-white/90 font-medium">SignupPro Dashboard</span>
                 </div>
               </div>
-              <h1 className="text-4xl font-bold text-white mb-2">
+              <h1 className="text-4xl font-bold !text-white mb-2">
                 Welcome back! 👋
               </h1>
               <p className="text-blue-200 text-lg max-w-xl">
@@ -427,21 +504,21 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Recent Requests Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
                 <Activity className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Recent Signup Requests</h2>
-                <p className="text-sm text-gray-500">Latest submissions requiring your attention</p>
+                <h2 className="text-xl font-semibold text-slate-800 tracking-tight">Recent Signup Requests</h2>
+                <p className="text-[13px] text-slate-500 tracking-tight">Latest submissions requiring your attention</p>
               </div>
             </div>
             <Link 
               href="/requests"
-              className="group flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium text-sm transition-all"
+              className="group flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium text-[13px] tracking-tight transition-all"
             >
               View All
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -452,27 +529,27 @@ const Dashboard: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50/50">
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <tr className="bg-slate-50/80 border-b border-slate-100">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
+                    <Users className="w-3.5 h-3.5 opacity-60" />
                     Applicant
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
                   <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
+                    <Mail className="w-3.5 h-3.5 opacity-60" />
                     Email
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-3.5 h-3.5 opacity-60" />
                     Date
                   </div>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -527,38 +604,47 @@ const Dashboard: React.FC = () => {
                   const name = extractName(request.data);
                   const email = request.email || extractEmail(request.data) || '—';
                   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+                  const avatarGradient = getAvatarGradient(name, request.id);
                   
                   return (
                     <tr 
                       key={request.id} 
-                      className="group hover:bg-blue-50/50 transition-colors cursor-pointer"
+                      className="group hover:bg-slate-50/80 transition-all duration-200 cursor-pointer"
                       onClick={() => setSelectedRequest(request)}
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-lg shadow-blue-500/25">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white font-medium text-[13px] shadow-md ring-2 ring-white tracking-wide`}>
                             {initials}
                           </div>
                           <div>
-                            <div className="font-semibold text-gray-900">{name || 'Unknown'}</div>
-                            <div className="text-xs text-gray-500">ID: {request.id.slice(0, 8)}...</div>
+                            <div className="font-semibold text-slate-800 tracking-tight">{name || 'Unknown'}</div>
+                            <div className="text-[11px] text-slate-400 font-mono tracking-normal">ID: {request.id.slice(0, 8)}...</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-600">{email}</span>
+                      <td className="px-6 py-5">
+                        <span className="text-[14px] text-slate-600 tracking-tight">{email}</span>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-gray-600">{formatDate(request.submittedAt) || '—'}</span>
+                      <td className="px-6 py-5">
+                        {(() => {
+                          const { relative, time } = formatFriendlyDate(request.submittedAt);
+                          return (
+                            <div className="flex flex-col">
+                              <span className="text-[14px] font-medium text-slate-700 tracking-tight">{relative}</span>
+                              {time && <span className="text-[12px] text-slate-400">{time}</span>}
+                            </div>
+                          );
+                        })()}
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                      <td className="px-6 py-5">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tracking-wide ${
                           request.status === 'pending' 
-                            ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 border border-amber-200' 
+                            ? 'bg-amber-50 text-amber-600 border border-amber-200/50' 
                             : request.status === 'approved' 
-                            ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border border-emerald-200' 
-                            : 'bg-gradient-to-r from-rose-100 to-red-100 text-rose-700 border border-rose-200'
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50' 
+                            : 'bg-rose-50 text-rose-600 border border-rose-200/50'
                         }`}>
                           {request.status === 'pending' && <Clock className="w-3 h-3" />}
                           {request.status === 'approved' && <Check className="w-3 h-3" />}
@@ -566,10 +652,10 @@ const Dashboard: React.FC = () => {
                           {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-5 text-right">
                         <button 
                           onClick={(e) => { e.stopPropagation(); setSelectedRequest(request); }}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-[13px] font-medium tracking-tight hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-200"
                         >
                           <Eye className="w-4 h-4" />
                           View
