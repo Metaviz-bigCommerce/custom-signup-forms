@@ -1,26 +1,35 @@
 'use client'
 
-import React from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, AlertTriangle, Loader2 } from 'lucide-react';
 
-interface LoadVersionConfirmModalProps {
+interface UnsavedChangesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
-  onConfirmAndGoToBuilder: () => void;
-  onSaveAndContinue?: () => Promise<void>;
-  versionName?: string;
+  onDiscard: () => void;
+  onSave: () => Promise<void>;
+  context?: string;
 }
 
-export default function LoadVersionConfirmModal({
+export default function UnsavedChangesModal({
   isOpen,
   onClose,
-  onConfirm,
-  onConfirmAndGoToBuilder,
-  onSaveAndContinue,
-  versionName,
-}: LoadVersionConfirmModalProps) {
+  onDiscard,
+  onSave,
+  context = 'switching tabs',
+}: UnsavedChangesModalProps) {
   if (!isOpen) return null;
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave();
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
@@ -47,28 +56,25 @@ export default function LoadVersionConfirmModal({
           </p>
           
           <div className="flex flex-col gap-3">
-            {onSaveAndContinue && (
-              <button
-                onClick={async () => {
-                  await onSaveAndContinue();
-                  onConfirm();
-                }}
-                className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-              >
-                <span>Save, then load</span>
-              </button>
-            )}
             <button
-              onClick={onConfirmAndGoToBuilder}
-              className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span>Discard changes & load version</span>
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Saving…</span>
+                </>
+              ) : (
+                <span>Save & switch</span>
+              )}
             </button>
             <button
-              onClick={onConfirm}
+              onClick={onDiscard}
               className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
             >
-              <span>Load Version</span>
+              <span>Discard & switch</span>
             </button>
             <button
               onClick={onClose}

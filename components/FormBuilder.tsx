@@ -10,6 +10,7 @@ import { Tabs } from '@/components/common/tabs';
 import LoadVersionConfirmModal from '@/components/LoadVersionConfirmModal';
 import { useToast } from '@/components/common/Toast';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
+import UnsavedChangesModal from '@/components/UnsavedChangesModal';
 
 type FieldType = 'text' | 'email' | 'phone' | 'number' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date' | 'file' | 'url';
 
@@ -43,6 +44,8 @@ const FormBuilder: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isToggling, setIsToggling] = useState<boolean>(false);
   const [showFieldEditor, setShowFieldEditor] = useState<boolean>(false);
+  const [showAddFieldEditor, setShowAddFieldEditor] = useState<boolean>(false);
+  const [pendingFieldType, setPendingFieldType] = useState<{ type: FieldType; role?: 'country' | 'state' } | null>(null);
   const [showThemeEditor, setShowThemeEditor] = useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
@@ -52,6 +55,8 @@ const FormBuilder: React.FC = () => {
   const [activeTab, setActiveTab] = useState<number>(1);
   const [showLoadVersionConfirm, setShowLoadVersionConfirm] = useState<boolean>(false);
   const [pendingVersion, setPendingVersion] = useState<any>(null);
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState<boolean>(false);
+  const [pendingTabSwitch, setPendingTabSwitch] = useState<number | null>(null);
   const [currentFormName, setCurrentFormName] = useState<string>('Unnamed');
   const [currentFormVersionId, setCurrentFormVersionId] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
@@ -279,57 +284,23 @@ const FormBuilder: React.FC = () => {
     
     // Close any open popups
     setShowFieldEditor(false);
+    setShowAddFieldEditor(false);
+    setPendingFieldType(null);
     setShowThemeEditor(false);
     setSelectedField(null);
     setShowResetConfirm(false);
   };
 
   const addField = (type: FieldType) => {
-    const newField: FormField = {
-      id: Date.now(),
-      type,
-      label: type === 'text' ? 'New text field' : `New ${type} field`,
-      placeholder: type === 'phone' ? 'Enter phone' : `Enter ${type}`,
-      required: false,
-      labelColor: '#1f2937',
-      labelSize: '14',
-      labelWeight: '500',
-      borderColor: '#d1d5db',
-      borderWidth: '1',
-      borderRadius: '6',
-      bgColor: '#ffffff',
-      padding: '10',
-      fontSize: '14',
-      textColor: '#1f2937'
-    };
-    setFormFields(ensureCoreFields([...formFields, newField]));
-    setSelectedField(newField);
-    setShowFieldEditor(true);
+    // Open Add Field popup instead of immediately adding
+    setPendingFieldType({ type });
+    setShowAddFieldEditor(true);
   };
 
   const addAddressField = (role: 'country' | 'state') => {
-    const label = role === 'country' ? 'Country' : 'State / Province';
-    const newField: FormField = {
-      id: Date.now(),
-      type: 'select',
-      label,
-      placeholder: role === 'country' ? 'Select a country' : 'Select a state/province',
-      required: false,
-      labelColor: '#1f2937',
-      labelSize: '14',
-      labelWeight: '500',
-      borderColor: '#d1d5db',
-      borderWidth: '1',
-      borderRadius: '6',
-      bgColor: '#ffffff',
-      padding: '10',
-      fontSize: '14',
-      textColor: '#1f2937',
-      role,
-    };
-    setFormFields(ensureCoreFields([...formFields, newField]));
-    setSelectedField(newField);
-    setShowFieldEditor(true);
+    // Open Add Field popup instead of immediately adding
+    setPendingFieldType({ type: 'select', role });
+    setShowAddFieldEditor(true);
   };
 
   async function addSignupFormScript() {
@@ -399,52 +370,30 @@ const FormBuilder: React.FC = () => {
     }
   }
 
-  async function handleSaveAsDraft(name: string) {
+  async function handleSaveAs(name: string, type: 'draft' | 'version') {
     setIsSaving(true);
     try {
-      const normalizedTheme = normalizeThemeLayout(theme);
-      const withCore = ensureCoreFields(formFields);
-      const result = await saveAsVersion(name || `Draft ${new Date().toLocaleDateString()}`, 'draft', { fields: withCore, theme: normalizedTheme });
-      // Update form name if we got a version ID back
-      if (result?.id) {
-        setCurrentFormName(name || `Draft ${new Date().toLocaleDateString()}`);
-        setCurrentFormVersionId(result.id);
-      }
-      // Update last saved state
-      setLastSavedState({ fields: withCore, theme: normalizedTheme });
-      await mutate();
-      toast.showSuccess('Draft saved successfully.');
-    } catch (e: unknown) {
-      toast.showError('Failed to save draft: ' + (e instanceof Error ? e.message : 'Unknown error'));
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function handleSaveAsVersion(name: string) {
-    setIsSaving(true);
-    try {
-      // If name is empty and form is not unnamed, use current form name
-      const finalName = name.trim() || (currentFormName !== 'Unnamed' ? currentFormName : '');
-      if (!finalName) {
-        toast.showWarning('Version name is required');
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        toast.showWarning('Name is required');
         setIsSaving(false);
         return;
       }
       const normalizedTheme = normalizeThemeLayout(theme);
       const withCore = ensureCoreFields(formFields);
-      const result = await saveAsVersion(finalName, 'version', { fields: withCore, theme: normalizedTheme });
+      const result = await saveAsVersion(trimmedName, type, { fields: withCore, theme: normalizedTheme });
       // Update form name if we got a version ID back
       if (result?.id) {
-        setCurrentFormName(finalName);
+        setCurrentFormName(trimmedName);
         setCurrentFormVersionId(result.id);
       }
       // Update last saved state
       setLastSavedState({ fields: withCore, theme: normalizedTheme });
       await mutate();
-      toast.showSuccess('Version saved successfully.');
+      await mutateVersions();
+      toast.showSuccess(type === 'draft' ? 'Saved to Versions.' : 'Saved to Versions.');
     } catch (e: unknown) {
-      toast.showError('Failed to save version: ' + (e instanceof Error ? e.message : 'Unknown error'));
+      toast.showError('Failed to save: ' + (e instanceof Error ? e.message : 'Unknown error'));
     } finally {
       setIsSaving(false);
     }
@@ -493,6 +442,10 @@ const FormBuilder: React.FC = () => {
       setLastSavedState(null);
       toast.showSuccess('New form created.');
     }
+    // Switch to Builder tab if not already there
+    if (activeTab !== 1) {
+      setActiveTab(1);
+    }
   }
 
   function handleLoadVersion(version: any) {
@@ -538,6 +491,43 @@ const FormBuilder: React.FC = () => {
     if (pendingVersion) {
       loadVersionData(pendingVersion, true);
     }
+  }
+
+  async function handleSaveAndLoadVersion() {
+    if (!pendingVersion) return;
+    // Save current form first
+    await handleSaveForm();
+    // Then load the version
+    loadVersionData(pendingVersion, false);
+  }
+
+  function handleTabSwitch(newTab: number) {
+    if (isDirty && activeTab !== newTab) {
+      setPendingTabSwitch(newTab);
+      setShowUnsavedChangesModal(true);
+    } else {
+      setActiveTab(newTab);
+    }
+  }
+
+  async function handleSaveAndSwitchTab() {
+    if (pendingTabSwitch === null) return;
+    try {
+      await handleSaveForm();
+      setActiveTab(pendingTabSwitch);
+      setPendingTabSwitch(null);
+      setShowUnsavedChangesModal(false);
+    } catch (e) {
+      // Error already handled in handleSaveForm, just don't switch tabs
+    }
+  }
+
+  function handleDiscardAndSwitchTab() {
+    if (pendingTabSwitch === null) return;
+    handleDiscardChanges();
+    setActiveTab(pendingTabSwitch);
+    setPendingTabSwitch(null);
+    setShowUnsavedChangesModal(false);
   }
 
   async function handleSaveName() {
@@ -591,45 +581,7 @@ const FormBuilder: React.FC = () => {
     }
   }
 
-  async function handleActivate() {
-    setIsToggling(true);
-    try {
-      // Normalize theme layout before generating script
-      const normalizedTheme = normalizeThemeLayout(theme);
-      // Generate embed JS for current fields
-      const withCore = ensureCoreFields(formFields);
-      await fetch('/api/generate-signup-script', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formFields: withCore, theme: normalizedTheme })
-      });
-      const data = await addSignupFormScript();
-      const uuid = (data as any)?.data?.uuid;
-      await setActive(true);
-      await mutate();
-      toast.showSuccess('Form activated' + (uuid ? `: ${uuid}` : '.'));
-    } catch (e: unknown) {
-      toast.showError('Failed to activate: ' + (e instanceof Error ? e.message : 'Unknown error'));
-    } finally {
-      setIsToggling(false);
-    }
-  }
-
-  async function handleDeactivate() {
-    setIsToggling(true);
-    try {
-      if (scriptUuid) {
-        await deleteScript(scriptUuid);
-      }
-      await setActive(false);
-      await mutate();
-      toast.showSuccess('Form deactivated.');
-    } catch (e: unknown) {
-      toast.showError('Failed to deactivate: ' + (e instanceof Error ? e.message : 'Unknown error'));
-    } finally {
-      setIsToggling(false);
-    }
-  }
+  // Activate/Deactivate moved to Versions tab - these functions kept for reference but not used in Builder
 
   // Show skeleton only while loading (form is undefined and not an error)
   // If form is null, it means no form exists yet, so we'll initialize with defaults in useEffect
@@ -1369,6 +1321,392 @@ const FormBuilder: React.FC = () => {
     );
   };
 
+  const AddFieldPopup = () => {
+    const [localField, setLocalField] = useState<FormField | null>(null);
+    const [openSection, setOpenSection] = useState<'basic' | 'labelStyle' | 'inputStyle' | null>('basic');
+
+    useEffect(() => {
+      if (pendingFieldType && showAddFieldEditor) {
+        // Create a new field based on the pending type
+        const type = pendingFieldType.type;
+        const role = pendingFieldType.role;
+        
+        let label: string;
+        let placeholder: string;
+        
+        if (role === 'country') {
+          label = 'Country';
+          placeholder = 'Select a country';
+        } else if (role === 'state') {
+          label = 'State / Province';
+          placeholder = 'Select a state/province';
+        } else {
+          label = type === 'text' ? 'New text field' : `New ${type} field`;
+          placeholder = type === 'phone' ? 'Enter phone' : `Enter ${type}`;
+        }
+
+        const newField: FormField = {
+          id: Date.now(), // Temporary ID, will be regenerated when added
+          type,
+          label,
+          placeholder,
+          required: false,
+          labelColor: '#1f2937',
+          labelSize: '14',
+          labelWeight: '500',
+          borderColor: '#d1d5db',
+          borderWidth: '1',
+          borderRadius: '6',
+          bgColor: '#ffffff',
+          padding: '10',
+          fontSize: '14',
+          textColor: '#1f2937',
+          ...(role && { role })
+        };
+        setLocalField(newField);
+        setOpenSection('basic');
+      } else {
+        setLocalField(null);
+        setOpenSection(null);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pendingFieldType, showAddFieldEditor]);
+
+    if (!localField || !showAddFieldEditor) return null;
+
+    const handleChange = (updates: Partial<FormField>) => {
+      if (!localField) return;
+      const updatedField = { ...localField, ...updates };
+      setLocalField(updatedField);
+    };
+
+    const handleAdd = () => {
+      if (!localField) return;
+      // Generate a new ID when actually adding to the form
+      const fieldToAdd: FormField = {
+        ...localField,
+        id: Date.now()
+      };
+      setFormFields(ensureCoreFields([...formFields, fieldToAdd]));
+      setSelectedField(fieldToAdd);
+      setShowAddFieldEditor(false);
+      setPendingFieldType(null);
+      // Field is added, popup closes - user can edit it later if needed
+    };
+
+    const handleCancel = () => {
+      setShowAddFieldEditor(false);
+      setPendingFieldType(null);
+      setLocalField(null);
+    };
+
+    // Accordion behavior: only one section can be open at a time
+    const toggleSection = (section: 'basic' | 'labelStyle' | 'inputStyle') => {
+      setOpenSection((prev) => {
+        if (prev === section) {
+          return null;
+        }
+        return section;
+      });
+    };
+
+    const ColorPicker = ({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) => (
+      <div className="w-full">
+        <label className="block text-xs font-medium text-gray-500 mb-2">{label}</label>
+        <div className="flex gap-2 items-center">
+          <input
+            type="color"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="h-10 w-12 rounded-md border border-slate-300 cursor-pointer flex-shrink-0"
+          />
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="flex-1 min-w-0 px-3 py-2 h-10 border border-slate-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="#000000"
+          />
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200" onClick={handleCancel}>
+        <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+          {/* Header */}
+          <div className="sticky top-0 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <FilePlus className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Add New Field</h3>
+                <p className="text-xs text-gray-500 capitalize">{localField.type} field</p>
+              </div>
+            </div>
+            <button
+              onClick={handleCancel}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white/50 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+              {/* Left Panel - Settings */}
+              <div className="p-6 space-y-4 border-r border-slate-200">
+                {/* Basic Settings */}
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => toggleSection('basic')}
+                    className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Type className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-semibold text-gray-700">Basic Settings</span>
+                    </div>
+                    {openSection === 'basic' ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                  </button>
+                  {openSection === 'basic' && (
+                    <div className="p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Label</label>
+                        <input
+                          type="text"
+                          value={localField.label}
+                          onChange={(e) => handleChange({ label: e.target.value })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Placeholder</label>
+                        <input
+                          type="text"
+                          value={localField.placeholder}
+                          onChange={(e) => handleChange({ placeholder: e.target.value })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md border border-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={localField.required}
+                          onChange={(e) => handleChange({ required: e.target.checked })}
+                          className="w-4 h-4 rounded focus:ring-2 text-blue-600 cursor-pointer"
+                          id="required-checkbox-add"
+                        />
+                        <label htmlFor="required-checkbox-add" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          Required field
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Label Styling */}
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => toggleSection('labelStyle')}
+                    className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Type className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-semibold text-gray-700">Label Styling</span>
+                    </div>
+                    {openSection === 'labelStyle' ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                  </button>
+                  {openSection === 'labelStyle' && (
+                    <div className="p-4 space-y-5 animate-in slide-in-from-top-2 duration-200">
+                      <ColorPicker
+                        label="Color"
+                        value={localField.labelColor}
+                        onChange={(value) => handleChange({ labelColor: value })}
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="w-full">
+                          <label className="block text-xs font-medium text-gray-500 mb-2">Size (px)</label>
+                          <input
+                            type="number"
+                            value={localField.labelSize}
+                            onChange={(e) => handleChange({ labelSize: e.target.value })}
+                            className="w-full px-3 py-2 h-10 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="w-full">
+                          <label className="block text-xs font-medium text-gray-500 mb-2">Weight</label>
+                          <select
+                            value={localField.labelWeight}
+                            onChange={(e) => handleChange({ labelWeight: e.target.value })}
+                            className="w-full px-3 py-2 h-10 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="400">Normal</option>
+                            <option value="500">Medium</option>
+                            <option value="600">Semi-bold</option>
+                            <option value="700">Bold</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Styling */}
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => toggleSection('inputStyle')}
+                    className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <MousePointerClick className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-semibold text-gray-700">Input Styling</span>
+                    </div>
+                    {openSection === 'inputStyle' ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                  </button>
+                  {openSection === 'inputStyle' && (
+                    <div className="p-4 space-y-5 animate-in slide-in-from-top-2 duration-200">
+                      <div className="grid grid-cols-2 gap-4">
+                        <ColorPicker
+                          label="Border Color"
+                          value={localField.borderColor}
+                          onChange={(value) => handleChange({ borderColor: value })}
+                        />
+                        <div className="w-full">
+                          <label className="block text-xs font-medium text-gray-500 mb-2">Border Width (px)</label>
+                          <input
+                            type="number"
+                            value={localField.borderWidth}
+                            onChange={(e) => handleChange({ borderWidth: e.target.value })}
+                            className="w-full px-3 py-2 h-10 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="w-full">
+                          <label className="block text-xs font-medium text-gray-500 mb-2">Border Radius (px)</label>
+                          <input
+                            type="number"
+                            value={localField.borderRadius}
+                            onChange={(e) => handleChange({ borderRadius: e.target.value })}
+                            className="w-full px-3 py-2 h-10 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="w-full">
+                          <label className="block text-xs font-medium text-gray-500 mb-2">Padding (px)</label>
+                          <input
+                            type="number"
+                            value={localField.padding}
+                            onChange={(e) => handleChange({ padding: e.target.value })}
+                            className="w-full px-3 py-2 h-10 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <ColorPicker
+                          label="Background"
+                          value={localField.bgColor}
+                          onChange={(value) => handleChange({ bgColor: value })}
+                        />
+                        <ColorPicker
+                          label="Text Color"
+                          value={localField.textColor}
+                          onChange={(value) => handleChange({ textColor: value })}
+                        />
+                      </div>
+                      <div className="w-full">
+                        <label className="block text-xs font-medium text-gray-500 mb-2">Font Size (px)</label>
+                        <input
+                          type="number"
+                          value={localField.fontSize}
+                          onChange={(e) => handleChange({ fontSize: e.target.value })}
+                          className="w-full px-3 py-2 h-10 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Panel - Live Preview */}
+              <div className="p-6 bg-gradient-to-br from-slate-50 to-gray-100">
+                <div className="sticky top-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Eye className="w-4 h-4 text-gray-600" />
+                    <h4 className="text-sm font-semibold text-gray-700">Live Preview</h4>
+                  </div>
+                  <div className="bg-white rounded-lg shadow-lg p-6 border border-slate-200">
+                    <div className="space-y-3">
+                      <label 
+                        style={{ 
+                          color: localField.labelColor, 
+                          fontSize: localField.labelSize + 'px', 
+                          fontWeight: localField.labelWeight 
+                        }}
+                        className="block"
+                      >
+                        {localField.label || 'Field Label'} {localField.required && <span className="text-red-500">*</span>}
+                      </label>
+                      {localField.type === 'textarea' ? (
+                        <textarea
+                          placeholder={localField.placeholder}
+                          style={{
+                            borderColor: localField.borderColor,
+                            borderWidth: localField.borderWidth + 'px',
+                            borderRadius: localField.borderRadius + 'px',
+                            backgroundColor: localField.bgColor,
+                            padding: localField.padding + 'px',
+                            fontSize: localField.fontSize + 'px',
+                            color: localField.textColor
+                          }}
+                          className="w-full outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
+                          rows={3}
+                        />
+                      ) : (
+                        <input
+                          type={localField.type === 'phone' ? 'tel' : localField.type}
+                          placeholder={localField.placeholder}
+                          style={{
+                            borderColor: localField.borderColor,
+                            borderWidth: localField.borderWidth + 'px',
+                            borderRadius: localField.borderRadius + 'px',
+                            backgroundColor: localField.bgColor,
+                            padding: localField.padding + 'px',
+                            fontSize: localField.fontSize + 'px',
+                            color: localField.textColor
+                          }}
+                          className="w-full outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="sticky bottom-0 bg-white border-t border-slate-200 px-6 py-4 flex items-center justify-between">
+            <div className="flex gap-3 ml-auto">
+              <button
+                onClick={handleCancel}
+                className="px-5 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAdd}
+                className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+              >
+                Add Field
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const FieldEditorPopup = () => {
     const [localField, setLocalField] = useState<FormField | null>(null);
     const fieldIdRef = useRef<number | null>(null);
@@ -1376,7 +1714,8 @@ const FormBuilder: React.FC = () => {
     const [openSection, setOpenSection] = useState<'basic' | 'labelStyle' | 'inputStyle' | null>('basic');
 
     useEffect(() => {
-      if (selectedField && showFieldEditor) {
+      // Only show for editing existing fields (not adding new ones)
+      if (selectedField && showFieldEditor && !showAddFieldEditor) {
         // Only update local state if the field ID changed or popup just opened
         if (fieldIdRef.current !== selectedField.id || !localField) {
           const fieldCopy = { ...selectedField };
@@ -1393,7 +1732,7 @@ const FormBuilder: React.FC = () => {
         setOpenSection(null);
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedField?.id, showFieldEditor]);
+    }, [selectedField?.id, showFieldEditor, showAddFieldEditor]);
 
     // All hooks must be called before any early returns
     const hasChanges = useMemo(() => {
@@ -1401,7 +1740,8 @@ const FormBuilder: React.FC = () => {
       return JSON.stringify(localField) !== JSON.stringify(initialFieldRef.current);
     }, [localField]);
 
-    if (!localField || !showFieldEditor) return null;
+    // Only show when editing (not adding)
+    if (!localField || !showFieldEditor || showAddFieldEditor) return null;
 
     const handleChange = (updates: Partial<FormField>) => {
       if (!localField) return;
@@ -2101,10 +2441,10 @@ const FormBuilder: React.FC = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Tabs Headers - Always on top */}
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <div className="flex border-b border-gray-200">
           <button
-            onClick={() => setActiveTab(1)}
+            onClick={() => handleTabSwitch(1)}
             className={`px-4 py-3 text-sm font-medium transition-colors relative focus:outline-none rounded-lg border ${
               activeTab === 1
                 ? "bg-blue-50 text-blue-700 border-blue-400"
@@ -2114,7 +2454,7 @@ const FormBuilder: React.FC = () => {
             Builder
           </button>
           <button
-            onClick={() => setActiveTab(2)}
+            onClick={() => handleTabSwitch(2)}
             className={`px-4 py-3 text-sm font-medium transition-colors relative focus:outline-none rounded-lg border ${
               activeTab === 2
                 ? "bg-blue-50 text-blue-700 border-blue-400"
@@ -2123,6 +2463,38 @@ const FormBuilder: React.FC = () => {
           >
             Versions
           </button>
+        </div>
+        
+        {/* Global Actions - Top Right */}
+        <div className="flex items-center gap-3">
+          {/* New Form Button */}
+          <button
+            onClick={handleCreateNewForm}
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 hover:border-slate-400 hover:shadow-sm active:scale-[0.98]"
+            title="Create a new form"
+          >
+            <FilePlus className="w-4 h-4" />
+            <span>New Form</span>
+          </button>
+
+          {/* Active Form Indicator */}
+          <div 
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer transition-all hover:bg-gray-50 ${
+              active 
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                : 'bg-slate-100 text-slate-600 border border-slate-200'
+            }`}
+            onClick={() => {
+              if (activeTab !== 2) {
+                handleTabSwitch(2);
+              }
+            }}
+            title={active ? 'Active form - Click to view in Versions' : 'Inactive form - Click to view in Versions'}
+          >
+            <div className={`w-2 h-2 rounded-full ${active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+            <span>Active Form:</span>
+            <span className="font-semibold">{currentFormName}</span>
+          </div>
         </div>
       </div>
 
@@ -2194,46 +2566,28 @@ const FormBuilder: React.FC = () => {
                   </div>
                 )}
               </div>
-              {/* Status Badge */}
-              <div className="flex items-center gap-2">
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${
-                  active 
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                    : 'bg-slate-100 text-slate-600 border border-slate-200'
-                }`}>
-                  {active ? (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Active</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="w-3.5 h-3.5" />
-                      <span>Inactive</span>
-                    </>
-                  )}
+              {isDirty && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 text-xs font-medium border border-amber-200">
+                  <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></div>
+                  <span>Unsaved changes</span>
                 </div>
-                {isDirty && (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 text-xs font-medium border border-amber-200">
-                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></div>
-                    <span>Unsaved changes</span>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
             {/* Right Section - Actions */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Secondary Actions */}
+              {/* Secondary Actions - Icon Only */}
               <div className="flex items-center gap-2 border-r border-slate-200 pr-2">
+                {/* Reset Button - Icon Only */}
                 <button
-                  onClick={handleCreateNewForm}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 hover:border-slate-400 hover:shadow-sm active:scale-[0.98]"
-                  title="Create a new form"
+                  onClick={() => setShowResetConfirm(true)}
+                  className="p-2 rounded-lg text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 active:scale-[0.95]"
+                  title="Reset form to default"
                 >
-                  <FilePlus className="w-4 h-4" />
-                  <span>New Form</span>
+                  <RotateCcw className="w-5 h-5" />
                 </button>
+
+                {/* Discard Button - Icon Only (only when dirty) */}
                 {isDirty && (
                   <button
                     onClick={() => {
@@ -2248,21 +2602,12 @@ const FormBuilder: React.FC = () => {
                         confirmVariant: 'danger'
                       });
                     }}
-                    className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 text-red-700 bg-white border border-red-300 hover:bg-red-50 hover:border-red-400 hover:shadow-sm active:scale-[0.98]"
+                    className="p-2 rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 transition-all duration-200 active:scale-[0.95]"
                     title="Discard unsaved changes"
                   >
-                    <X className="w-4 h-4" />
-                    <span>Discard</span>
+                    <X className="w-5 h-5" />
                   </button>
                 )}
-                <button
-                  onClick={() => setShowResetConfirm(true)}
-                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 hover:border-slate-400 hover:shadow-sm active:scale-[0.98]"
-                  title="Reset form to default"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Reset</span>
-                </button>
               </div>
 
               {/* Primary Actions */}
@@ -2272,57 +2617,8 @@ const FormBuilder: React.FC = () => {
                   isSaving={isSaving}
                   currentFormName={currentFormName}
                   onSave={handleSaveForm}
-                  onSaveAsDraft={handleSaveAsDraft}
-                  onSaveAsVersion={handleSaveAsVersion}
+                  onSaveAs={handleSaveAs}
                 />
-
-                {active ? (
-                  <button
-                    onClick={handleDeactivate}
-                    disabled={isToggling}
-                    className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                      isToggling
-                        ? 'bg-rose-300 text-white cursor-not-allowed' 
-                        : 'bg-rose-600 text-white hover:bg-rose-700 hover:shadow-lg active:scale-[0.98] shadow-md'
-                    }`}
-                    title="Deactivate form"
-                  >
-                    {isToggling ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Deactivating…</span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-4 h-4" />
-                        <span>Deactivate</span>
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleActivate}
-                    disabled={isToggling}
-                    className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
-                      isToggling
-                        ? 'bg-emerald-300 text-white cursor-not-allowed' 
-                        : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-lg active:scale-[0.98] shadow-md'
-                    }`}
-                    title="Activate form"
-                  >
-                    {isToggling ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Activating…</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Activate</span>
-                      </>
-                    )}
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -2357,7 +2653,7 @@ const FormBuilder: React.FC = () => {
                     <>
                       {/* Sidebar Header with Toggle */}
                       <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10 backdrop-blur-sm bg-white/95">
-                        <h3 className="text-lg font-semibold text-gray-800">Form Builder</h3>
+                        <h3 className="text-lg font-semibold text-gray-800">Simple Form</h3>
                         <button
                           onClick={() => setSidebarOpen(false)}
                           className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all duration-200"
@@ -2680,10 +2976,12 @@ const FormBuilder: React.FC = () => {
           <VersionsList
             onLoadVersion={handleLoadVersion}
             onVersionLoaded={() => mutate()}
+            onNavigateToBuilder={() => handleTabSwitch(1)}
           />
         )}
       </div>
       
+      <AddFieldPopup />
       <FieldEditorPopup />
       <ThemeEditorPopup />
       
@@ -2692,7 +2990,7 @@ const FormBuilder: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200" onClick={() => setShowResetConfirm(false)}>
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Reset Form Builder</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Reset Form</h3>
               <p className="text-sm text-gray-600 mb-6">
                 Are you sure you want to reset? This will clear all form fields and reset the theme to default values. This action cannot be undone.
               </p>
@@ -2724,7 +3022,19 @@ const FormBuilder: React.FC = () => {
         }}
         onConfirm={handleConfirmLoadVersion}
         onConfirmAndGoToBuilder={handleConfirmLoadAndGoToBuilder}
+        onSaveAndContinue={handleSaveAndLoadVersion}
         versionName={pendingVersion?.name}
+      />
+
+      {/* Unsaved Changes Modal for Tab Switching */}
+      <UnsavedChangesModal
+        isOpen={showUnsavedChangesModal}
+        onClose={() => {
+          setShowUnsavedChangesModal(false);
+          setPendingTabSwitch(null);
+        }}
+        onDiscard={handleDiscardAndSwitchTab}
+        onSave={handleSaveAndSwitchTab}
       />
 
       {/* Confirm Dialog */}
