@@ -337,7 +337,7 @@ const Dashboard: React.FC = () => {
 
   const quickActions = [
     {
-      href: '/builder',
+      href: `/builder?context=${context}`,
       icon: Settings,
       title: 'Form Builder',
       description: 'Design beautiful signup forms',
@@ -345,7 +345,7 @@ const Dashboard: React.FC = () => {
       hoverGradient: 'group-hover:from-violet-600 group-hover:to-purple-700',
     },
     {
-      href: '/requests',
+      href: `/requests?context=${context}`,
       icon: FileText,
       title: 'View Requests',
       description: 'Manage all submissions',
@@ -353,7 +353,7 @@ const Dashboard: React.FC = () => {
       hoverGradient: 'group-hover:from-blue-600 group-hover:to-cyan-600',
     },
     {
-      href: '/emails',
+      href: `/emails?context=${context}`,
       icon: Mail,
       title: 'Email Templates',
       description: 'Customize notifications',
@@ -361,7 +361,7 @@ const Dashboard: React.FC = () => {
       hoverGradient: 'group-hover:from-pink-600 group-hover:to-rose-600',
     },
     {
-      href: '/preview',
+      href: `/preview?context=${context}`,
       icon: Eye,
       title: 'Preview Form',
       description: 'See how it looks live',
