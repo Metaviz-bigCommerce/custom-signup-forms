@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { 
   Plus, Check, X, Users, Clock, TrendingUp, ArrowRight, Eye, Mail, 
   Settings, Trash2, Sparkles, BarChart3, FileText, Zap, ChevronRight,
-  UserCheck, UserX, Activity, Calendar
+  UserCheck, UserX, Activity, Calendar, Copy, Download, ExternalLink,
+  Search, ChevronDown, ChevronUp, Shield, AlertCircle, CheckCircle2,
+  XCircle, RotateCcw, MessageSquare, Paperclip
 } from 'lucide-react';
 import { useSession } from '@/context/session';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -44,9 +46,9 @@ const getAvatarGradient = (name: string, id: string) => {
   return avatarGradients[Math.abs(hash) % avatarGradients.length];
 };
 
-// Format date to user-friendly format with time
-const formatFriendlyDate = (dateVal: { seconds?: number; nanoseconds?: number } | string | undefined): { relative: string; time: string } => {
-  if (!dateVal) return { relative: '—', time: '' };
+// Format date to relative time only (e.g., "17 hours ago", "2 days ago")
+const formatRelativeTime = (dateVal: { seconds?: number; nanoseconds?: number } | string | undefined): string => {
+  if (!dateVal) return '—';
   
   let date: Date;
   if (typeof dateVal === 'string') {
@@ -54,10 +56,10 @@ const formatFriendlyDate = (dateVal: { seconds?: number; nanoseconds?: number } 
   } else if (dateVal.seconds) {
     date = new Date(dateVal.seconds * 1000);
   } else {
-    return { relative: '—', time: '' };
+    return '—';
   }
   
-  if (isNaN(date.getTime())) return { relative: '—', time: '' };
+  if (isNaN(date.getTime())) return '—';
   
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -65,38 +67,40 @@ const formatFriendlyDate = (dateVal: { seconds?: number; nanoseconds?: number } 
   const diffMins = Math.floor(diffSecs / 60);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
   
-  // Format time
-  const timeStr = date.toLocaleTimeString('en-US', { 
-    hour: 'numeric', 
-    minute: '2-digit',
-    hour12: true 
-  });
+  // Just now / seconds
+  if (diffSecs < 60) return 'Just now';
   
-  // Today
-  if (diffDays === 0) {
-    if (diffHours === 0) {
-      if (diffMins < 1) return { relative: 'Just now', time: timeStr };
-      if (diffMins === 1) return { relative: '1 min ago', time: timeStr };
-      return { relative: `${diffMins} mins ago`, time: timeStr };
-    }
-    if (diffHours === 1) return { relative: '1 hour ago', time: timeStr };
-    return { relative: `Today`, time: timeStr };
+  // Minutes
+  if (diffMins < 60) {
+    return diffMins === 1 ? '1 min ago' : `${diffMins} mins ago`;
   }
   
-  // Yesterday
-  if (diffDays === 1) return { relative: 'Yesterday', time: timeStr };
+  // Hours
+  if (diffHours < 24) {
+    return diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+  }
   
-  // Within a week
-  if (diffDays < 7) return { relative: `${diffDays} days ago`, time: timeStr };
+  // Days
+  if (diffDays < 7) {
+    return diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
+  }
   
-  // Otherwise show formatted date
-  const dateOptions: Intl.DateTimeFormatOptions = { 
-    month: 'short', 
-    day: 'numeric',
-    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-  };
-  return { relative: date.toLocaleDateString('en-US', dateOptions), time: timeStr };
+  // Weeks
+  if (diffWeeks < 4) {
+    return diffWeeks === 1 ? '1 week ago' : `${diffWeeks} weeks ago`;
+  }
+  
+  // Months
+  if (diffMonths < 12) {
+    return diffMonths === 1 ? '1 month ago' : `${diffMonths} months ago`;
+  }
+  
+  // Years
+  const diffYears = Math.floor(diffDays / 365);
+  return diffYears === 1 ? '1 year ago' : `${diffYears} years ago`;
 };
 
 const Dashboard: React.FC = () => {
@@ -402,7 +406,7 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
             <Link 
-              href="/builder"
+              href={`/builder?context=${context}`}
               className="group relative overflow-hidden bg-white text-slate-900 px-6 py-4 rounded-xl font-semibold transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25 flex items-center gap-3"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-blue-100 to-purple-100 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -516,10 +520,10 @@ const Dashboard: React.FC = () => {
                 <p className="text-[13px] text-slate-500 tracking-tight">Latest submissions requiring your attention</p>
               </div>
             </div>
-            <Link 
-              href="/requests"
-              className="group flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium text-[13px] tracking-tight transition-all"
-            >
+                <Link 
+                  href={`/requests?context=${context}`}
+                  className="group flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium text-[13px] tracking-tight transition-all duration-300 hover:shadow-md hover:shadow-blue-500/20"
+                >
               View All
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -568,14 +572,14 @@ const Dashboard: React.FC = () => {
                       </div>
                       <p className="font-semibold text-gray-900 mb-1">Error loading data</p>
                       <p className="text-sm text-gray-500 mb-4">{error}</p>
-                      <button
-                        onClick={() => {
-                          setError(null);
-                          loadStats();
-                          loadSignupRequests();
-                        }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                      >
+                        <button
+                          onClick={() => {
+                            setError(null);
+                            loadStats();
+                            loadSignupRequests();
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25 hover:scale-105"
+                        >
                         Try again
                       </button>
                     </div>
@@ -591,8 +595,8 @@ const Dashboard: React.FC = () => {
                       <p className="font-semibold text-gray-900 mb-1">No requests yet</p>
                       <p className="text-sm text-gray-500 mb-4">When users submit your signup form, they&apos;ll appear here.</p>
                       <Link
-                        href="/builder"
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                        href={`/builder?context=${context}`}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25 hover:scale-105"
                       >
                         Create your first form
                       </Link>
@@ -619,8 +623,7 @@ const Dashboard: React.FC = () => {
                             {initials}
                           </div>
                           <div>
-                            <div className="font-semibold text-slate-800 tracking-tight">{name || 'Unknown'}</div>
-                            <div className="text-[11px] text-slate-400 font-mono tracking-normal">ID: {request.id.slice(0, 8)}...</div>
+                            <div className="font-medium text-slate-600 tracking-tight">{name || 'Unknown'}</div>
                           </div>
                         </div>
                       </td>
@@ -628,15 +631,9 @@ const Dashboard: React.FC = () => {
                         <span className="text-[14px] text-slate-600 tracking-tight">{email}</span>
                       </td>
                       <td className="px-6 py-5">
-                        {(() => {
-                          const { relative, time } = formatFriendlyDate(request.submittedAt);
-                          return (
-                            <div className="flex flex-col">
-                              <span className="text-[14px] font-medium text-slate-700 tracking-tight">{relative}</span>
-                              {time && <span className="text-[12px] text-slate-400">{time}</span>}
-                            </div>
-                          );
-                        })()}
+                        <span className="text-[14px] text-slate-600 tracking-tight">
+                          {formatRelativeTime(request.submittedAt)}
+                        </span>
                       </td>
                       <td className="px-6 py-5">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tracking-wide ${
@@ -655,7 +652,7 @@ const Dashboard: React.FC = () => {
                       <td className="px-6 py-5 text-right">
                         <button 
                           onClick={(e) => { e.stopPropagation(); setSelectedRequest(request); }}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-[13px] font-medium tracking-tight hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-200"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-[13px] font-medium tracking-tight hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 hover:cursor-pointer"
                         >
                           <Eye className="w-4 h-4" />
                           View
@@ -670,189 +667,286 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Request Details Modal */}
-      {selectedRequest && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-xl shadow-blue-500/25">
-                    {extractName(selectedRequest.data).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+      {/* Request Details Modal - Redesigned */}
+      {selectedRequest && (() => {
+        const requestName = extractName(selectedRequest.data);
+        const requestEmail = selectedRequest.email || extractEmail(selectedRequest.data) || '—';
+        const requestInitials = requestName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+        const avatarGradient = getAvatarGradient(requestName, selectedRequest.id);
+        const isPending = selectedRequest.status === 'pending';
+        const isApproved = selectedRequest.status === 'approved';
+        const isRejected = selectedRequest.status === 'rejected';
+        
+        const statusTheme = {
+          pending: {
+            headerBg: 'from-amber-50 via-orange-50 to-amber-100',
+            accentColor: 'text-amber-700',
+            accentBg: 'bg-amber-600',
+            badgeBg: 'bg-amber-100 border-amber-200',
+            badgeText: 'text-amber-700',
+            icon: Clock,
+            iconColor: 'text-amber-600',
+          },
+          approved: {
+            headerBg: 'from-emerald-50 via-teal-50 to-emerald-100',
+            accentColor: 'text-emerald-700',
+            accentBg: 'bg-emerald-600',
+            badgeBg: 'bg-emerald-100 border-emerald-200',
+            badgeText: 'text-emerald-700',
+            icon: CheckCircle2,
+            iconColor: 'text-emerald-600',
+          },
+          rejected: {
+            headerBg: 'from-rose-50 via-pink-50 to-rose-100',
+            accentColor: 'text-rose-700',
+            accentBg: 'bg-rose-600',
+            badgeBg: 'bg-rose-100 border-rose-200',
+            badgeText: 'text-rose-700',
+            icon: XCircle,
+            iconColor: 'text-rose-600',
+          },
+        };
+        
+        const theme = statusTheme[selectedRequest.status] || statusTheme.pending;
+        const StatusIcon = theme.icon;
+        
+        return (
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedRequest(null)}
+          >
+            <div 
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={`relative bg-gradient-to-br ${theme.headerBg} px-6 py-5 border-b border-slate-200`}>
+                <button 
+                  onClick={() => setSelectedRequest(null)} 
+                  className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-white/80 hover:bg-white flex items-center justify-center text-slate-600 hover:text-slate-900 transition-all duration-200 hover:scale-110 shadow-sm cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                
+                <div className="flex items-center gap-4 pr-10">
+                  <div className="relative">
+                    <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white font-bold text-lg shadow-lg`}>
+                      {requestInitials}
+                    </div>
+                    <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-lg ${theme.accentBg} flex items-center justify-center border-2 border-white shadow-md`}>
+                      <StatusIcon className="w-3.5 h-3.5 text-white" />
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">{extractName(selectedRequest.data) || 'Request Details'}</h3>
-                    <p className="text-sm text-gray-500 font-mono">ID: {selectedRequest.id}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold ${
-                    selectedRequest.status === 'pending' 
-                      ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 border border-amber-200' 
-                      : selectedRequest.status === 'approved' 
-                      ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border border-emerald-200' 
-                      : 'bg-gradient-to-r from-rose-100 to-red-100 text-rose-700 border border-rose-200'
-                  }`}>
-                    {selectedRequest.status === 'pending' && <Clock className="w-4 h-4" />}
-                    {selectedRequest.status === 'approved' && <Check className="w-4 h-4" />}
-                    {selectedRequest.status === 'rejected' && <X className="w-4 h-4" />}
-                    {selectedRequest.status.charAt(0).toUpperCase() + selectedRequest.status.slice(1)}
-                  </span>
-                  <button 
-                    onClick={() => setSelectedRequest(null)} 
-                    className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Modal Body */}
-            <div className="px-8 py-6 overflow-y-auto flex-1">
-              {/* Quick Info */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-100">
-                  <div className="flex items-center gap-2 text-xs text-blue-600 font-medium mb-1">
-                    <Calendar className="w-3.5 h-3.5" />
-                    Submitted
-                  </div>
-                  <div className="text-sm font-semibold text-gray-900">{formatDate(selectedRequest.submittedAt) || '—'}</div>
-                </div>
-                <div className="p-4 rounded-xl bg-gradient-to-br from-purple-50 to-purple-100/50 border border-purple-100 md:col-span-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-purple-600 font-medium">Search fields</div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        value={detailsSearch}
-                        onChange={(e) => setDetailsSearch(e.target.value)}
-                        placeholder="Filter by field or value…"
-                        className="w-[200px] px-3 py-1.5 bg-white border border-purple-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 transition-all"
-                      />
-                      <button
-                        onClick={() => setDetailsExpanded((s) => !s)}
-                        className="px-3 py-1.5 rounded-lg bg-white border border-purple-200 text-sm font-medium hover:bg-purple-50 transition-colors"
-                      >
-                        {detailsExpanded ? 'Collapse' : 'Expand'}
-                      </button>
+                  
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`text-xl font-bold ${theme.accentColor} mb-1 truncate`}>{requestName || 'Unknown Applicant'}</h3>
+                    <p className="text-slate-600 text-sm flex items-center gap-1.5 mb-2 truncate">
+                      <Mail className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{requestEmail}</span>
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold ${theme.badgeBg} ${theme.badgeText} border`}>
+                        <StatusIcon className="w-3 h-3" />
+                        {selectedRequest.status.charAt(0).toUpperCase() + selectedRequest.status.slice(1)}
+                      </span>
+                      <span className="text-slate-500 text-xs flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatRelativeTime(selectedRequest.submittedAt)}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
-
-              {/* Fields Grid */}
-              <div className="rounded-2xl border border-gray-100 overflow-hidden mb-6">
-                <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-gray-400" />
-                    <span className="font-semibold text-gray-900">Submitted Fields</span>
-                    <span className="text-xs text-gray-500 ml-auto">{Object.keys(selectedRequest.data || {}).length} fields</span>
+              
+              <div className="flex-1 overflow-y-auto bg-slate-50/30">
+                <div className="px-6 py-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        value={detailsSearch}
+                        onChange={(e) => setDetailsSearch(e.target.value)}
+                        placeholder="Search fields..."
+                        className="w-full pl-9 pr-3 py-2 bg-white/60 border border-slate-200/60 rounded-lg text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setDetailsExpanded((s) => !s)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/60 border border-slate-200/60 text-sm font-medium text-slate-600 hover:bg-white hover:border-slate-300 transition-all duration-200 cursor-pointer"
+                    >
+                      {detailsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      <span className="hidden sm:inline">{detailsExpanded ? 'Less' : 'More'}</span>
+                    </button>
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2.5 py-2 rounded-lg font-medium">
+                      {Object.keys(selectedRequest.data || {}).length}
+                    </span>
                   </div>
-                </div>
-                <div className="p-5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     {Object.entries(selectedRequest.data || {})
                       .filter(([k, v]) => {
                         if (!detailsSearch.trim()) return true;
                         const s = detailsSearch.toLowerCase();
                         return (k.toLowerCase().includes(s) || String(v ?? '').toLowerCase().includes(s));
                       })
-                      .slice(0, detailsExpanded ? undefined : 12)
-                      .map(([k, v]) => (
-                        <div key={k} className="group rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all p-4">
-                          <div className="flex items-start justify-between gap-2">
+                      .slice(0, detailsExpanded ? undefined : 6)
+                      .map(([k, v], idx) => (
+                        <div 
+                          key={k} 
+                          className="group bg-white/80 hover:bg-white rounded-xl border border-slate-200/70 hover:border-blue-300 hover:shadow-md hover:shadow-blue-100/50 transition-all duration-200 p-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
-                              <div className="text-[11px] uppercase tracking-wider text-gray-400 font-medium mb-1">{k}</div>
-                              <div className="text-sm text-gray-900 break-words">{basename(v) || '—'}</div>
+                              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-2 leading-none">
+                                {k.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
+                              </div>
+                              <div className="text-sm text-slate-900 break-words font-medium leading-relaxed">{basename(v) || '—'}</div>
                             </div>
                             <button
-                              onClick={() => copyToClipboard(String(v ?? ''))}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 font-medium"
+                              onClick={(e) => { e.stopPropagation(); copyToClipboard(String(v ?? '')); }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
+                              title="Copy"
                             >
-                              Copy
+                              <Copy className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
                       ))}
                   </div>
-                  {!detailsExpanded && Object.keys(selectedRequest.data || {}).length > 12 && (
+                  
+                  {!detailsExpanded && Object.keys(selectedRequest.data || {}).length > 6 && (
                     <button
                       onClick={() => setDetailsExpanded(true)}
-                      className="mt-4 text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1"
+                      className="w-full py-2.5 text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg transition-all duration-200 border border-blue-200/60 hover:border-blue-300 cursor-pointer shadow-sm"
                     >
                       Show all {Object.keys(selectedRequest.data || {}).length} fields
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronDown className="w-4 h-4" />
                     </button>
+                  )}
+
+                  {selectedRequest.files?.length ? (
+                    <div className="mt-5 pt-5 border-t border-slate-200">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Paperclip className="w-4 h-4 text-slate-400" />
+                        <span className="font-semibold text-slate-700 text-sm">Attachments</span>
+                        <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded-md font-bold">{selectedRequest.files.length}</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedRequest.files.map((f, idx) => (
+                          <a 
+                            key={idx} 
+                            href={f.url} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="group flex items-center gap-3 p-4 rounded-xl bg-white/80 hover:bg-white border border-slate-200/70 hover:border-blue-300 hover:shadow-md hover:shadow-blue-100/50 transition-all duration-200 cursor-pointer"
+                          >
+                            <div className="w-11 h-11 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-200">
+                              {isImage(f) ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img alt={f.name} src={f.url} className="w-full h-full object-cover" />
+                              ) : (
+                                <FileText className="w-5 h-5 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-semibold text-slate-700 truncate group-hover:text-blue-600 transition-colors leading-tight mb-1">{f.name}</div>
+                              <div className="text-xs text-slate-400">{f.size ? `${Math.round((f.size / 1024) * 10) / 10} KB` : 'File'}</div>
+                            </div>
+                            <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors shrink-0" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="px-6 py-5 border-t border-slate-200 bg-gradient-to-b from-slate-50/50 to-white">
+                <div className="flex items-center gap-3">
+                  {isPending && (
+                    <>
+                      <button
+                        onClick={() => approve(selectedRequest.id)}
+                        className="flex-1 bg-gradient-to-br from-emerald-400 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 active:from-emerald-600 active:to-emerald-700 text-white px-5 py-3.5 rounded-xl font-semibold text-[15px] transition-all duration-200 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/50 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-5 h-5" />
+                        <span>Approve</span>
+                      </button>
+                      <button
+                        onClick={() => reject(selectedRequest.id)}
+                        className="flex-1 bg-gradient-to-br from-rose-400 to-rose-500 hover:from-rose-500 hover:to-rose-600 active:from-rose-600 active:to-rose-700 text-white px-5 py-3.5 rounded-xl font-semibold text-[15px] transition-all duration-200 shadow-lg shadow-rose-500/30 hover:shadow-xl hover:shadow-rose-500/50 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <XCircle className="w-5 h-5" />
+                        <span>Reject</span>
+                      </button>
+                      <button
+                        onClick={() => requestInfo(selectedRequest.id)}
+                        className="flex-1 bg-gradient-to-br from-blue-400 to-blue-500 hover:from-blue-500 hover:to-blue-600 active:from-blue-600 active:to-blue-700 text-white px-5 py-3.5 rounded-xl font-semibold text-[15px] transition-all duration-200 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/50 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <MessageSquare className="w-5 h-5" />
+                        <span className="hidden sm:inline">Request Info</span>
+                        <span className="sm:hidden">Info</span>
+                      </button>
+                      <button
+                        onClick={() => remove(selectedRequest.id)}
+                        className="px-4 py-3.5 bg-white hover:bg-red-50 border-2 border-slate-200 hover:border-red-300 text-slate-400 hover:text-red-600 rounded-xl font-medium text-sm transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer"
+                        title="Delete request"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+                  
+                  {isApproved && (
+                    <>
+                      <div className="flex-1 flex items-center gap-2.5 px-5 py-3.5 bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl border border-emerald-200/70 shadow-sm">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                        <span className="text-emerald-700 font-semibold text-[15px]">Request Approved</span>
+                      </div>
+                      <button
+                        onClick={() => reject(selectedRequest.id)}
+                        className="px-6 py-3.5 bg-gradient-to-br from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-white rounded-xl font-semibold text-[15px] transition-all duration-200 shadow-lg shadow-amber-400/30 hover:shadow-xl hover:shadow-amber-500/50 hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        <span>Revoke</span>
+                      </button>
+                      <button
+                        onClick={() => remove(selectedRequest.id)}
+                        className="px-4 py-3.5 bg-white hover:bg-red-50 border-2 border-slate-200 hover:border-red-300 text-slate-400 hover:text-red-600 rounded-xl font-medium text-sm transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer"
+                        title="Delete request"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+                  
+                  {isRejected && (
+                    <>
+                      <div className="flex-1 flex items-center gap-2.5 px-5 py-3.5 bg-gradient-to-br from-rose-50 to-rose-100/50 rounded-xl border border-rose-200/70 shadow-sm">
+                        <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                        <span className="text-rose-700 font-semibold text-[15px]">Request Rejected</span>
+                      </div>
+                      <button
+                        onClick={() => approve(selectedRequest.id)}
+                        className="px-6 py-3.5 bg-gradient-to-br from-emerald-400 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 active:from-emerald-600 active:to-emerald-700 text-white rounded-xl font-semibold text-[15px] transition-all duration-200 shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/50 hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Approve</span>
+                      </button>
+                      <button
+                        onClick={() => remove(selectedRequest.id)}
+                        className="px-4 py-3.5 bg-white hover:bg-red-50 border-2 border-slate-200 hover:border-red-300 text-slate-400 hover:text-red-600 rounded-xl font-medium text-sm transition-all duration-200 hover:shadow-md hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer"
+                        title="Delete request"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
-
-              {/* Files Section */}
-              {selectedRequest.files?.length ? (
-                <div className="rounded-2xl border border-gray-100 overflow-hidden">
-                  <div className="px-5 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-gray-400" />
-                      <span className="font-semibold text-gray-900">Attached Files</span>
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{selectedRequest.files.length}</span>
-                    </div>
-                  </div>
-                  <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {selectedRequest.files.map((f, idx) => (
-                      <a key={idx} href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all group">
-                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center overflow-hidden">
-                          {isImage(f) ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img alt={f.name} src={f.url} className="w-full h-full object-cover" />
-                          ) : (
-                            <FileText className="w-6 h-6 text-gray-400" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600">{f.name}</div>
-                          <div className="text-xs text-gray-500">{f.size ? `${Math.round((f.size / 1024) * 10) / 10} KB` : 'Unknown size'}</div>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-8 py-5 border-t border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={() => approve(selectedRequest.id)}
-                  className="flex-1 min-w-[140px] bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-5 py-3 rounded-xl font-semibold transition-all shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 flex items-center justify-center gap-2"
-                >
-                  <Check className="w-5 h-5" /> Approve
-                </button>
-                <button
-                  onClick={() => reject(selectedRequest.id)}
-                  className="flex-1 min-w-[140px] bg-white text-rose-600 border-2 border-rose-200 px-5 py-3 rounded-xl font-semibold hover:bg-rose-50 hover:border-rose-300 transition-all flex items-center justify-center gap-2"
-                >
-                  <X className="w-5 h-5" /> Reject
-                </button>
-                <button
-                  onClick={() => requestInfo(selectedRequest.id)}
-                  className="flex-1 min-w-[140px] bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-5 py-3 rounded-xl font-semibold transition-all shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 flex items-center justify-center gap-2"
-                >
-                  <Mail className="w-5 h-5" /> Request Info
-                </button>
-                <button
-                  onClick={() => remove(selectedRequest.id)}
-                  className="px-5 py-3 text-gray-600 bg-white border border-gray-200 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center justify-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" /> Delete
-                </button>
-              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Confirm Dialog */}
       <ConfirmDialog
