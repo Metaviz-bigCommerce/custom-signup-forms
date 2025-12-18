@@ -31,13 +31,15 @@ const FormBuilder: React.FC = () => {
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
   const [draggedFieldId, setDraggedFieldId] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<number>(2);
   const [showLoadVersionConfirm, setShowLoadVersionConfirm] = useState<boolean>(false);
   const [pendingVersion, setPendingVersion] = useState<any>(null);
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState<boolean>(false);
   const [pendingTabSwitch, setPendingTabSwitch] = useState<number | null>(null);
   const [currentFormName, setCurrentFormName] = useState<string>('Unnamed');
   const [currentFormVersionId, setCurrentFormVersionId] = useState<string | null>(null);
+  const [currentFormVersionType, setCurrentFormVersionType] = useState<'draft' | 'version' | null>(null);
+  const [activeVersionName, setActiveVersionName] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
   const [editingName, setEditingName] = useState<string>('');
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; confirmVariant?: 'danger' | 'primary' }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
@@ -103,11 +105,42 @@ const FormBuilder: React.FC = () => {
     if (matchingVersion) {
       setCurrentFormName(matchingVersion.name || 'Unnamed');
       setCurrentFormVersionId(matchingVersion.id);
+      setCurrentFormVersionType(matchingVersion.type || null);
     } else if (!currentFormVersionId) {
       // Only set to Unnamed if we don't have a tracked version ID
       setCurrentFormName('Unnamed');
+      setCurrentFormVersionType(null);
     }
   }, [form, versions, currentFormVersionId]);
+
+  // Get active version name for display
+  useEffect(() => {
+    if (active && versions?.length) {
+      const activeVersion = versions.find((v: any) => v.isActive);
+      if (activeVersion) {
+        setActiveVersionName(activeVersion.name || 'Unnamed');
+      } else {
+        // If active is true but no version is marked as active, try to find by matching form data
+        if (form) {
+          const formDataStr = JSON.stringify({ fields: form.fields, theme: form.theme });
+          const matchingVersion = versions.find((v: any) => {
+            if (!v.form) return false;
+            const versionDataStr = JSON.stringify({ fields: v.form.fields, theme: v.form.theme });
+            return versionDataStr === formDataStr;
+          });
+          if (matchingVersion) {
+            setActiveVersionName(matchingVersion.name || 'Unnamed');
+          } else {
+            setActiveVersionName(null);
+          }
+        } else {
+          setActiveVersionName(null);
+        }
+      }
+    } else {
+      setActiveVersionName(null);
+    }
+  }, [active, versions, form]);
 
   // Helper function to normalize fields for comparison (remove IDs for comparison)
 
@@ -149,9 +182,10 @@ const FormBuilder: React.FC = () => {
     // Update last saved state to null (form is reset, not saved)
     setLastSavedState(null);
     
-    // Reset form name
+    // Reset form name, version ID, and type
     setCurrentFormName('Unnamed');
     setCurrentFormVersionId(null);
+    setCurrentFormVersionType(null);
     
     // Close any open popups
     setShowFieldEditor(false);
@@ -252,17 +286,39 @@ const FormBuilder: React.FC = () => {
       }
       const normalizedTheme = normalizeThemeLayout(theme);
       const withCore = ensureCoreFields(formFields);
-      const result = await saveAsVersion(trimmedName, type, { fields: withCore, theme: normalizedTheme });
-      // Update form name if we got a version ID back
+      
+      // Check if we should update existing version or create new one
+      // Update if: we have a version ID AND the type matches (same form, same type)
+      // Create new if: no version ID OR type is different (converting draft to version or vice versa)
+      let result;
+      if (currentFormVersionId && currentFormVersionType === type) {
+        // Update existing version with same type
+        await updateVersion(currentFormVersionId, { 
+          name: trimmedName, 
+          form: { fields: withCore, theme: normalizedTheme } 
+        });
+        result = { id: currentFormVersionId };
+      } else {
+        // Create new version (either no existing ID, or different type)
+        result = await saveAsVersion(trimmedName, type, { fields: withCore, theme: normalizedTheme });
+      }
+      
+      // Update form name, version ID, and type
       if (result?.id) {
         setCurrentFormName(trimmedName);
         setCurrentFormVersionId(result.id);
+        setCurrentFormVersionType(type);
       }
+      
       // Update last saved state
       setLastSavedState({ fields: withCore, theme: normalizedTheme });
       await mutate();
       await mutateVersions();
       toast.showSuccess(type === 'draft' ? 'Saved to Versions.' : 'Saved to Versions.');
+      
+      // After successful save: reset Builder tab and switch to Versions tab
+      handleReset();
+      setActiveTab(2);
     } catch (e: unknown) {
       toast.showError('Failed to save: ' + (e instanceof Error ? e.message : 'Unknown error'));
     } finally {
@@ -277,6 +333,7 @@ const FormBuilder: React.FC = () => {
       setTheme(defaultTheme);
       setCurrentFormName('Unnamed');
       setCurrentFormVersionId(null);
+      setCurrentFormVersionType(null);
       toast.showSuccess('Changes discarded.');
       return;
     }
@@ -310,6 +367,7 @@ const FormBuilder: React.FC = () => {
       setTheme(defaultTheme);
       setCurrentFormName('Unnamed');
       setCurrentFormVersionId(null);
+      setCurrentFormVersionType(null);
       setLastSavedState(null);
       toast.showSuccess('New form created.');
     }
@@ -326,35 +384,48 @@ const FormBuilder: React.FC = () => {
       setShowLoadVersionConfirm(true);
       return;
     }
-    // Load version directly if no unsaved changes
-    loadVersionData(version);
+    // Load version directly if no unsaved changes, and always switch to Builder tab
+    loadVersionData(version, true);
   }
 
   function loadVersionData(version: any, goToBuilder: boolean = false) {
+    // Close any open popups/editors before loading new data
+    setShowFieldEditor(false);
+    setShowAddFieldEditor(false);
+    setPendingFieldType(null);
+    setShowThemeEditor(false);
+    setSelectedField(null);
+    
     const loadedFields = version?.form?.fields ? ensureCoreFields(version.form.fields) : ensureCoreFields([]);
     const loadedTheme = version?.form?.theme 
       ? normalizeThemeLayout({ ...defaultTheme, ...version.form.theme })
       : defaultTheme;
     
+    // Clear current form state and load new data
     setFormFields(loadedFields);
     setTheme(loadedTheme);
     
     // Update last saved state
     setLastSavedState({ fields: loadedFields, theme: loadedTheme });
     
-    // Update form name and version ID
+    // Update form name, version ID, and type
     setCurrentFormName(version?.name || 'Unnamed');
     setCurrentFormVersionId(version?.id || null);
+    setCurrentFormVersionType(version?.type || null);
+    
+    // Switch to Builder tab if requested
     if (goToBuilder) {
-      setActiveTab(1); // Switch to Builder tab
+      setActiveTab(1);
     }
+    
     setShowLoadVersionConfirm(false);
     setPendingVersion(null);
   }
 
   function handleConfirmLoadVersion() {
     if (pendingVersion) {
-      loadVersionData(pendingVersion, false);
+      // Always switch to Builder when loading from confirmation
+      loadVersionData(pendingVersion, true);
     }
   }
 
@@ -368,8 +439,8 @@ const FormBuilder: React.FC = () => {
     if (!pendingVersion) return;
     // Save current form first
     await handleSaveForm();
-    // Then load the version
-    loadVersionData(pendingVersion, false);
+    // Then load the version and switch to Builder tab
+    loadVersionData(pendingVersion, true);
   }
 
   function handleTabSwitch(newTab: number) {
@@ -429,21 +500,11 @@ const FormBuilder: React.FC = () => {
             toast.showError('Failed to save name: ' + (e instanceof Error ? e.message : 'Unknown error'));
           });
       } else {
-        // If it's unnamed, save as a new draft with this name
-        const normalizedTheme = normalizeThemeLayout(theme);
-        const withCore = ensureCoreFields(formFields);
-        saveAsVersion(trimmedName, 'draft', { fields: withCore, theme: normalizedTheme })
-          .then((result) => {
-            if (result?.id) {
-              setCurrentFormVersionId(result.id);
-              mutateVersions().catch(() => {}); // Silently fail mutate
-            }
-          })
-          .catch((e: any) => {
-            // Revert on error
-            setCurrentFormName('Unnamed');
-            toast.showError('Failed to save name: ' + (e instanceof Error ? e.message : 'Unknown error'));
-          });
+        // If it's unnamed and no version ID exists, just update the name in state
+        // Don't create a new draft here - let the user explicitly save via "Save As"
+        // This prevents duplicate forms from being created
+        // The name will be saved when user clicks "Save as Draft" or "Save as Version"
+        mutateVersions().catch(() => {}); // Silently fail mutate
       }
     } catch (e: any) {
       // Revert on error
@@ -742,12 +803,21 @@ const FormBuilder: React.FC = () => {
                 handleTabSwitch(2);
               }
             }}
-            title={active ? 'Active form - Click to view in Versions' : 'Inactive form - Click to view in Versions'}
+            title={active ? 'Activated form - Click to view in Versions' : 'No form activated - Click to view in Versions'}
           >
-            <div className={`w-2 h-2 rounded-full ${active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-            <span>Active Form:</span>
-            <span className="font-semibold">{currentFormName}</span>
-                  </div>
+            {active ? (
+              <>
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Activated Form:</span>
+                <span className="font-semibold">{activeVersionName || currentFormName}</span>
+              </>
+            ) : (
+              <>
+                <div className="w-2 h-2 rounded-full bg-slate-400" />
+                <span>No form is currently activated</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -782,7 +852,6 @@ const FormBuilder: React.FC = () => {
               confirmVariant: 'danger'
             });
           }}
-          onSave={handleSaveForm}
           onSaveAs={handleSaveAs}
         />
       )}
@@ -816,7 +885,10 @@ const FormBuilder: React.FC = () => {
                 ) : (
           <VersionsList
             onLoadVersion={handleLoadVersion}
-            onVersionLoaded={() => mutate()}
+            onVersionLoaded={() => {
+              mutate();
+              mutateVersions();
+            }}
             onNavigateToBuilder={() => handleTabSwitch(1)}
           />
         )}

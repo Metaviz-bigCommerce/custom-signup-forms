@@ -16,7 +16,6 @@ interface TopActionBarProps {
   onCancelEditing: () => void;
   onReset: () => void;
   onDiscard: () => void;
-  onSave: () => void;
   onSaveAs: (name: string, type: 'draft' | 'version') => void;
 }
 
@@ -32,7 +31,6 @@ const TopActionBar: React.FC<TopActionBarProps> = ({
   onCancelEditing,
   onReset,
   onDiscard,
-  onSave,
   onSaveAs,
 }) => {
   return (
@@ -131,7 +129,6 @@ const TopActionBar: React.FC<TopActionBarProps> = ({
               isDirty={isDirty}
               isSaving={isSaving}
               currentFormName={currentFormName}
-              onSave={onSave}
               onSaveAs={onSaveAs}
             />
           </div>

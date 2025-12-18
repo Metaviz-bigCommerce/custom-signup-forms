@@ -6,6 +6,7 @@ import { Loader2, Trash2, CheckCircle2, FileEdit, Power, Pencil, Search, LayoutG
 import VersionNameModal from './VersionNameModal';
 import { useToast } from '@/components/common/Toast';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
+import ActivationConfirmModal from './ActivationConfirmModal';
 
 // Form Preview Thumbnail Component - Compact preview showing just a small portion
 const FormPreviewThumbnail: React.FC<{ form: any }> = ({ form }) => {
@@ -122,6 +123,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  const [activationModalVersion, setActivationModalVersion] = useState<any | null>(null);
   const toast = useToast();
 
   const filteredVersions = versions.filter((v: any) =>
@@ -150,15 +152,63 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
     });
   };
 
-  const handleSetActive = async (versionId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleSetActive = async (versionId: string, showConfirm: boolean = true) => {
+    const version = versions.find((v: any) => v.id === versionId);
+    if (!version) {
+      toast.showError('Version not found');
+      return;
+    }
+
+    // Prevent activation of drafts
+    if (version.type === 'draft') {
+      toast.showError('Draft forms cannot be activated. Please convert to a version first.');
+      return;
+    }
+
+    // Check if this version is already active
+    if (version.isActive && isFormActive) {
+      if (showConfirm) {
+        setConfirmDialog({
+          isOpen: true,
+          title: 'Form Already Active',
+          message: `"${version.name || 'Unnamed'}" is already active. Do you want to deactivate it?`,
+          onConfirm: async () => {
+            await handleDeactivate();
+            setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+          }
+        });
+        return;
+      }
+    }
+
+    // Check if another form is currently active
+    const currentlyActiveVersion = versions.find((v: any) => v.isActive && v.id !== versionId);
+    if (currentlyActiveVersion && isFormActive && showConfirm) {
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Switch Active Form',
+        message: `"${currentlyActiveVersion.name || 'Unnamed'}" is currently active. Do you want to activate "${version.name || 'Unnamed'}" and deactivate "${currentlyActiveVersion.name || 'Unnamed'}"?`,
+        onConfirm: async () => {
+          await performActivation(versionId);
+          setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+        }
+      });
+      return;
+    }
+
+    // Proceed with activation
+    await performActivation(versionId);
+  };
+
+  const performActivation = async (versionId: string) => {
+    const version = versions.find((v: any) => v.id === versionId);
+    if (!version || !version.form) {
+      toast.showError('Version not found or has no form data');
+      return;
+    }
+
     setActivatingId(versionId);
     try {
-      // Find the version to get its form data
-      const version = versions.find((v: any) => v.id === versionId);
-      if (!version || !version.form) {
-        throw new Error('Version not found or has no form data');
-      }
 
       // Generate signup script using version's fields+theme
       await fetch('/api/generate-signup-script', {
@@ -199,8 +249,17 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
       // Set signupFormActive=true
       await setActive(true);
       
+      // Refresh versions list first to get updated isActive flags
       await mutate();
+      // Then refresh store form to get updated active state
       await mutateStoreForm();
+      
+      // Force a small delay to ensure state is fully updated
+      setTimeout(() => {
+        mutate();
+        mutateStoreForm();
+      }, 100);
+      
       if (onVersionLoaded) onVersionLoaded();
       
       toast.showSuccess('Form activated' + (finalScriptUuid ? `: ${finalScriptUuid}` : '.'));
@@ -211,8 +270,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
     }
   };
 
-  const handleDeactivate = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeactivate = async () => {
     setDeactivatingId('deactivate');
     try {
       // Delete BigCommerce script if it exists
@@ -230,6 +288,13 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
       
       await mutate();
       await mutateStoreForm();
+      
+      // Force a small delay to ensure state is fully updated
+      setTimeout(() => {
+        mutate();
+        mutateStoreForm();
+      }, 100);
+      
       if (onVersionLoaded) onVersionLoaded();
       
       toast.showSuccess('Form deactivated.');
@@ -243,6 +308,15 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
   const handleLoad = (version: any) => {
     onLoadVersion(version);
     if (onVersionLoaded) onVersionLoaded();
+  };
+
+  const handleFormClick = (version: any, e: React.MouseEvent) => {
+    // Don't show modal if clicking on action buttons
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('[onClick]')) {
+      return;
+    }
+    setActivationModalVersion(version);
   };
 
   const handleEdit = (version: any, e: React.MouseEvent) => {
@@ -388,7 +462,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
           onClick={() => handleLoad(version)}
         >
           {/* Active indicator bar */}
-          {version.isActive && (
+          {version.isActive && isFormActive && (
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-green-600" />
           )}
           
@@ -407,7 +481,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
               <span className={`px-2 py-0.5 rounded text-xs font-semibold border flex-shrink-0 ${getTypeBadge(version.type)}`}>
                 {version.type || 'version'}
               </span>
-              {version.isActive && (
+              {version.isActive && isFormActive && (
                 <span className="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-300 flex items-center gap-1 flex-shrink-0">
                   <CheckCircle2 className="w-3 h-3" />
                   Active
@@ -435,31 +509,29 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
                   <FileEdit className="w-3.5 h-3.5" />
                   Load
                 </button>
-                {!version.isActive && !isFormActive && (
+                {/* Always show Activate button for versions (not drafts) */}
+                {version.type !== 'draft' && (
                   <button
-                    onClick={(e) => handleSetActive(version.id, e)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSetActive(version.id);
+                    }}
                     disabled={activatingId === version.id}
-                    className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                    title="Activate Version - Set this version as the active form"
+                    className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                      version.isActive && isFormActive
+                        ? 'text-amber-600 hover:bg-amber-50'
+                        : 'text-green-600 hover:bg-green-50'
+                    }`}
+                    title={
+                      version.isActive && isFormActive
+                        ? 'Form is active - Click to deactivate'
+                        : 'Activate Version - Set this version as the active form'
+                    }
                   >
                     {activatingId === version.id ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <Power className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                )}
-                {isFormActive && version.isActive && (
-                  <button
-                    onClick={handleDeactivate}
-                    disabled={deactivatingId !== null}
-                    className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-50"
-                    title="Deactivate Form - Remove form from storefront"
-                  >
-                    {deactivatingId !== null ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <XCircle className="w-3.5 h-3.5" />
                     )}
                   </button>
                 )}
@@ -501,7 +573,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 flex-1 min-w-0">
               {/* Active indicator */}
-              {version.isActive && (
+              {version.isActive && isFormActive && (
                 <div className="w-1 h-12 bg-gradient-to-b from-green-400 to-green-600 rounded-full flex-shrink-0" />
               )}
               
@@ -522,7 +594,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
                   <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border flex-shrink-0 ${getTypeBadge(version.type)}`}>
                     {version.type || 'version'}
                   </span>
-                  {version.isActive && (
+                  {version.isActive && isFormActive && (
                     <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-green-100 text-green-700 border border-green-300 flex items-center gap-1.5 flex-shrink-0">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       Active
@@ -553,9 +625,12 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
                 <FileEdit className="w-4 h-4" />
                 <span className="hidden sm:inline">Load</span>
               </button>
-              {!version.isActive && !isFormActive && (
+              {!version.isActive && !isFormActive && version.type !== 'draft' && (
                 <button
-                  onClick={(e) => handleSetActive(version.id, e)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSetActive(version.id);
+                  }}
                   disabled={activatingId === version.id}
                   className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
                   title="Activate Version - Set this version as the active form"
@@ -569,7 +644,10 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
               )}
               {isFormActive && version.isActive && (
                 <button
-                  onClick={handleDeactivate}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeactivate();
+                  }}
                   disabled={deactivatingId !== null}
                   className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-50"
                   title="Deactivate Form - Remove form from storefront"
@@ -704,6 +782,26 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
           setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} });
         }}
         onCancel={() => setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} })}
+      />
+
+      {/* Activation Confirm Modal */}
+      <ActivationConfirmModal
+        isOpen={activationModalVersion !== null}
+        version={activationModalVersion}
+        isCurrentlyActive={activationModalVersion?.isActive && isFormActive}
+        onClose={() => setActivationModalVersion(null)}
+        onActivate={() => {
+          if (activationModalVersion) {
+            // When activating from modal, still show confirmations for switching
+            handleSetActive(activationModalVersion.id, true);
+          }
+        }}
+        onDeactivate={handleDeactivate}
+        onLoad={() => {
+          if (activationModalVersion) {
+            handleLoad(activationModalVersion);
+          }
+        }}
       />
     </div>
   );
