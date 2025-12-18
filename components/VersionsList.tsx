@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useState } from 'react';
-import { useFormVersions, useFormVersionActions } from '@/lib/hooks';
-import { Loader2, Trash2, CheckCircle2, FileEdit, Power, Pencil, Search, LayoutGrid, ListChecks } from 'lucide-react';
+import { useFormVersions, useFormVersionActions, useBcScriptsActions, useStoreFormActions, useStoreForm } from '@/lib/hooks';
+import { Loader2, Trash2, CheckCircle2, FileEdit, Power, Pencil, Search, LayoutGrid, ListChecks, XCircle } from 'lucide-react';
 import VersionNameModal from './VersionNameModal';
 import { useToast } from '@/components/common/Toast';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -105,15 +105,20 @@ type ViewMode = 'grid' | 'list';
 interface VersionsListProps {
   onLoadVersion: (version: any) => void;
   onVersionLoaded?: () => void;
+  onNavigateToBuilder?: () => void;
 }
 
-export default function VersionsList({ onLoadVersion, onVersionLoaded }: VersionsListProps) {
+export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigateToBuilder }: VersionsListProps) {
   const { versions, mutate, isError } = useFormVersions();
   const { deleteVersion, setActiveVersion, updateVersion } = useFormVersionActions();
+  const { addScript, updateScript, deleteScript } = useBcScriptsActions();
+  const { setActive } = useStoreFormActions();
+  const { active: isFormActive, scriptUuid, mutate: mutateStoreForm } = useStoreForm();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activatingId, setActivatingId] = useState<string | null>(null);
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
@@ -149,13 +154,89 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded }: Version
     e.stopPropagation();
     setActivatingId(versionId);
     try {
+      // Find the version to get its form data
+      const version = versions.find((v: any) => v.id === versionId);
+      if (!version || !version.form) {
+        throw new Error('Version not found or has no form data');
+      }
+
+      // Generate signup script using version's fields+theme
+      await fetch('/api/generate-signup-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formFields: version.form.fields, theme: version.form.theme })
+      });
+
+      // Create or update BigCommerce script
+      let finalScriptUuid: string | null = scriptUuid || null;
+      try {
+        const scriptPayload = {
+          name: "Custom Signup Form",
+          description: "Injects custom signup form script into the theme",
+          src: typeof window !== 'undefined' ? `${window.location.origin}/custom-signup.min.js` : "/custom-signup.min.js",
+          auto_uninstall: true,
+          load_method: "default",
+          location: "head",
+          visibility: "all_pages",
+          kind: "src",
+          consent_category: "essential"
+        };
+
+        if (finalScriptUuid) {
+          await updateScript(finalScriptUuid, scriptPayload);
+        } else {
+          const data = await addScript(scriptPayload);
+          finalScriptUuid = (data as any)?.data?.uuid || null;
+        }
+      } catch (scriptError: any) {
+        console.error('Script update error:', scriptError);
+        // Continue even if script update fails - version activation should still work
+      }
+
+      // Set version as active (updates DB and main form)
       await setActiveVersion(versionId);
+      
+      // Set signupFormActive=true
+      await setActive(true);
+      
       await mutate();
+      await mutateStoreForm();
       if (onVersionLoaded) onVersionLoaded();
+      
+      toast.showSuccess('Form activated' + (finalScriptUuid ? `: ${finalScriptUuid}` : '.'));
     } catch (error: any) {
-      toast.showError('Failed to set active version: ' + (error?.message || 'Unknown error'));
+      toast.showError('Failed to activate version: ' + (error?.message || 'Unknown error'));
     } finally {
       setActivatingId(null);
+    }
+  };
+
+  const handleDeactivate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeactivatingId('deactivate');
+    try {
+      // Delete BigCommerce script if it exists
+      if (scriptUuid) {
+        try {
+          await deleteScript(scriptUuid);
+        } catch (scriptError: any) {
+          console.error('Script deletion error:', scriptError);
+          // Continue even if script deletion fails
+        }
+      }
+
+      // Set signupFormActive=false
+      await setActive(false);
+      
+      await mutate();
+      await mutateStoreForm();
+      if (onVersionLoaded) onVersionLoaded();
+      
+      toast.showSuccess('Form deactivated.');
+    } catch (error: any) {
+      toast.showError('Failed to deactivate: ' + (error?.message || 'Unknown error'));
+    } finally {
+      setDeactivatingId(null);
     }
   };
 
@@ -354,7 +435,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded }: Version
                   <FileEdit className="w-3.5 h-3.5" />
                   Load
                 </button>
-                {!version.isActive && (
+                {!version.isActive && !isFormActive && (
                   <button
                     onClick={(e) => handleSetActive(version.id, e)}
                     disabled={activatingId === version.id}
@@ -365,6 +446,20 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded }: Version
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <Power className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                )}
+                {isFormActive && version.isActive && (
+                  <button
+                    onClick={handleDeactivate}
+                    disabled={deactivatingId !== null}
+                    className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-50"
+                    title="Deactivate Form - Remove form from storefront"
+                  >
+                    {deactivatingId !== null ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <XCircle className="w-3.5 h-3.5" />
                     )}
                   </button>
                 )}
@@ -458,7 +553,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded }: Version
                 <FileEdit className="w-4 h-4" />
                 <span className="hidden sm:inline">Load</span>
               </button>
-              {!version.isActive && (
+              {!version.isActive && !isFormActive && (
                 <button
                   onClick={(e) => handleSetActive(version.id, e)}
                   disabled={activatingId === version.id}
@@ -469,6 +564,20 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded }: Version
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Power className="w-4 h-4" />
+                  )}
+                </button>
+              )}
+              {isFormActive && version.isActive && (
+                <button
+                  onClick={handleDeactivate}
+                  disabled={deactivatingId !== null}
+                  className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-50"
+                  title="Deactivate Form - Remove form from storefront"
+                >
+                  {deactivatingId !== null ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <XCircle className="w-4 h-4" />
                   )}
                 </button>
               )}
@@ -552,11 +661,19 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded }: Version
             <Search className="w-8 h-8 text-slate-400" />
           </div>
           <p className="text-gray-500 text-lg font-medium">
-            {searchQuery ? 'No versions found matching your search.' : 'No saved versions or drafts yet.'}
+            {searchQuery ? 'No forms found matching your search.' : 'No saved forms yet.'}
           </p>
           <p className="text-gray-400 text-sm mt-2">
-            {searchQuery ? 'Try adjusting your search terms.' : 'Create your first version or draft to get started.'}
+            {searchQuery ? 'Try adjusting your search terms.' : 'Save your form to start managing and activating versions.'}
           </p>
+          {!searchQuery && onNavigateToBuilder && (
+            <button
+              onClick={onNavigateToBuilder}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              Go to Builder
+            </button>
+          )}
         </div>
       ) : (
         <div className="transition-all duration-300">

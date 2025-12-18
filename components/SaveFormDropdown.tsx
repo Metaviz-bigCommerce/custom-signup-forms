@@ -2,16 +2,15 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Save, ChevronDown, Loader2, FileText, Tag } from 'lucide-react';
-import VersionNameModal from './VersionNameModal';
+import { Save, ChevronDown, Loader2 } from 'lucide-react';
+import SaveAsModal from './SaveAsModal';
 
 interface SaveFormDropdownProps {
   isDirty: boolean;
   isSaving: boolean;
   currentFormName?: string;
   onSave: () => Promise<void>;
-  onSaveAsDraft: (name: string) => Promise<void>;
-  onSaveAsVersion: (name: string) => Promise<void>;
+  onSaveAs: (name: string, type: 'draft' | 'version') => Promise<void>;
 }
 
 export default function SaveFormDropdown({
@@ -19,13 +18,10 @@ export default function SaveFormDropdown({
   isSaving,
   currentFormName = 'Unnamed',
   onSave,
-  onSaveAsDraft,
-  onSaveAsVersion,
+  onSaveAs,
 }: SaveFormDropdownProps) {
-  const isUnnamed = currentFormName === 'Unnamed';
   const [isOpen, setIsOpen] = useState(false);
-  const [showDraftModal, setShowDraftModal] = useState(false);
-  const [showVersionModal, setShowVersionModal] = useState(false);
+  const [showSaveAsModal, setShowSaveAsModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
@@ -57,20 +53,10 @@ export default function SaveFormDropdown({
     await onSave();
   };
 
-  const handleSaveAsDraft = async (name: string) => {
-    setShowDraftModal(false);
+  const handleSaveAs = async (name: string, type: 'draft' | 'version') => {
+    setShowSaveAsModal(false);
     setIsOpen(false);
-    // Use provided name, or current name if not unnamed, or generate default
-    const finalName = name.trim() || (!isUnnamed ? currentFormName : `Draft ${new Date().toLocaleDateString()}`);
-    await onSaveAsDraft(finalName);
-  };
-
-  const handleSaveAsVersion = async (name: string) => {
-    setShowVersionModal(false);
-    setIsOpen(false);
-    // Use provided name, or current name if not unnamed (required for version)
-    const finalName = name.trim() || (!isUnnamed ? currentFormName : '');
-    await onSaveAsVersion(finalName);
+    await onSaveAs(name, type);
   };
 
   const dropdownContent = isOpen && isDirty && !isSaving ? (
@@ -95,26 +81,13 @@ export default function SaveFormDropdown({
       <button
         onClick={() => {
           setIsOpen(false);
-          setShowDraftModal(true);
+          setShowSaveAsModal(true);
         }}
-        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-amber-50 transition-colors flex items-center gap-3 border-b border-slate-100"
+        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 transition-colors flex items-center gap-3"
       >
-        <FileText className="w-4 h-4 text-amber-600" />
+        <Save className="w-4 h-4 text-blue-600" />
         <div className="flex flex-col">
-          <span className="font-medium">Save as Draft</span>
-          <span className="text-xs text-gray-500">Save as draft version</span>
-        </div>
-      </button>
-      <button
-        onClick={() => {
-          setIsOpen(false);
-          setShowVersionModal(true);
-        }}
-        className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-purple-50 transition-colors flex items-center gap-3"
-      >
-        <Tag className="w-4 h-4 text-purple-600" />
-        <div className="flex flex-col">
-          <span className="font-medium">Save as Version</span>
+          <span className="font-medium">Save As</span>
           <span className="text-xs text-gray-500">Create a new version</span>
         </div>
       </button>
@@ -154,24 +127,11 @@ export default function SaveFormDropdown({
 
       {typeof window !== 'undefined' && dropdownContent && createPortal(dropdownContent, document.body)}
 
-      <VersionNameModal
-        isOpen={showDraftModal}
-        onClose={() => setShowDraftModal(false)}
-        onConfirm={handleSaveAsDraft}
-        title="Save as Draft"
-        placeholder={isUnnamed ? "Enter draft name (optional)" : "Enter draft name or use current"}
-        required={false}
-        initialName={!isUnnamed ? currentFormName : ''}
-      />
-
-      <VersionNameModal
-        isOpen={showVersionModal}
-        onClose={() => setShowVersionModal(false)}
-        onConfirm={handleSaveAsVersion}
-        title="Save as New Version"
-        placeholder={isUnnamed ? "Enter version name" : "Enter version name or use current"}
-        required={isUnnamed}
-        initialName={!isUnnamed ? currentFormName : ''}
+      <SaveAsModal
+        isOpen={showSaveAsModal}
+        onClose={() => setShowSaveAsModal(false)}
+        onConfirm={handleSaveAs}
+        currentFormName={currentFormName}
       />
     </>
   );
