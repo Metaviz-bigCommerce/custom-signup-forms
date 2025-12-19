@@ -1,5 +1,5 @@
 import NavBar from '@/components/NavBar';
-import RequestsManager from '@/components/RequestsManager';
+import RequestsManager from '@/components/requests/RequestsManager';
 
 export default function RequestsPage() {
   return (

@@ -4,15 +4,122 @@ import { getSession } from '@/lib/auth';
 import db from '@/lib/db';
 import { trySendTemplatedEmail } from '@/lib/email';
 
+function extractEmail(data: Record<string, any>, topLevelEmail?: string | null): string {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+  // First check top-level email
+  if (topLevelEmail && typeof topLevelEmail === 'string' && topLevelEmail.trim()) {
+    const trimmed = topLevelEmail.trim();
+    if (emailRegex.test(trimmed)) {
+      return trimmed.toLowerCase();
+    }
+  }
+  
+  // Search in data object
+  const entries = Object.entries(data || {});
+  
+  // Normalize key for comparison - remove all non-alphanumeric and convert to lowercase
+  const normalize = (k: string) => String(k || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  // List of candidate field names (normalized)
+  const candidates = ['email', 'emailaddress', 'useremail', 'contactemail', 'primaryemail', 'workemail'];
+  
+  // Try exact matches first
+  for (const key of candidates) {
+    const found = entries.find(([k]) => normalize(k) === key);
+    if (found && found[1]) {
+      const val = String(found[1]).trim();
+      if (val && emailRegex.test(val)) {
+        return val.toLowerCase();
+      }
+    }
+  }
+  
+  // Fuzzy search: any field containing 'email' or 'e-mail' or 'mail'
+  const fuzzy = entries.find(([k, v]) => {
+    const nk = normalize(k);
+    if (!nk.includes('email') && !nk.includes('mail')) return false;
+    // Exclude fields like "email_verified", "email_opt_in", etc.
+    if (nk.includes('verif') || nk.includes('opt') || nk.includes('subscri') || nk.includes('confirm')) return false;
+    const val = String(v ?? '').trim();
+    return val && emailRegex.test(val);
+  });
+  if (fuzzy) return String(fuzzy[1]).trim().toLowerCase();
+  
+  // Last resort: scan all values for something that looks like an email
+  for (const [k, v] of entries) {
+    if (typeof v === 'string') {
+      const val = v.trim();
+      if (val && emailRegex.test(val)) {
+        // Found an email-like value - use it
+        console.log(`[Approve] Found email in field "${k}":`, val);
+        return val.toLowerCase();
+      }
+    }
+  }
+  
+  return '';
+}
+
 function extractName(data: Record<string, any>) {
   const entries = Object.entries(data || {});
-  const candidates = ['name', 'full_name', 'full name', 'first_name', 'first name'];
-  for (const key of candidates) {
-    const found = entries.find(([k]) => k.toLowerCase() === key);
-    if (found) return String(found[1] ?? '');
+  
+  // Normalize key for comparison - remove all non-alphanumeric and convert to lowercase
+  const normalize = (k: string) => String(k || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  // Priority list of normalized field names to check (for full name fields)
+  const fullNameCandidates = ['fullname', 'name', 'customername', 'applicantname', 'contactname', 'displayname'];
+  
+  // First, try to find a full name field
+  for (const key of fullNameCandidates) {
+    const found = entries.find(([k]) => normalize(k) === key);
+    if (found && found[1]) {
+      const val = String(found[1]).trim();
+      if (val) {
+        console.log(`[Approve] Found full name in field "${found[0]}":`, val);
+        return val;
+      }
+    }
   }
-  const fuzzy = entries.find(([k]) => /name/i.test(k));
-  if (fuzzy) return String(fuzzy[1] ?? '');
+  
+  // Try to combine first_name and last_name if both exist
+  const firstNameEntry = entries.find(([k]) => {
+    const nk = normalize(k);
+    return nk === 'firstname' || nk === 'first' || nk === 'givenname' ||
+           (nk.includes('first') && nk.includes('name'));
+  });
+  const lastNameEntry = entries.find(([k]) => {
+    const nk = normalize(k);
+    return nk === 'lastname' || nk === 'last' || nk === 'surname' || nk === 'familyname' ||
+           (nk.includes('last') && nk.includes('name')) || 
+           (nk.includes('sur') && nk.includes('name'));
+  });
+  
+  const firstName = firstNameEntry ? String(firstNameEntry[1] ?? '').trim() : '';
+  const lastName = lastNameEntry ? String(lastNameEntry[1] ?? '').trim() : '';
+  
+  if (firstName || lastName) {
+    const combined = [firstName, lastName].filter(Boolean).join(' ');
+    console.log(`[Approve] Combined name from first/last:`, combined);
+    return combined;
+  }
+  
+  // Fuzzy search: find any field containing 'name' but not company/business
+  const fuzzy = entries.find(([k, v]) => {
+    const nk = normalize(k);
+    if (!nk.includes('name')) return false;
+    // Exclude company/business names and email-related
+    if (nk.includes('company') || nk.includes('business') || nk.includes('organiz') || 
+        nk.includes('firm') || nk.includes('brand') || nk.includes('email') ||
+        nk.includes('user')) return false;
+    const val = String(v ?? '').trim();
+    return val.length > 0;
+  });
+  if (fuzzy) {
+    console.log(`[Approve] Found name via fuzzy match in field "${fuzzy[0]}":`, fuzzy[1]);
+    return String(fuzzy[1]).trim();
+  }
+  
   return '';
 }
 
@@ -69,12 +176,61 @@ function toFormFields(data: Record<string, any>): Array<{ name: string; value: s
   return [];
 }
 
-function splitName(full: string): { first_name?: string; last_name?: string } {
+function splitName(full: string, data?: Record<string, any>): { first_name: string; last_name: string } {
   const s = (full || '').trim();
-  if (!s) return {};
-  const parts = s.split(/\s+/);
-  if (parts.length === 1) return { first_name: parts[0] };
-  return { first_name: parts.slice(0, -1).join(' '), last_name: parts.slice(-1).join(' ') };
+  
+  // Normalize key for comparison - remove all non-alphanumeric and convert to lowercase
+  const normalize = (k: string) => String(k || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  // First, try to get explicit first_name and last_name from data
+  if (data) {
+    const entries = Object.entries(data);
+    
+    const firstNameEntry = entries.find(([k]) => {
+      const nk = normalize(k);
+      // Match: firstname, first_name, first name, first, givenname, etc.
+      return nk === 'firstname' || nk === 'first' || nk === 'givenname' ||
+             (nk.includes('first') && nk.includes('name'));
+    });
+    const lastNameEntry = entries.find(([k]) => {
+      const nk = normalize(k);
+      // Match: lastname, last_name, last name, surname, familyname, etc.
+      return nk === 'lastname' || nk === 'last' || nk === 'surname' || nk === 'familyname' ||
+             (nk.includes('last') && nk.includes('name')) || 
+             (nk.includes('sur') && nk.includes('name')) ||
+             (nk.includes('family') && nk.includes('name'));
+    });
+    
+    const explicitFirst = firstNameEntry ? String(firstNameEntry[1] ?? '').trim() : '';
+    const explicitLast = lastNameEntry ? String(lastNameEntry[1] ?? '').trim() : '';
+    
+    console.log(`[Approve] Explicit first name found: "${explicitFirst}" from key: "${firstNameEntry?.[0]}"`);
+    console.log(`[Approve] Explicit last name found: "${explicitLast}" from key: "${lastNameEntry?.[0]}"`);
+    
+    if (explicitFirst || explicitLast) {
+      return {
+        first_name: explicitFirst || (s ? s.split(/\s+/)[0] : 'Customer'),
+        last_name: explicitLast || 'User',
+      };
+    }
+  }
+  
+  // Fall back to splitting the full name
+  if (!s) return { first_name: 'Customer', last_name: 'User' };
+  
+  const parts = s.split(/\s+/).filter(p => p.length > 0);
+  if (parts.length === 0) {
+    return { first_name: 'Customer', last_name: 'User' };
+  }
+  if (parts.length === 1) {
+    // Only one name provided - use it as first name and set a placeholder for last name
+    return { first_name: parts[0], last_name: 'User' };
+  }
+  
+  return { 
+    first_name: parts.slice(0, -1).join(' '), 
+    last_name: parts.slice(-1).join(' ') 
+  };
 }
 
 function extractCountryCode(data: Record<string, any>): string {
@@ -182,10 +338,19 @@ export async function POST(req: NextRequest) {
     const request = await db.getSignupRequest(storeHash, id);
     if (!request) return NextResponse.json({ message: 'Request not found' }, { status: 404 });
 
-    const email = (request?.email || '').trim().toLowerCase();
+    // Extract email - check both top-level and in data object
+    const email = extractEmail(request?.data || {}, request?.email);
     const fullName = extractName(request?.data || {});
-    const { first_name, last_name } = splitName(fullName);
+    const { first_name, last_name } = splitName(fullName, request?.data || {});
     const form_fields = toFormFields(request?.data || {});
+    
+    // Debug logging for troubleshooting
+    console.log('[Approve] Request data:', JSON.stringify(request?.data, null, 2));
+    console.log('[Approve] Top-level email:', request?.email);
+    console.log('[Approve] Extracted email:', email);
+    console.log('[Approve] Full name:', fullName);
+    console.log('[Approve] First name:', first_name);
+    console.log('[Approve] Last name:', last_name);
     const phone = getFieldValue(
       request?.data || {},
       ['phone', 'phone_number', 'mobile', 'mobile_number', 'contact_number'],
@@ -211,8 +376,8 @@ export async function POST(req: NextRequest) {
     const createUrl = `https://api.bigcommerce.com/stores/${storeHash}/v3/customers`;
     const baseCustomer: any = {
       email,
-      first_name: first_name || '',
-      last_name: last_name || '',
+      first_name,
+      last_name,
       ...(customer_group_id ? { customer_group_id } : {}),
       // Only include form_fields if there are actual custom fields configured
       ...(form_fields.length > 0 ? { form_fields } : {}),

@@ -1,10 +1,12 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, X, Mail, Search, XCircle, RotateCcw, AlertCircle } from 'lucide-react';
+import { XCircle, Search } from 'lucide-react';
 import { useSession } from '@/context/session';
 import { useToast } from '@/components/common/Toast';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
+import RequestDetailsModal, { RequestItem as ModalRequestItem } from '@/components/requests/RequestDetailsModal';
+import ApprovalDialog from '@/components/requests/ApprovalDialog';
 
 type RequestItem = {
   id: string;
@@ -23,22 +25,17 @@ const RequestsManager: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'' | 'pending' | 'approved' | 'rejected'>('');
   const [searchFilter, setSearchFilter] = useState('');
   const [selected, setSelected] = useState<RequestItem | null>(null);
-  const [detailsExpanded, setDetailsExpanded] = useState(false);
-  const [detailsSearch, setDetailsSearch] = useState('');
   const pageSize = 10;
 
   // Approval dialog state
   const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
-  const [groupsLoading, setGroupsLoading] = useState(false);
-  const [customerGroups, setCustomerGroups] = useState<Array<any>>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
-  const [approving, setApproving] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const [showRequestInfoModal, setShowRequestInfoModal] = useState(false);
   const [requestInfoText, setRequestInfoText] = useState('');
   const [requestInfoTargetId, setRequestInfoTargetId] = useState<string | null>(null);
   const [sendingInfoRequest, setSendingInfoRequest] = useState(false);
+  const [actionLoading, setActionLoading] = useState<'approve' | 'reject' | 'info' | 'delete' | null>(null);
   const toast = useToast();
 
   const load = async (cursor?: string | null, replace = false) => {
@@ -77,51 +74,22 @@ const RequestsManager: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, context]);
 
-  const openApproveDialog = async (id: string) => {
-    if (!context) return;
+  const openApproveDialog = (id: string) => {
     setApproveTargetId(id);
     setShowApproveDialog(true);
-    setSelectedGroupId(null);
-    setGroupsLoading(true);
-    try {
-      const res = await fetch(`/api/customer-groups?context=${encodeURIComponent(context)}`);
-      if (!res.ok) throw new Error(await res.text());
-      const json = await res.json();
-      setCustomerGroups(Array.isArray(json?.groups) ? json.groups : []);
-    } catch {
-      setCustomerGroups([]);
-    } finally {
-      setGroupsLoading(false);
-    }
   };
 
-  const approve = async () => {
-    if (!context || !approveTargetId) return;
-    setApproving(true);
-    try {
-      const res = await fetch(`/api/signup-requests/approve?context=${encodeURIComponent(context)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: approveTargetId, customer_group_id: selectedGroupId || undefined }),
-      });
-      if (!res.ok) {
-        const txt = await res.text();
-        toast.showError(txt || 'Failed to approve and create customer');
-        return;
-      }
-      setAllItems(allItems.map(it => it.id === approveTargetId ? { ...it, status: 'approved' } : it));
-      if (selected && selected.id === approveTargetId) {
-        setSelected({ ...selected, status: 'approved' });
-      }
-      setShowApproveDialog(false);
-      setApproveTargetId(null);
-      toast.showSuccess('Request approved and customer created successfully.');
-    } finally {
-      setApproving(false);
+  const handleApprovalComplete = (id: string) => {
+    setAllItems(allItems.map(it => it.id === id ? { ...it, status: 'approved' } : it));
+    if (selected && selected.id === id) {
+      setSelected({ ...selected, status: 'approved' });
     }
+    setShowApproveDialog(false);
+    setApproveTargetId(null);
   };
   const updateStatus = async (id: string, newStatus: 'pending' | 'approved' | 'rejected') => {
     if (!context) return;
+    setActionLoading(newStatus === 'rejected' ? 'reject' : null);
     try {
       const res = await fetch(`/api/signup-requests?id=${encodeURIComponent(id)}&context=${encodeURIComponent(context)}`, {
         method: 'PATCH',
@@ -140,6 +108,8 @@ const RequestsManager: React.FC = () => {
       }
     } catch (error: unknown) {
       toast.showError('Failed to update status: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -178,6 +148,7 @@ const RequestsManager: React.FC = () => {
       return;
     }
     setSendingInfoRequest(true);
+    setActionLoading('info');
     try {
       const res = await fetch(`/api/signup-requests/info-request?id=${encodeURIComponent(requestInfoTargetId)}&context=${encodeURIComponent(context)}`, {
         method: 'POST',
@@ -197,6 +168,7 @@ const RequestsManager: React.FC = () => {
       toast.showError('Failed to send info request: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setSendingInfoRequest(false);
+      setActionLoading(null);
     }
   };
 
@@ -206,25 +178,6 @@ const RequestsManager: React.FC = () => {
     if (typeof ts?.seconds === 'number') return new Date(ts.seconds * 1000).toLocaleString();
     return '';
     };
-  const isImage = (f?: { url?: string; contentType?: string }) => {
-    const t = (f?.contentType || '').toLowerCase();
-    if (t.startsWith('image/')) return true;
-    const u = (f?.url || '').toLowerCase();
-    return /\.(png|jpg|jpeg|gif|webp|bmp|svg)$/.test(u);
-  };
-  const copyToClipboard = async (text: string) => {
-    try { await navigator.clipboard.writeText(text); } catch {}
-  };
-  const basename = (v: unknown) => {
-    const s = String(v ?? '');
-    if (!s) return s;
-    // If looks like URL or path, reduce to filename
-    if (s.includes('/') || s.includes('\\')) {
-      const parts = s.split(/[/\\]/);
-      return parts[parts.length - 1] || s;
-    }
-    return s;
-  };
 
   const extractName = (data: Record<string, any>): string => {
     const entries = Object.entries(data || {});
@@ -306,6 +259,7 @@ const RequestsManager: React.FC = () => {
 
   const performDelete = async (id: string) => {
     if (!context) return;
+    setActionLoading('delete');
     try {
       const res = await fetch(`/api/signup-requests?id=${encodeURIComponent(id)}&context=${encodeURIComponent(context)}`, {
         method: 'DELETE',
@@ -323,6 +277,8 @@ const RequestsManager: React.FC = () => {
       }
     } catch (error: unknown) {
       toast.showError('Failed to delete request: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -475,311 +431,31 @@ const RequestsManager: React.FC = () => {
       </div>
 
       {selected && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 sticky top-0 bg-white/90 backdrop-blur z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">Request Details</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">ID: <span className="font-mono">{selected.id}</span></p>
-                  </div>
-                  <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium border ${
-                    selected.status === 'pending' 
-                      ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                    selected.status === 'approved' 
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                      'bg-rose-50 text-rose-700 border-rose-200'
-                  }`}>
-                    {selected.status === 'pending' && <AlertCircle className="w-3.5 h-3.5 text-amber-700" />}
-                    {selected.status === 'approved' && <Check className="w-3.5 h-3.5 text-emerald-700" />}
-                    {selected.status === 'rejected' && <X className="w-3.5 h-3.5 text-rose-700" />}
-                    {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
-                  </span>
-                </div>
-                <button 
-                  onClick={() => setSelected(null)} 
-                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-2 transition-colors"
-                  title="Close"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="px-6 py-5 overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-                <div className="p-4 rounded-xl border border-gray-100 bg-gray-50">
-                  <div className="text-xs text-gray-500 mb-1">Submitted</div>
-                  <div className="text-sm font-medium text-gray-800">{formatDate(selected.submittedAt)}</div>
-                </div>
-                <div className="p-4 rounded-xl border border-gray-100 bg-gray-50 md:col-span-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-xs text-gray-500">Search fields</div>
-                    <div className="flex-1" />
-                    <div className="flex items-center gap-2">
-                      <input
-                        value={detailsSearch}
-                        onChange={(e) => setDetailsSearch(e.target.value)}
-                        placeholder="Filter by field or value…"
-                        className="w-[240px] px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                      />
-                      <button
-                        onClick={() => setDetailsExpanded((s) => !s)}
-                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
-                      >
-                        {detailsExpanded ? 'Collapse' : 'Expand all'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-gray-100">
-                <div className="p-4 border-b border-gray-100 bg-gray-50 rounded-t-xl">
-                  <div className="text-sm font-semibold text-gray-700">Submitted Fields</div>
-                </div>
-                <div className="p-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {Object.entries(selected.data || {})
-                      .filter(([k, v]) => {
-                        if (!detailsSearch.trim()) return true;
-                        const s = detailsSearch.toLowerCase();
-                        return (k.toLowerCase().includes(s) || String(v ?? '').toLowerCase().includes(s));
-                      })
-                      .slice(0, detailsExpanded ? undefined : 12)
-                      .map(([k, v]) => (
-                        <div key={k} className="group rounded-lg border border-gray-100 hover:border-blue-200 transition-colors p-3 overflow-hidden">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="text-[11px] uppercase tracking-wide text-gray-500">{k}</div>
-                              <div className="text-sm text-gray-900 break-words whitespace-pre-wrap break-all">{basename(v) || '—'}</div>
-                            </div>
-                            <button
-                              onClick={() => copyToClipboard(String(v ?? ''))}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-2 py-1 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-600"
-                              title="Copy value"
-                            >
-                              Copy
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                  {!detailsExpanded && Object.keys(selected.data || {}).length > 12 && (
-                    <div className="mt-4">
-                      <button
-                        onClick={() => setDetailsExpanded(true)}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                      >
-                        Show all {Object.keys(selected.data || {}).length} fields
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {selected.files?.length ? (
-                <div className="mt-5 rounded-xl border border-gray-100">
-                  <div className="p-4 border-b border-gray-100 bg-gray-50 rounded-t-xl">
-                    <div className="text-sm font-semibold text-gray-700">Files ({selected.files.length})</div>
-                  </div>
-                  <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {selected.files.map((f, idx) => (
-                      <a key={idx} href={f.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-colors">
-                        <div className="w-12 h-12 rounded-md bg-gray-100 flex items-center justify-center overflow-hidden">
-                          {isImage(f) ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img alt={f.name} src={f.url} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-gray-500 text-xs">FILE</span>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-sm text-blue-700 underline truncate">{f.name}</div>
-                          <div className="text-xs text-gray-500">{f.size ? `${Math.round((f.size / 1024) * 10) / 10} KB` : ''}</div>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-100 bg-white sticky bottom-0">
-              {/* Status-based action buttons */}
-              <div className="flex flex-col gap-3">
-                {/* Primary Actions - Status-dependent */}
-                <div className="flex flex-wrap gap-2">
-                  {/* Show status badge */}
-                  <div className={`flex items-center gap-2.5 px-3 py-2 rounded-md border flex-1 min-w-[140px] ${
-                    selected.status === 'pending' 
-                      ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                    selected.status === 'approved' 
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                      'bg-rose-50 text-rose-700 border-rose-200'
-                  }`}>
-                    {selected.status === 'pending' && <AlertCircle className="w-4 h-4 text-amber-700" />}
-                    {selected.status === 'approved' && <Check className="w-4 h-4 text-emerald-700" />}
-                    {selected.status === 'rejected' && <X className="w-4 h-4 text-rose-700" />}
-                    <span className={`font-medium text-sm ${
-                      selected.status === 'pending' ? 'text-amber-700' :
-                      selected.status === 'approved' ? 'text-emerald-700' :
-                      'text-rose-700'
-                    }`}>
-                      {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
-                    </span>
-                  </div>
-
-                  {/* Action buttons based on status */}
-                  {selected.status === 'pending' && (
-                    <>
-                      <button
-                        onClick={() => openApproveDialog(selected.id)}
-                        className="flex-1 min-w-[140px] bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 active:bg-emerald-800 transition-colors shadow-sm hover:shadow active:scale-[0.98] flex items-center justify-center gap-2"
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>Approve</span>
-                      </button>
-                      <button
-                        onClick={() => reject(selected.id)}
-                        className="flex-1 min-w-[140px] bg-white text-rose-700 border-2 border-rose-300 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-rose-50 hover:border-rose-400 active:bg-rose-100 transition-colors shadow-sm hover:shadow active:scale-[0.98] flex items-center justify-center gap-2"
-                      >
-                        <X className="w-4 h-4" />
-                        <span>Reject</span>
-                      </button>
-                    </>
-                  )}
-                  
-                  {selected.status === 'approved' && (
-                    <>
-                      <button
-                        onClick={() => reject(selected.id)}
-                        className="flex-1 min-w-[140px] bg-white text-rose-700 border-2 border-rose-300 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-rose-50 hover:border-rose-400 active:bg-rose-100 transition-colors shadow-sm hover:shadow active:scale-[0.98] flex items-center justify-center gap-2"
-                      >
-                        <X className="w-4 h-4" />
-                        <span>Reject</span>
-                      </button>
-                      <button
-                        onClick={() => revertToPending(selected.id)}
-                        className="flex-1 min-w-[140px] bg-white text-slate-700 border-2 border-slate-300 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:border-slate-400 active:bg-slate-100 transition-colors shadow-sm hover:shadow active:scale-[0.98] flex items-center justify-center gap-2"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                        <span>Revert to Pending</span>
-                      </button>
-                    </>
-                  )}
-                  
-                  {selected.status === 'rejected' && (
-                    <>
-                      <button
-                        onClick={() => openApproveDialog(selected.id)}
-                        className="flex-1 min-w-[140px] bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 active:bg-emerald-800 transition-colors shadow-sm hover:shadow active:scale-[0.98] flex items-center justify-center gap-2"
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>Approve</span>
-                      </button>
-                      <button
-                        onClick={() => revertToPending(selected.id)}
-                        className="flex-1 min-w-[140px] bg-white text-slate-700 border-2 border-slate-300 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:border-slate-400 active:bg-slate-100 transition-colors shadow-sm hover:shadow active:scale-[0.98] flex items-center justify-center gap-2"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                        <span>Revert to Pending</span>
-                      </button>
-                    </>
-                  )}
-                </div>
-                
-                {/* Secondary Actions - Always available */}
-                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
-                  <button
-                    onClick={() => openRequestInfoModal(selected.id)}
-                    className="flex-1 min-w-[140px] bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-sm hover:shadow active:scale-[0.98] flex items-center justify-center gap-2"
-                  >
-                    <Mail className="w-4 h-4" />
-                    <span>Request Info</span>
-                  </button>
-                  <button
-                    onClick={() => remove(selected.id)}
-                    className="px-5 py-2.5 text-rose-700 bg-white border border-rose-300 rounded-lg text-sm font-semibold hover:bg-rose-50 hover:border-rose-400 active:bg-rose-100 transition-colors active:scale-[0.98] flex items-center justify-center gap-2"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    <span>Delete</span>
-                  </button>
-                  <button
-                    onClick={() => setSelected(null)}
-                    className="px-6 py-3 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <RequestDetailsModal
+          request={selected as ModalRequestItem}
+          onClose={() => setSelected(null)}
+          onApprove={(id) => openApproveDialog(id)}
+          onReject={(id) => reject(id)}
+          onRequestInfo={(id) => openRequestInfoModal(id)}
+          onDelete={(id) => remove(id)}
+          actionLoading={actionLoading}
+          showToast={(msg) => toast.showSuccess(msg)}
+        />
       )}
-      {showApproveDialog && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <div className="text-lg font-bold text-gray-900">Approve request</div>
-              <div className="text-sm text-gray-600 mt-1">Create a BigCommerce customer. Optionally assign a customer group.</div>
-            </div>
-            <div className="px-6 py-5">
-              {groupsLoading ? (
-                <div className="text-sm text-gray-600">Loading customer groups…</div>
-              ) : (
-                <>
-                  <div className="text-sm font-medium text-gray-800 mb-2">Customer group</div>
-                  <div className="space-y-2 max-h-64 overflow-auto border border-gray-200 rounded-md p-3">
-                    <label className="flex items-center gap-2 text-sm text-gray-800">
-                      <input
-                        type="radio"
-                        name="customer_group"
-                        checked={selectedGroupId === null}
-                        onChange={() => setSelectedGroupId(null)}
-                      />
-                      <span>Do not assign a group</span>
-                    </label>
-                    {customerGroups.map((g: any) => (
-                      <label key={g?.id} className="flex items-center gap-2 text-sm text-gray-800">
-                        <input
-                          type="radio"
-                          name="customer_group"
-                          checked={selectedGroupId === Number(g?.id)}
-                          onChange={() => setSelectedGroupId(Number(g?.id))}
-                        />
-                        <span className="flex-1">
-                          <span className="font-medium text-gray-900">{g?.name || `Group #${g?.id}`}</span>
-                          {g?.is_default ? <span className="ml-2 text-xs text-gray-500">(default)</span> : null}
-                        </span>
-                      </label>
-                    ))}
-                    {!customerGroups.length && (
-                      <div className="text-sm text-gray-500">No customer groups found.</div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex gap-3">
-              <button
-                onClick={() => { if (!approving) { setShowApproveDialog(false); setApproveTargetId(null); } }}
-                className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
-                disabled={approving}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => approve()}
-                disabled={approving}
-                className="px-5 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-              >
-                {approving ? 'Approving…' : 'Approve and Create Customer'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ApprovalDialog
+        isOpen={showApproveDialog}
+        requestId={approveTargetId}
+        context={context || ''}
+        onClose={() => {
+          setShowApproveDialog(false);
+          setApproveTargetId(null);
+        }}
+        onApproved={handleApprovalComplete}
+        showToast={{
+          success: (msg) => toast.showSuccess(msg),
+          error: (msg) => toast.showError(msg),
+        }}
+      />
 
       {/* Confirm Dialog */}
       <ConfirmDialog
