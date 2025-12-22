@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useState } from 'react';
-import { X, AlertTriangle, Loader2 } from 'lucide-react';
+import React from 'react';
+import { X, AlertTriangle } from 'lucide-react';
 
 interface UnsavedChangesModalProps {
   isOpen: boolean;
   onClose: () => void;
   onDiscard: () => void;
-  onSave: () => Promise<void>;
+  onSaveAndSwitch: () => void; // Changed: now triggers SaveAsModal instead of directly saving
   context?: string;
 }
 
@@ -15,21 +15,10 @@ export default function UnsavedChangesModal({
   isOpen,
   onClose,
   onDiscard,
-  onSave,
+  onSaveAndSwitch,
   context = 'switching tabs',
 }: UnsavedChangesModalProps) {
   if (!isOpen) return null;
-
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await onSave();
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
@@ -57,18 +46,10 @@ export default function UnsavedChangesModal({
           
           <div className="flex flex-col gap-3">
             <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={onSaveAndSwitch}
+              className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
             >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Saving…</span>
-                </>
-              ) : (
-                <span>Save & switch</span>
-              )}
+              <span>Save & switch</span>
             </button>
             <button
               onClick={onDiscard}

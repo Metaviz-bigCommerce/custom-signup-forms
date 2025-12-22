@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react';
-import { Power, XCircle, X, AlertCircle } from 'lucide-react';
+import { Power, XCircle, X } from 'lucide-react';
 
 interface ActivationConfirmModalProps {
   isOpen: boolean;
@@ -24,8 +24,7 @@ export default function ActivationConfirmModal({
 }: ActivationConfirmModalProps) {
   if (!isOpen || !version) return null;
 
-  const isDraft = version.type === 'draft';
-  const canActivate = !isDraft && !isCurrentlyActive;
+  const canActivate = !isCurrentlyActive;
   const canDeactivate = isCurrentlyActive;
 
   return (
@@ -46,15 +45,6 @@ export default function ActivationConfirmModal({
           <div className="mb-4">
             <h4 className="text-base font-medium text-gray-900 mb-1">{version.name || 'Unnamed'}</h4>
             <div className="flex items-center gap-2 mb-4">
-              <span className={`px-2 py-0.5 rounded text-xs font-semibold border ${
-                version.type === 'draft' 
-                  ? 'bg-amber-100 text-amber-700 border-amber-300'
-                  : version.type === 'version'
-                  ? 'bg-blue-100 text-blue-700 border-blue-300'
-                  : 'bg-gray-100 text-gray-700 border-gray-300'
-              }`}>
-                {version.type || 'version'}
-              </span>
               {isCurrentlyActive && (
                 <span className="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-300 flex items-center gap-1">
                   <div className="w-2 h-2 rounded-full bg-green-500" />
@@ -63,16 +53,6 @@ export default function ActivationConfirmModal({
               )}
             </div>
           </div>
-
-          {isDraft && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-amber-800 mb-1">Draft forms cannot be activated</p>
-                <p className="text-xs text-amber-700">Please convert this draft to a version first by saving it as a version in the Builder tab.</p>
-              </div>
-            </div>
-          )}
 
           <div className="space-y-2">
             {canActivate && (

@@ -2,32 +2,40 @@
 
 import React, { useState } from 'react';
 import { Save, Loader2 } from 'lucide-react';
-import SaveAsModal from './SaveAsModal';
+import SaveModal from './SaveModal';
 
 interface SaveFormDropdownProps {
   isDirty: boolean;
   isSaving: boolean;
   currentFormName?: string;
-  onSaveAs: (name: string, type: 'draft' | 'version') => Promise<void>;
+  isNewForm: boolean;
+  onSaveToExisting: (name: string) => Promise<void>;
+  onSaveAsNew: (name: string) => Promise<void>;
 }
 
 export default function SaveFormDropdown({
   isDirty,
   isSaving,
   currentFormName = 'Unnamed',
-  onSaveAs,
+  isNewForm,
+  onSaveToExisting,
+  onSaveAsNew,
 }: SaveFormDropdownProps) {
-  const [showSaveAsModal, setShowSaveAsModal] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
-  const handleSaveAs = async (name: string, type: 'draft' | 'version') => {
-    setShowSaveAsModal(false);
-    await onSaveAs(name, type);
+  const handleSaveToExisting = async (name: string) => {
+    setShowSaveModal(false);
+    await onSaveToExisting(name);
   };
 
-  // No dropdown needed - directly open Save As modal
+  const handleSaveAsNew = async (name: string) => {
+    setShowSaveModal(false);
+    await onSaveAsNew(name);
+  };
+
   const handleButtonClick = () => {
     if (!isSaving && isDirty) {
-      setShowSaveAsModal(true);
+      setShowSaveModal(true);
     }
   };
 
@@ -42,7 +50,7 @@ export default function SaveFormDropdown({
               ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg active:scale-[0.98] shadow-md'
               : 'bg-slate-200 text-slate-400 cursor-not-allowed'
           }`}
-          title={!isDirty ? 'No changes to save' : 'Save as Draft or Version'}
+          title={!isDirty ? 'No changes to save' : 'Save form'}
         >
           {isSaving ? (
             <>
@@ -52,17 +60,19 @@ export default function SaveFormDropdown({
           ) : (
             <>
               <Save className="w-4 h-4" />
-              <span>Save As</span>
+              <span>Save</span>
             </>
           )}
         </button>
       </div>
 
-      <SaveAsModal
-        isOpen={showSaveAsModal}
-        onClose={() => setShowSaveAsModal(false)}
-        onConfirm={handleSaveAs}
+      <SaveModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onSaveToExisting={handleSaveToExisting}
+        onSaveAsNew={handleSaveAsNew}
         currentFormName={currentFormName}
+        isNewForm={isNewForm}
       />
     </>
   );

@@ -91,7 +91,10 @@ export const formThemeSchema = z.object({
   subtitle: z.string().max(500).optional(),
   primaryColor: z.string().max(20),
   layout: z.enum(['split', 'center']),
-  splitImageUrl: z.string().url().max(2000).optional(),
+  splitImageUrl: z.string().max(2000).refine(
+    (val) => val === '' || z.string().url().safeParse(val).success,
+    { message: 'Invalid URL' }
+  ).optional(),
   buttonText: z.string().max(100),
   buttonBg: z.string().max(20),
   buttonColor: z.string().max(20),

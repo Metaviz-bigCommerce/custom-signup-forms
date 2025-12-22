@@ -9,6 +9,7 @@ import LoadVersionConfirmModal from '@/components/LoadVersionConfirmModal';
 import { useToast } from '@/components/common/Toast';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import UnsavedChangesModal from '@/components/UnsavedChangesModal';
+import SaveModal from '@/components/SaveModal';
 import { FormField, FieldType } from './FormBuilder/types';
 import { defaultTheme, normalizeThemeLayout, ensureCoreFields, normalizeFieldsForComparison } from './FormBuilder/utils';
 import BuilderTab from './FormBuilder/BuilderTab';
@@ -36,10 +37,11 @@ const FormBuilder: React.FC = () => {
   const [pendingVersion, setPendingVersion] = useState<any>(null);
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState<boolean>(false);
   const [pendingTabSwitch, setPendingTabSwitch] = useState<number | null>(null);
+  const [showSaveModalForTabSwitch, setShowSaveModalForTabSwitch] = useState<boolean>(false);
   const [currentFormName, setCurrentFormName] = useState<string>('Unnamed');
   const [currentFormVersionId, setCurrentFormVersionId] = useState<string | null>(null);
-  const [currentFormVersionType, setCurrentFormVersionType] = useState<'draft' | 'version' | null>(null);
   const [activeVersionName, setActiveVersionName] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
   const [editingName, setEditingName] = useState<string>('');
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; confirmVariant?: 'danger' | 'primary' }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
@@ -49,40 +51,55 @@ const FormBuilder: React.FC = () => {
   const toast = useToast();
   const [theme, setTheme] = useState<any>(defaultTheme);
   const { addScript, updateScript, deleteScript } = useBcScriptsActions();
-  const { form, active, scriptUuid, mutate, isError, isLoading } = useStoreForm();
+  const { form, active, scriptUuid, mutate: mutateStoreForm, isError, isLoading } = useStoreForm();
   const { saveForm, setActive } = useStoreFormActions();
   const { saveAsVersion, updateVersion } = useFormVersionActions();
   const { versions, mutate: mutateVersions } = useFormVersions();
 
+  // Determine if form is new (no saved form exists)
+  // Note: isEditing flag is now used to control save modal options instead of isNewForm
+  const isNewForm = useMemo(() => {
+    return form === null && currentFormVersionId === null;
+  }, [form, currentFormVersionId]);
+
   // Initialize form fields when form data is loaded
+  // NOTE: This should NOT run when we have a currentFormVersionId because loadVersionData
+  // already handles loading version-specific form data. This effect is only for the main store form.
   useEffect(() => {
     // Only process if form is not undefined (either null or an object)
     if (form === undefined) return; // Still loading
     
-    if (form && form.fields && Array.isArray(form.fields) && form.fields.length > 0) {
+    // CRITICAL: If we have a currentFormVersionId, we're loading from a version.
+    // Don't overwrite the version data with the store form data.
+    // The version data is loaded via loadVersionData() which sets the fields directly.
+    if (currentFormVersionId) {
+      return; // Don't overwrite version data with store form data
+    }
+    
+    // Only load form data if we're editing an existing form
+    // Otherwise, always show default state
+    if (isEditing && form && form.fields && Array.isArray(form.fields) && form.fields.length > 0) {
       // Ensure the 4 core fields exist in any loaded form
       const loadedFields = ensureCoreFields((form.fields as any) || []);
       setFormFields(loadedFields);
       // Update last saved state
       const loadedTheme = normalizeThemeLayout({ ...defaultTheme, ...(form.theme as any) });
       setLastSavedState({ fields: loadedFields, theme: loadedTheme });
-    } else if (form === null && formFields.length === 0) {
-      // If form is null (no saved form) and we haven't initialized fields yet, use defaults
+      
+      if (form?.theme) {
+        const loadedTheme = { ...defaultTheme, ...(form.theme as any) };
+        // Normalize layout when loading from saved form
+        setTheme(normalizeThemeLayout(loadedTheme));
+      }
+    } else {
+      // Not editing - always show default state
       const defaultFields = ensureCoreFields([]);
       setFormFields(defaultFields);
+      setTheme(defaultTheme);
       // Set last saved state to null (no saved form yet)
       setLastSavedState(null);
     }
-    
-    if (form?.theme) {
-      const loadedTheme = { ...defaultTheme, ...(form.theme as any) };
-      // Normalize layout when loading from saved form
-      setTheme(normalizeThemeLayout(loadedTheme));
-    } else if (form === null) {
-      // Reset to default theme when no form exists
-      setTheme(defaultTheme);
-    }
-  }, [form]);
+  }, [form, isEditing, currentFormVersionId]);
 
   // Check if current form matches any saved version to get its name
   useEffect(() => {
@@ -105,20 +122,21 @@ const FormBuilder: React.FC = () => {
     if (matchingVersion) {
       setCurrentFormName(matchingVersion.name || 'Unnamed');
       setCurrentFormVersionId(matchingVersion.id);
-      setCurrentFormVersionType(matchingVersion.type || null);
     } else if (!currentFormVersionId) {
       // Only set to Unnamed if we don't have a tracked version ID
       setCurrentFormName('Unnamed');
-      setCurrentFormVersionType(null);
     }
   }, [form, versions, currentFormVersionId]);
 
   // Get active version name for display
   useEffect(() => {
+    console.log('[FormBuilder] Updating activeVersionName', { active, versionsCount: versions?.length, activeVersionName });
     if (active && versions?.length) {
       const activeVersion = versions.find((v: any) => v.isActive);
       if (activeVersion) {
-        setActiveVersionName(activeVersion.name || 'Unnamed');
+        const newName = activeVersion.name || 'Unnamed';
+        console.log('[FormBuilder] Found active version:', { name: newName, id: activeVersion.id });
+        setActiveVersionName(newName);
       } else {
         // If active is true but no version is marked as active, try to find by matching form data
         if (form) {
@@ -129,15 +147,21 @@ const FormBuilder: React.FC = () => {
             return versionDataStr === formDataStr;
           });
           if (matchingVersion) {
-            setActiveVersionName(matchingVersion.name || 'Unnamed');
+            const newName = matchingVersion.name || 'Unnamed';
+            console.log('[FormBuilder] Found matching version by form data:', { name: newName, id: matchingVersion.id });
+            setActiveVersionName(newName);
           } else {
+            console.log('[FormBuilder] No matching version found, setting activeVersionName to null');
             setActiveVersionName(null);
           }
         } else {
+          console.log('[FormBuilder] No form data, setting activeVersionName to null');
           setActiveVersionName(null);
         }
       }
     } else {
+      // Explicitly clear activeVersionName when not active
+      console.log('[FormBuilder] Form not active or no versions, setting activeVersionName to null', { active, hasVersions: !!versions?.length });
       setActiveVersionName(null);
     }
   }, [active, versions, form]);
@@ -182,10 +206,12 @@ const FormBuilder: React.FC = () => {
     // Update last saved state to null (form is reset, not saved)
     setLastSavedState(null);
     
-    // Reset form name, version ID, and type
+    // Reset form name and version ID
     setCurrentFormName('Unnamed');
     setCurrentFormVersionId(null);
-    setCurrentFormVersionType(null);
+    
+    // Reset editing flag (creating new form)
+    setIsEditing(false);
     
     // Close any open popups
     setShowFieldEditor(false);
@@ -265,7 +291,7 @@ const FormBuilder: React.FC = () => {
       // Update last saved state
       setLastSavedState({ fields: withCore, theme: normalizedTheme });
       // When saving main form, check if it matches any version to update name
-      await mutate();
+      await mutateStoreForm();
       // The useEffect will automatically update the name if it matches a version
       toast.showSuccess('Form saved.');
     } catch (e: unknown) {
@@ -275,7 +301,7 @@ const FormBuilder: React.FC = () => {
     }
   }
 
-  async function handleSaveAs(name: string, type: 'draft' | 'version') {
+  async function handleSaveToExisting(name: string) {
     setIsSaving(true);
     try {
       const trimmedName = name.trim();
@@ -287,36 +313,91 @@ const FormBuilder: React.FC = () => {
       const normalizedTheme = normalizeThemeLayout(theme);
       const withCore = ensureCoreFields(formFields);
       
-      // Check if we should update existing version or create new one
-      // Update if: we have a version ID AND the type matches (same form, same type)
-      // Create new if: no version ID OR type is different (converting draft to version or vice versa)
-      let result;
-      if (currentFormVersionId && currentFormVersionType === type) {
-        // Update existing version with same type
-        await updateVersion(currentFormVersionId, { 
-          name: trimmedName, 
-          form: { fields: withCore, theme: normalizedTheme } 
-        });
-        result = { id: currentFormVersionId };
-      } else {
-        // Create new version (either no existing ID, or different type)
-        result = await saveAsVersion(trimmedName, type, { fields: withCore, theme: normalizedTheme });
+      // Save to main form
+      await saveForm({ fields: withCore, theme: normalizedTheme });
+      
+      // If we have a version ID, update that version too
+      if (currentFormVersionId) {
+        try {
+          await updateVersion(currentFormVersionId, { 
+            name: trimmedName, 
+            form: { fields: withCore, theme: normalizedTheme } 
+          });
+          await mutateVersions();
+        } catch (e) {
+          // Silently fail - version update is not critical
+          console.error('Failed to update version:', e);
+        }
       }
       
-      // Update form name, version ID, and type
+      // Update form name
+      setCurrentFormName(trimmedName);
+      
+      // Update last saved state
+      setLastSavedState({ fields: withCore, theme: normalizedTheme });
+      await mutateStoreForm();
+      
+      // If a script exists, regenerate JS and update the script
+      if (active && scriptUuid) {
+        await fetch('/api/generate-signup-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ formFields: withCore, theme: normalizedTheme })
+        });
+        await updateScript(scriptUuid, {
+          name: "Custom Signup Form",
+          description: "Updated custom signup form script",
+          src: typeof window !== 'undefined' ? `${window.location.origin}/custom-signup.min.js` : "/custom-signup.min.js",
+          auto_uninstall: true,
+          load_method: "default",
+          location: "head",
+          visibility: "all_pages",
+          kind: "src",
+          consent_category: "essential"
+        });
+      }
+      
+      toast.showSuccess('Form saved.');
+      
+      // Reset editing flag and redirect to Forms tab after successful save
+      setIsEditing(false);
+      handleReset();
+      setActiveTab(2);
+    } catch (e: unknown) {
+      toast.showError('Failed to save form: ' + (e instanceof Error ? e.message : 'Unknown error'));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleSaveAsNew(name: string) {
+    setIsSaving(true);
+    try {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        toast.showWarning('Name is required');
+        setIsSaving(false);
+        return;
+      }
+      const normalizedTheme = normalizeThemeLayout(theme);
+      const withCore = ensureCoreFields(formFields);
+      
+      // Save as a new version
+      const result = await saveAsVersion(trimmedName, 'version', { fields: withCore, theme: normalizedTheme });
+      
+      // Update form name and version ID
       if (result?.id) {
         setCurrentFormName(trimmedName);
         setCurrentFormVersionId(result.id);
-        setCurrentFormVersionType(type);
       }
       
       // Update last saved state
       setLastSavedState({ fields: withCore, theme: normalizedTheme });
-      await mutate();
+      await mutateStoreForm();
       await mutateVersions();
-      toast.showSuccess(type === 'draft' ? 'Saved to Versions.' : 'Saved to Versions.');
+      toast.showSuccess('Form saved as new.');
       
-      // After successful save: reset Builder tab and switch to Versions tab
+      // After successful save: reset Builder tab and switch to Forms tab
       handleReset();
       setActiveTab(2);
     } catch (e: unknown) {
@@ -333,7 +414,7 @@ const FormBuilder: React.FC = () => {
       setTheme(defaultTheme);
       setCurrentFormName('Unnamed');
       setCurrentFormVersionId(null);
-      setCurrentFormVersionType(null);
+      setIsEditing(false);
       toast.showSuccess('Changes discarded.');
       return;
     }
@@ -356,6 +437,7 @@ const FormBuilder: React.FC = () => {
           setCurrentFormName('Unnamed');
           setCurrentFormVersionId(null);
           setLastSavedState(null);
+          setIsEditing(false);
           setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} });
           toast.showSuccess('New form created.');
         },
@@ -367,8 +449,8 @@ const FormBuilder: React.FC = () => {
       setTheme(defaultTheme);
       setCurrentFormName('Unnamed');
       setCurrentFormVersionId(null);
-      setCurrentFormVersionType(null);
       setLastSavedState(null);
+      setIsEditing(false);
       toast.showSuccess('New form created.');
     }
     // Switch to Builder tab if not already there
@@ -396,7 +478,8 @@ const FormBuilder: React.FC = () => {
     setShowThemeEditor(false);
     setSelectedField(null);
     
-    const loadedFields = version?.form?.fields ? ensureCoreFields(version.form.fields) : ensureCoreFields([]);
+    const originalFields = version?.form?.fields || [];
+    const loadedFields = originalFields.length > 0 ? ensureCoreFields(originalFields) : ensureCoreFields([]);
     const loadedTheme = version?.form?.theme 
       ? normalizeThemeLayout({ ...defaultTheme, ...version.form.theme })
       : defaultTheme;
@@ -408,10 +491,12 @@ const FormBuilder: React.FC = () => {
     // Update last saved state
     setLastSavedState({ fields: loadedFields, theme: loadedTheme });
     
-    // Update form name, version ID, and type
+    // Update form name and version ID
     setCurrentFormName(version?.name || 'Unnamed');
     setCurrentFormVersionId(version?.id || null);
-    setCurrentFormVersionType(version?.type || null);
+    
+    // Set isEditing flag: true if loading an existing form (has version ID), false if creating new
+    setIsEditing(!!version?.id);
     
     // Switch to Builder tab if requested
     if (goToBuilder) {
@@ -449,27 +534,114 @@ const FormBuilder: React.FC = () => {
       setShowUnsavedChangesModal(true);
     } else {
       setActiveTab(newTab);
+      
+      // When switching to Builder tab and not editing, reset to default state
+      if (newTab === 1 && !isEditing) {
+        const defaultFields = ensureCoreFields([]);
+        setFormFields(defaultFields);
+        setTheme(defaultTheme);
+        setLastSavedState(null);
+        setCurrentFormName('Unnamed');
+        setCurrentFormVersionId(null);
+      }
     }
   }
 
-  async function handleSaveAndSwitchTab() {
+  // Handler to show SaveModal when "Save & switch" is clicked
+  function handleShowSaveForTabSwitch() {
     if (pendingTabSwitch === null) return;
+    // Close the unsaved changes modal and show SaveModal
+    setShowUnsavedChangesModal(false);
+    setShowSaveModalForTabSwitch(true);
+  }
+
+  // Handler to save via SaveAsModal and then switch tabs
+  async function handleSaveAsNewAndSwitchTab(name: string) {
+    if (pendingTabSwitch === null) return;
+    
+    setIsSaving(true);
     try {
-      await handleSaveForm();
-      setActiveTab(pendingTabSwitch);
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        toast.showWarning('Name is required');
+        setIsSaving(false);
+        return;
+      }
+      
+      const normalizedTheme = normalizeThemeLayout(theme);
+      const withCore = ensureCoreFields(formFields);
+      
+      // Save as a new version
+      const result = await saveAsVersion(trimmedName, 'version', { fields: withCore, theme: normalizedTheme });
+      
+      // Update form name and version ID
+      if (result?.id) {
+        setCurrentFormName(trimmedName);
+        setCurrentFormVersionId(result.id);
+      }
+      
+      // Update last saved state (this marks the form as no longer dirty)
+      setLastSavedState({ fields: withCore, theme: normalizedTheme });
+      await mutateStoreForm();
+      await mutateVersions();
+      toast.showSuccess('Form saved.');
+      
+      // Close SaveModal and switch to target tab
+      setShowSaveModalForTabSwitch(false);
+      const targetTab = pendingTabSwitch;
       setPendingTabSwitch(null);
-      setShowUnsavedChangesModal(false);
-    } catch (e) {
-      // Error already handled in handleSaveForm, just don't switch tabs
+      
+      // Switch to target tab (form remains as-is, no longer dirty)
+      setActiveTab(targetTab);
+    } catch (e: unknown) {
+      toast.showError('Failed to save: ' + (e instanceof Error ? e.message : 'Unknown error'));
+    } finally {
+      setIsSaving(false);
     }
   }
 
   function handleDiscardAndSwitchTab() {
     if (pendingTabSwitch === null) return;
-    handleDiscardChanges();
-    setActiveTab(pendingTabSwitch);
+    
+    // Clear any pending state
+    const targetTab = pendingTabSwitch;
     setPendingTabSwitch(null);
     setShowUnsavedChangesModal(false);
+    
+    // Fully discard all unsaved changes and reset to clean state
+    if (!lastSavedState) {
+      // If no saved state, reset to defaults
+      setFormFields(ensureCoreFields([]));
+      setTheme(defaultTheme);
+      setCurrentFormName('Unnamed');
+      setCurrentFormVersionId(null);
+      setLastSavedState(null);
+      setIsEditing(false);
+    } else {
+      // Restore from last saved state only if we're editing
+      // Otherwise, reset to default state
+      if (isEditing) {
+        setFormFields([...lastSavedState.fields]);
+        setTheme({ ...lastSavedState.theme });
+      } else {
+        setFormFields(ensureCoreFields([]));
+        setTheme(defaultTheme);
+        setLastSavedState(null);
+      }
+    }
+    
+    // If switching to Builder tab and not editing, ensure default state
+    if (targetTab === 1 && !isEditing) {
+      setFormFields(ensureCoreFields([]));
+      setTheme(defaultTheme);
+      setLastSavedState(null);
+      setCurrentFormName('Unnamed');
+      setCurrentFormVersionId(null);
+    }
+    
+    // Switch to target tab
+    setActiveTab(targetTab);
+    toast.showSuccess('Changes discarded.');
   }
 
   async function handleSaveName() {
@@ -501,9 +673,9 @@ const FormBuilder: React.FC = () => {
           });
       } else {
         // If it's unnamed and no version ID exists, just update the name in state
-        // Don't create a new draft here - let the user explicitly save via "Save As"
+        // Don't create a new form here - let the user explicitly save via "Save"
         // This prevents duplicate forms from being created
-        // The name will be saved when user clicks "Save as Draft" or "Save as Version"
+        // The name will be saved when user clicks "Save"
         mutateVersions().catch(() => {}); // Silently fail mutate
       }
     } catch (e: any) {
@@ -561,7 +733,7 @@ const FormBuilder: React.FC = () => {
         <div className="text-center">
           <p className="text-red-600 mb-4">Failed to load form data</p>
           <button
-            onClick={() => mutate()}
+            onClick={() => mutateStoreForm()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Retry
@@ -775,7 +947,7 @@ const FormBuilder: React.FC = () => {
                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent"
             }`}
           >
-            Versions
+            Forms
           </button>
         </div>
         
@@ -803,13 +975,13 @@ const FormBuilder: React.FC = () => {
                 handleTabSwitch(2);
               }
             }}
-            title={active ? 'Activated form - Click to view in Versions' : 'No form activated - Click to view in Versions'}
+            title={active ? 'Activated form - Click to view in Forms' : 'No form activated - Click to view in Forms'}
           >
             {active ? (
               <>
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span>Activated Form:</span>
-                <span className="font-semibold">{activeVersionName || currentFormName}</span>
+                <span className="font-semibold">{activeVersionName || 'Unknown'}</span>
               </>
             ) : (
               <>
@@ -852,7 +1024,9 @@ const FormBuilder: React.FC = () => {
               confirmVariant: 'danger'
             });
           }}
-          onSaveAs={handleSaveAs}
+          isNewForm={!isEditing}
+          onSaveToExisting={handleSaveToExisting}
+          onSaveAsNew={handleSaveAsNew}
         />
       )}
 
@@ -885,9 +1059,11 @@ const FormBuilder: React.FC = () => {
                 ) : (
           <VersionsList
             onLoadVersion={handleLoadVersion}
-            onVersionLoaded={() => {
-              mutate();
-              mutateVersions();
+            onVersionLoaded={async () => {
+              console.log('[FormBuilder] onVersionLoaded callback - refreshing all data...');
+              await mutateStoreForm(undefined, { revalidate: true });
+              await mutateVersions(undefined, { revalidate: true });
+              console.log('[FormBuilder] onVersionLoaded callback - refresh complete');
             }}
             onNavigateToBuilder={() => handleTabSwitch(1)}
           />
@@ -976,7 +1152,31 @@ const FormBuilder: React.FC = () => {
           setPendingTabSwitch(null);
         }}
         onDiscard={handleDiscardAndSwitchTab}
-        onSave={handleSaveAndSwitchTab}
+        onSaveAndSwitch={handleShowSaveForTabSwitch}
+      />
+
+      {/* SaveModal for Tab Switching */}
+      <SaveModal
+        isOpen={showSaveModalForTabSwitch}
+        onClose={() => {
+          setShowSaveModalForTabSwitch(false);
+          // Reopen unsaved changes modal if user cancels
+          if (pendingTabSwitch !== null) {
+            setShowUnsavedChangesModal(true);
+          }
+        }}
+        onSaveToExisting={async (name) => {
+          await handleSaveToExisting(name);
+          if (pendingTabSwitch !== null) {
+            const targetTab = pendingTabSwitch;
+            setPendingTabSwitch(null);
+            setShowSaveModalForTabSwitch(false);
+            setActiveTab(targetTab);
+          }
+        }}
+        onSaveAsNew={handleSaveAsNewAndSwitchTab}
+        currentFormName={currentFormName}
+        isNewForm={!isEditing}
       />
 
       {/* Confirm Dialog */}

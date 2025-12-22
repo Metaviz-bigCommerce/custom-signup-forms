@@ -6,6 +6,7 @@ import { storeFormSchema } from '@/lib/validation';
 import { generateRequestId } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 import { getCachedStoreSettings } from '@/lib/cache';
+import { revalidateTag } from 'next/cache';
 
 export async function GET(req: NextRequest) {
   const requestId = generateRequestId();
@@ -68,8 +69,10 @@ export async function PUT(req: NextRequest) {
       // Validate form schema
       const formValidation = storeFormSchema.safeParse(form);
       if (!formValidation.success) {
+        // Use issues instead of errors (Zod uses issues property)
+        const errorMessages = formValidation.error.issues ? formValidation.error.issues.map((e: any) => e.message).join(', ') : 'Validation failed';
         return errorResponse(
-          `Form validation error: ${formValidation.error.errors.map(e => e.message).join(', ')}`,
+          `Form validation error: ${errorMessages}`,
           400,
           'VALIDATION_ERROR' as any,
           requestId
@@ -95,8 +98,10 @@ export async function PUT(req: NextRequest) {
     // Validate form schema
     const formValidation = storeFormSchema.safeParse(form);
     if (!formValidation.success) {
+      // Use issues instead of errors (Zod uses issues property)
+      const errorMessages = formValidation.error.issues ? formValidation.error.issues.map((e: any) => e.message).join(', ') : 'Validation failed';
       return errorResponse(
-        `Form validation error: ${formValidation.error.errors.map(e => e.message).join(', ')}`,
+        `Form validation error: ${errorMessages}`,
         400,
         'VALIDATION_ERROR' as any,
         requestId
@@ -138,12 +143,18 @@ export async function POST(req: NextRequest) {
     
     if (action === 'activate') {
       await db.setStoreFormActive(storeHash, true);
+      // Invalidate cache so GET endpoint returns fresh data
+      revalidateTag(`store-settings-${storeHash}`);
       logger.info('Store form activated', { ...logContext, storeHash });
       return successResponse({ activated: true }, 200, requestId);
     }
     
     if (action === 'deactivate') {
       await db.setStoreFormActive(storeHash, false);
+      // Clear script UUID when deactivating
+      await db.setStoreScriptUuid(storeHash, '');
+      // Invalidate cache so GET endpoint returns fresh data
+      revalidateTag(`store-settings-${storeHash}`);
       logger.info('Store form deactivated', { ...logContext, storeHash });
       return successResponse({ activated: false }, 200, requestId);
     }

@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { FormField } from './types';
 import { normalizeThemeLayout } from './utils';
 
@@ -12,9 +14,25 @@ interface LivePreviewProps {
 }
 
 const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, onViewModeChange }) => {
+  const router = useRouter();
+  
   // Country/State dynamic data for address fields
   const [countryData, setCountryData] = useState<Array<{ countryName: string; countryShortCode: string; regions: Array<{ name: string; shortCode?: string }>;}>>([]);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
+
+  const handleExpand = () => {
+    // Store form data in sessionStorage for seamless navigation
+    try {
+      sessionStorage.setItem('previewFormData', JSON.stringify({
+        formFields,
+        theme,
+        viewMode
+      }));
+      router.push('/builder/preview');
+    } catch (error) {
+      console.error('Failed to store preview data:', error);
+    }
+  };
   
   useEffect(() => {
     let cancelled = false;
@@ -360,26 +378,39 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
       <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
         <div className="p-6 pb-4 border-b border-slate-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-700">Live Preview</h3>
-          <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
+          <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1 bg-gray-100 rounded-full p-1">
+              <button
+                onClick={() => onViewModeChange('desktop')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                  viewMode === 'desktop'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Desktop
+              </button>
+              <button
+                onClick={() => onViewModeChange('mobile')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                  viewMode === 'mobile'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Mobile
+              </button>
+            </div>
+            {/* Expand to Fullscreen Button */}
             <button
-              onClick={() => onViewModeChange('desktop')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-                viewMode === 'desktop'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
+              onClick={handleExpand}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg transition-all duration-200 hover:border-blue-500 hover:text-blue-600 shadow-sm hover:shadow-md"
+              title="Expand to fullscreen"
+              aria-label="Expand preview to fullscreen"
             >
-              Desktop
-            </button>
-            <button
-              onClick={() => onViewModeChange('mobile')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-                viewMode === 'mobile'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              Mobile
+              <Maximize2 className="w-4 h-4" />
+              <span>Expand</span>
             </button>
           </div>
         </div>

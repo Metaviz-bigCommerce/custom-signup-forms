@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 import { errorResponse, successResponse, apiErrors } from '@/lib/api-response';
 import { generateRequestId } from '@/lib/utils';
 import { logger } from '@/lib/logger';
+import { revalidateTag } from 'next/cache';
 
 export async function GET(req: NextRequest) {
   const requestId = generateRequestId();
@@ -130,8 +131,18 @@ export async function PUT(req: NextRequest) {
         return errorResponse('Missing versionId', 400, 'MISSING_REQUIRED_FIELD' as any, requestId);
       }
       await db.setActiveFormVersion(storeHash, versionId);
+      // Invalidate cache so GET endpoint returns fresh data
+      revalidateTag(`store-settings-${storeHash}`);
       logger.info('Form version set as active', { ...logContext, storeHash, versionId });
       return successResponse({ updated: true, action: 'setActive' }, 200, requestId);
+    }
+    
+    if (action === 'deactivateAll') {
+      await db.deactivateAllVersions(storeHash);
+      // Invalidate cache so GET endpoint returns fresh data
+      revalidateTag(`store-settings-${storeHash}`);
+      logger.info('All form versions deactivated', { ...logContext, storeHash });
+      return successResponse({ updated: true, action: 'deactivateAll' }, 200, requestId);
     }
     
     if (action === 'update') {
@@ -143,7 +154,7 @@ export async function PUT(req: NextRequest) {
       return successResponse({ updated: true, action: 'update' }, 200, requestId);
     }
     
-    return errorResponse('Unknown action. Must be "setActive" or "update"', 400, 'VALIDATION_ERROR' as any, requestId);
+    return errorResponse('Unknown action. Must be "setActive", "deactivateAll", or "update"', 400, 'VALIDATION_ERROR' as any, requestId);
   } catch (error: unknown) {
     logger.error('Failed to update form version', error, logContext);
     return apiErrors.internalError('Failed to update form version', error, requestId);

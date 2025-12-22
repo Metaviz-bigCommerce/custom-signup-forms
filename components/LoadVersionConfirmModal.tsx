@@ -62,13 +62,13 @@ export default function LoadVersionConfirmModal({
               onClick={onConfirmAndGoToBuilder}
               className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
             >
-              <span>Discard changes & load version</span>
+              <span>Discard changes & load form</span>
             </button>
             <button
               onClick={onConfirm}
               className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-slate-700 hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
             >
-              <span>Load Version</span>
+              <span>Load Form</span>
             </button>
             <button
               onClick={onClose}

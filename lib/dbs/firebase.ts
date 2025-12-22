@@ -441,6 +441,9 @@ export async function setActiveFormVersion(storeHash: string, versionId: string)
   // Update main signupForm
   await setStoreForm(storeHash, version.form);
   
+  // Set signupFormActive=true (form is being activated)
+  await setStoreFormActive(storeHash, true);
+  
   // Set all versions to inactive, then set this one as active
   const allVersions = await listFormVersions(storeHash);
   for (const v of allVersions) {
@@ -458,5 +461,19 @@ export async function updateFormVersion(storeHash: string, versionId: string, up
   if (updates.name !== undefined) updateData.name = updates.name;
   if (updates.form !== undefined) updateData.form = updates.form;
   await updateDoc(ref, updateData);
+  return { ok: true };
+}
+
+export async function deactivateAllVersions(storeHash: string) {
+  if (!storeHash) throw new Error('Missing storeHash');
+  
+  // Set all versions to inactive
+  const allVersions = await listFormVersions(storeHash);
+  const updatePromises = allVersions.map((v) => {
+    const vRef = doc(db, 'stores', storeHash, 'formVersions', v.id);
+    return updateDoc(vRef, { isActive: false, updatedAt: serverTimestamp() });
+  });
+  
+  await Promise.all(updatePromises);
   return { ok: true };
 }

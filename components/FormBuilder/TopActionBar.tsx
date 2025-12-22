@@ -10,13 +10,15 @@ interface TopActionBarProps {
   editingName: string;
   isDirty: boolean;
   isSaving: boolean;
+  isNewForm: boolean;
   onNameChange: (name: string) => void;
   onStartEditing: () => void;
   onSaveName: () => void;
   onCancelEditing: () => void;
   onReset: () => void;
   onDiscard: () => void;
-  onSaveAs: (name: string, type: 'draft' | 'version') => void;
+  onSaveToExisting: (name: string) => Promise<void>;
+  onSaveAsNew: (name: string) => Promise<void>;
 }
 
 const TopActionBar: React.FC<TopActionBarProps> = ({
@@ -25,13 +27,15 @@ const TopActionBar: React.FC<TopActionBarProps> = ({
   editingName,
   isDirty,
   isSaving,
+  isNewForm,
   onNameChange,
   onStartEditing,
   onSaveName,
   onCancelEditing,
   onReset,
   onDiscard,
-  onSaveAs,
+  onSaveToExisting,
+  onSaveAsNew,
 }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-4">
@@ -129,7 +133,9 @@ const TopActionBar: React.FC<TopActionBarProps> = ({
               isDirty={isDirty}
               isSaving={isSaving}
               currentFormName={currentFormName}
-              onSaveAs={onSaveAs}
+              isNewForm={isNewForm}
+              onSaveToExisting={onSaveToExisting}
+              onSaveAsNew={onSaveAsNew}
             />
           </div>
         </div>

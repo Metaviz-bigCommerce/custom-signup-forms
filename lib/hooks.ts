@@ -77,14 +77,40 @@ export function useBcScriptsActions() {
   };
 
   const deleteScript = async (script_uuid: string) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'hooks.ts:79',message:'deleteScript entry',data:{script_uuid,hasContext:!!encodedContext},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D'})}).catch(()=>{});
+    // #endregion
     if (!encodedContext) throw new Error("Missing BigCommerce session context");
-    const res = await fetch(`/api/bc-scripts?script_uuid=${script_uuid}&context=${encodedContext}`, {
+    const url = `/api/bc-scripts?script_uuid=${script_uuid}&context=${encodedContext}`;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'hooks.ts:82',message:'Before fetch DELETE',data:{url,script_uuid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D'})}).catch(()=>{});
+    // #endregion
+    const res = await fetch(url, {
       method: "DELETE",
     });
+    // #region agent log
+    const responseText = await res.text();
+    fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'hooks.ts:87',message:'After fetch DELETE',data:{status:res.status,statusText:res.statusText,ok:res.ok,responseText:responseText.substring(0,200)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D,E'})}).catch(()=>{});
+    // #endregion
     if (!res.ok) {
-      throw new Error(`Failed to delete script: ${res.status} ${await res.text()}`);
+      throw new Error(`Failed to delete script: ${res.status} ${responseText}`);
     }
-    return res.json();
+    // DELETE operations often return 204 No Content with empty body - this is success
+    // For 204, responseText will be empty, and we should treat that as success
+    let jsonResult = {};
+    if (responseText && responseText.trim()) {
+      try {
+        jsonResult = JSON.parse(responseText);
+      } catch (parseError) {
+        // If JSON parse fails but status is ok (204), treat as success
+        // Some APIs return empty body or non-JSON for successful DELETE
+        jsonResult = {};
+      }
+    }
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'hooks.ts:102',message:'deleteScript returning',data:{jsonResult,responseTextLength:responseText?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D'})}).catch(()=>{});
+    // #endregion
+    return jsonResult;
   };
 
   return { addScript, updateScript, deleteScript };
@@ -99,7 +125,13 @@ export function useStoreForm() {
   
   // Debug logging (remove in production)
   if (process.env.NODE_ENV === 'development' && data !== undefined) {
-    console.log('[useStoreForm] Data received:', { hasData: !!data, hasForm: !!data?.form, formKeys: data?.form ? Object.keys(data.form) : [] });
+    console.log('[useStoreForm] Data received:', { 
+      hasData: !!data, 
+      hasForm: !!data?.form, 
+      active: data?.active,
+      scriptUuid: data?.scriptUuid,
+      formKeys: data?.form ? Object.keys(data.form) : [] 
+    });
   }
   
   return {
@@ -206,6 +238,17 @@ export function useFormVersionActions() {
     if (!res.ok) throw new Error(`Failed to update version: ${res.status} ${await res.text()}`);
     return res.json();
   };
+
+  const deactivateAllVersions = async () => {
+    if (!encodedContext) throw new Error("Missing BigCommerce session context");
+    const res = await fetch(`/api/form-versions?context=${encodedContext}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'deactivateAll' }),
+    });
+    if (!res.ok) throw new Error(`Failed to deactivate all versions: ${res.status} ${await res.text()}`);
+    return res.json();
+  };
   
-  return { saveAsVersion, loadVersion, deleteVersion, setActiveVersion, updateVersion };
+  return { saveAsVersion, loadVersion, deleteVersion, setActiveVersion, updateVersion, deactivateAllVersions };
 }

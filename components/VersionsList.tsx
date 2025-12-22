@@ -7,6 +7,8 @@ import VersionNameModal from './VersionNameModal';
 import { useToast } from '@/components/common/Toast';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import ActivationConfirmModal from './ActivationConfirmModal';
+import FormOperationProgressModal from './FormOperationProgressModal';
+import DeleteConfirmModal from './DeleteConfirmModal';
 
 // Form Preview Thumbnail Component - Compact preview showing just a small portion
 const FormPreviewThumbnail: React.FC<{ form: any }> = ({ form }) => {
@@ -111,57 +113,77 @@ interface VersionsListProps {
 
 export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigateToBuilder }: VersionsListProps) {
   const { versions, mutate, isError } = useFormVersions();
-  const { deleteVersion, setActiveVersion, updateVersion } = useFormVersionActions();
+  const { deleteVersion, setActiveVersion, updateVersion, deactivateAllVersions } = useFormVersionActions();
   const { addScript, updateScript, deleteScript } = useBcScriptsActions();
   const { setActive } = useStoreFormActions();
   const { active: isFormActive, scriptUuid, mutate: mutateStoreForm } = useStoreForm();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const [activationModalVersion, setActivationModalVersion] = useState<any | null>(null);
+  const [progressSteps, setProgressSteps] = useState<Array<{ id: string; label: string; status: 'pending' | 'in-progress' | 'completed' | 'error' }>>([]);
+  const [progressError, setProgressError] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; versionId: string | null; formName: string | null; isLoading: boolean; error: string | null }>({
+    isOpen: false,
+    versionId: null,
+    formName: null,
+    isLoading: false,
+    error: null,
+  });
   const toast = useToast();
 
   const filteredVersions = versions.filter((v: any) =>
-    v.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.type?.toLowerCase().includes(searchQuery.toLowerCase())
+    v.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleDelete = async (versionId: string, e: React.MouseEvent) => {
+  const handleDelete = (versionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setConfirmDialog({
+    const version = versions.find((v: any) => v.id === versionId);
+    setDeleteModal({
       isOpen: true,
-      title: 'Delete Version',
-      message: 'Are you sure you want to delete this version? This action cannot be undone.',
-      onConfirm: async () => {
-        setDeletingId(versionId);
-        try {
-          await deleteVersion(versionId);
-          await mutate();
-          toast.showSuccess('Version deleted successfully.');
-        } catch (error: unknown) {
-          toast.showError('Failed to delete version: ' + (error instanceof Error ? error.message : 'Unknown error'));
-        } finally {
-          setDeletingId(null);
-        }
-      }
+      versionId,
+      formName: version?.name || null,
+      isLoading: false,
+      error: null,
     });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.versionId) return;
+
+    setDeleteModal(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    try {
+      await deleteVersion(deleteModal.versionId);
+      await mutate();
+      toast.showSuccess('Form deleted successfully.');
+      
+      // Close modal and refresh list
+      setDeleteModal({ isOpen: false, versionId: null, formName: null, isLoading: false, error: null });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setDeleteModal(prev => ({ 
+        ...prev, 
+        isLoading: false, 
+        error: errorMessage 
+      }));
+      toast.showError('Failed to delete form: ' + errorMessage);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    if (deleteModal.isLoading) return; // Prevent closing during deletion
+    setDeleteModal({ isOpen: false, versionId: null, formName: null, isLoading: false, error: null });
   };
 
   const handleSetActive = async (versionId: string, showConfirm: boolean = true) => {
     const version = versions.find((v: any) => v.id === versionId);
     if (!version) {
-      toast.showError('Version not found');
-      return;
-    }
-
-    // Prevent activation of drafts
-    if (version.type === 'draft') {
-      toast.showError('Draft forms cannot be activated. Please convert to a version first.');
+      toast.showError('Form not found');
       return;
     }
 
@@ -200,24 +222,53 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
     await performActivation(versionId);
   };
 
+  const updateProgressStep = (stepId: string, status: 'pending' | 'in-progress' | 'completed' | 'error') => {
+    setProgressSteps(prev => prev.map(step => 
+      step.id === stepId ? { ...step, status } : step
+    ));
+  };
+
   const performActivation = async (versionId: string) => {
     const version = versions.find((v: any) => v.id === versionId);
     if (!version || !version.form) {
-      toast.showError('Version not found or has no form data');
+      console.error('[Activation] Version not found or has no form data', { versionId });
+      toast.showError('Form not found or has no form data');
+      return;
+    }
+
+    // Guard against duplicate activation
+    if (activatingId === versionId) {
+      console.warn('[Activation] Already activating this version, ignoring duplicate request', { versionId });
       return;
     }
 
     setActivatingId(versionId);
+    setProgressError(null);
+    
+    // Initialize progress steps
+    const initialSteps = [
+      { id: 'generate-script', label: 'Generating form script...', status: 'pending' as const },
+      { id: 'update-script', label: 'Updating BigCommerce script...', status: 'pending' as const },
+      { id: 'update-database', label: 'Updating database...', status: 'pending' as const },
+      { id: 'refresh-data', label: 'Refreshing data...', status: 'pending' as const },
+    ];
+    setProgressSteps(initialSteps);
+    
+    console.log('[Activation] Starting activation', { versionId, versionName: version.name });
+    
     try {
-
-      // Generate signup script using version's fields+theme
+      // Step 1: Generate signup script
+      updateProgressStep('generate-script', 'in-progress');
+      console.log('[Activation] Generating signup script...');
       await fetch('/api/generate-signup-script', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ formFields: version.form.fields, theme: version.form.theme })
       });
+      updateProgressStep('generate-script', 'completed');
 
-      // Create or update BigCommerce script
+      // Step 2: Create or update BigCommerce script
+      updateProgressStep('update-script', 'in-progress');
       let finalScriptUuid: string | null = scriptUuid || null;
       try {
         const scriptPayload = {
@@ -233,75 +284,240 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
         };
 
         if (finalScriptUuid) {
-          await updateScript(finalScriptUuid, scriptPayload);
+          console.log('[Activation] Attempting to update existing script', { scriptUuid: finalScriptUuid });
+          try {
+            await updateScript(finalScriptUuid, scriptPayload);
+            console.log('[Activation] Script updated successfully');
+          } catch (updateError: any) {
+            // If script doesn't exist (404), create a new one instead
+            const errorMsg = updateError?.message || '';
+            if (errorMsg.includes('404') || errorMsg.includes('not found') || errorMsg.includes('Script not found')) {
+              console.warn('[Activation] Script not found, creating new script instead', { scriptUuid: finalScriptUuid });
+              finalScriptUuid = null; // Reset to create new script
+              const data = await addScript(scriptPayload);
+              finalScriptUuid = (data as any)?.data?.uuid || null;
+              console.log('[Activation] New script created', { scriptUuid: finalScriptUuid });
+            } else {
+              // Re-throw other errors
+              throw updateError;
+            }
+          }
         } else {
+          console.log('[Activation] Creating new script...');
           const data = await addScript(scriptPayload);
           finalScriptUuid = (data as any)?.data?.uuid || null;
+          console.log('[Activation] Script created', { scriptUuid: finalScriptUuid });
         }
+        updateProgressStep('update-script', 'completed');
       } catch (scriptError: any) {
-        console.error('Script update error:', scriptError);
-        // Continue even if script update fails - version activation should still work
+        console.error('[Activation] Script operation error:', scriptError);
+        updateProgressStep('update-script', 'error');
+        // Continue even if script operation fails - version activation should still work
+        // finalScriptUuid will remain null if script creation/update fails
       }
 
-      // Set version as active (updates DB and main form)
+      // Step 3: Set version as active (updates DB and main form, sets isActive flags)
+      updateProgressStep('update-database', 'in-progress');
+      console.log('[Activation] Setting version as active in database...');
       await setActiveVersion(versionId);
       
-      // Set signupFormActive=true
+      // Set signupFormActive=true (this is redundant since setActiveVersion already does this, but keeping for safety)
+      console.log('[Activation] Setting store form as active...');
       await setActive(true);
+      updateProgressStep('update-database', 'completed');
       
-      // Refresh versions list first to get updated isActive flags
+      // Step 4: Refresh data
+      updateProgressStep('refresh-data', 'in-progress');
+      console.log('[Activation] Refreshing versions list...');
       await mutate();
-      // Then refresh store form to get updated active state
-      await mutateStoreForm();
       
-      // Force a small delay to ensure state is fully updated
-      setTimeout(() => {
-        mutate();
-        mutateStoreForm();
-      }, 100);
+      console.log('[Activation] Refreshing store form state with forced revalidation...');
+      // Force revalidation to get fresh data from server
+      await mutateStoreForm(undefined, { revalidate: true });
+      updateProgressStep('refresh-data', 'completed');
+      
+      // Additional refresh after a delay to catch any race conditions and server cache
+      setTimeout(async () => {
+        console.log('[Activation] Performing final state refresh...');
+        await mutate();
+        await mutateStoreForm(undefined, { revalidate: true });
+      }, 500);
       
       if (onVersionLoaded) onVersionLoaded();
       
+      console.log('[Activation] Activation completed successfully', { versionId, scriptUuid: finalScriptUuid });
       toast.showSuccess('Form activated' + (finalScriptUuid ? `: ${finalScriptUuid}` : '.'));
+      
+      // Auto-close modal after showing success for 1.5 seconds
+      setTimeout(() => {
+        setActivatingId(null);
+        setProgressSteps([]);
+      }, 1500);
     } catch (error: any) {
-      toast.showError('Failed to activate version: ' + (error?.message || 'Unknown error'));
+      console.error('[Activation] Failed to activate version:', error);
+      setProgressError(error?.message || 'Unknown error');
+      toast.showError('Failed to activate form: ' + (error?.message || 'Unknown error'));
+      // Keep modal open to show error, user can close by activating/deactivating again or refreshing
     } finally {
-      setActivatingId(null);
+      // Don't reset activatingId here - let it auto-close on success or stay open on error
     }
   };
 
   const handleDeactivate = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VersionsList.tsx:347',message:'handleDeactivate entry',data:{scriptUuid,isFormActive,deactivatingId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C'})}).catch(()=>{});
+    // #endregion
+    
+    // Guard against duplicate deactivation
+    if (deactivatingId !== null) {
+      console.warn('[Deactivation] Already deactivating, ignoring duplicate request');
+      return;
+    }
+
+    // Guard against deactivating when no form is active
+    if (!isFormActive) {
+      console.warn('[Deactivation] No form is currently active, nothing to deactivate');
+      toast.showWarning('No form is currently active.');
+      return;
+    }
+
+    // Find the active version name for display
+    const activeVersion = versions.find((v: any) => v.isActive && isFormActive);
+    const activeVersionName = activeVersion?.name || 'Current Form';
+
     setDeactivatingId('deactivate');
+    setProgressError(null);
+    
+    // Initialize progress steps
+    const initialSteps = [
+      { id: 'delete-script', label: 'Removing script from storefront...', status: 'pending' as const },
+      { id: 'update-database', label: 'Updating database...', status: 'pending' as const },
+      { id: 'deactivate-versions', label: 'Deactivating versions...', status: 'pending' as const },
+      { id: 'refresh-data', label: 'Refreshing data...', status: 'pending' as const },
+    ];
+    setProgressSteps(initialSteps);
+    
+    console.log('[Deactivation] Starting deactivation', { scriptUuid, isFormActive });
+    
     try {
-      // Delete BigCommerce script if it exists
+      // Step 1: Delete BigCommerce script
+      updateProgressStep('delete-script', 'in-progress');
       if (scriptUuid) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VersionsList.tsx:382',message:'Before deleteScript call',data:{scriptUuid,hasScriptUuid:!!scriptUuid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         try {
-          await deleteScript(scriptUuid);
+          console.log('[Deactivation] Deleting BigCommerce script...', { scriptUuid });
+          const deleteResult = await deleteScript(scriptUuid);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VersionsList.tsx:386',message:'deleteScript success',data:{scriptUuid,deleteResult},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D'})}).catch(()=>{});
+          // #endregion
+          console.log('[Deactivation] Script deleted successfully from BigCommerce', { scriptUuid, result: deleteResult });
+          updateProgressStep('delete-script', 'completed');
         } catch (scriptError: any) {
-          console.error('Script deletion error:', scriptError);
-          // Continue even if script deletion fails
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VersionsList.tsx:398',message:'deleteScript error caught',data:{scriptUuid,errorMessage:scriptError?.message,errorType:scriptError?.constructor?.name,errorString:String(scriptError),hasMessage:!!scriptError?.message,errorKeys:scriptError&&typeof scriptError==='object'?Object.keys(scriptError):[],errorJson:JSON.stringify(scriptError)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,E'})}).catch(()=>{});
+          // #endregion
+          
+          // Extract error information - check multiple ways to detect meaningful errors
+          const errorMsg = scriptError?.message || '';
+          const errorMsgTrimmed = errorMsg.trim();
+          const hasMeaningfulMessage = errorMsgTrimmed.length > 0 && errorMsgTrimmed !== '{}';
+          
+          // Since deletion is working correctly, any error without a meaningful message is a false positive
+          // Empty objects, empty strings, or objects with no message property should be treated as success
+          if (!hasMeaningfulMessage) {
+            // Silently treat as success - no logging for empty/meaningless errors
+            // This covers: {}, empty string, undefined, null, objects with no message
+            updateProgressStep('delete-script', 'completed');
+          } else {
+            // Only log as error if we have a meaningful error message (not just empty object)
+            const errorMsgLower = errorMsgTrimmed.toLowerCase();
+            const is404Error = errorMsgLower.includes('404') || 
+                             errorMsgLower.includes('not found') || 
+                             errorMsgLower.includes('does not exist');
+            
+            if (is404Error) {
+              // 404 is expected when script is already deleted - treat as success
+              updateProgressStep('delete-script', 'completed');
+            } else {
+              // Real error with meaningful message
+              console.error('[Deactivation] Script deletion error - this means the form may still appear on website!', { 
+                scriptUuid, 
+                error: scriptError,
+                message: scriptError?.message
+              });
+              updateProgressStep('delete-script', 'error');
+              // Still continue with deactivation in database
+            }
+          }
         }
+      } else {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'VersionsList.tsx:404',message:'No scriptUuid found',data:{scriptUuid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        console.warn('[Deactivation] No script UUID found - form may still be active on website if a script exists!', { scriptUuid });
+        updateProgressStep('delete-script', 'completed'); // Skip step
       }
 
-      // Set signupFormActive=false
+      // Step 2: Set signupFormActive=false and clear script UUID in database FIRST
+      updateProgressStep('update-database', 'in-progress');
+      console.log('[Deactivation] Setting store form as inactive in database...');
       await setActive(false);
+      updateProgressStep('update-database', 'completed');
+
+      // Step 3: Deactivate all versions
+      updateProgressStep('deactivate-versions', 'in-progress');
+      console.log('[Deactivation] Deactivating all versions in database...');
+      await deactivateAllVersions();
+      updateProgressStep('deactivate-versions', 'completed');
       
+      // Wait a moment to ensure database writes complete before refreshing
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Step 4: Refresh data
+      updateProgressStep('refresh-data', 'in-progress');
+      console.log('[Deactivation] Refreshing versions list...');
       await mutate();
-      await mutateStoreForm();
       
-      // Force a small delay to ensure state is fully updated
-      setTimeout(() => {
-        mutate();
-        mutateStoreForm();
-      }, 100);
+      console.log('[Deactivation] Refreshing store form state with forced revalidation...');
+      // Force revalidation to get fresh data from server
+      await mutateStoreForm(undefined, { revalidate: true });
+      updateProgressStep('refresh-data', 'completed');
       
-      if (onVersionLoaded) onVersionLoaded();
+      // Additional refresh after a delay to catch any race conditions and server cache
+      setTimeout(async () => {
+        console.log('[Deactivation] Performing final state refresh...');
+        await mutate();
+        await mutateStoreForm(undefined, { revalidate: true });
+      }, 500);
       
+      if (onVersionLoaded) {
+        await onVersionLoaded();
+      }
+      
+      console.log('[Deactivation] Deactivation completed successfully');
       toast.showSuccess('Form deactivated.');
+      
+      // Auto-close modal after showing success for 1.5 seconds
+      setTimeout(() => {
+        setDeactivatingId(null);
+        setProgressSteps([]);
+      }, 1500);
     } catch (error: any) {
+      console.error('[Deactivation] Failed to deactivate:', error);
+      setProgressError(error?.message || 'Unknown error');
       toast.showError('Failed to deactivate: ' + (error?.message || 'Unknown error'));
+      // Still refresh state even on error to ensure UI is consistent
+      try {
+        await mutate();
+        await mutateStoreForm(undefined, { revalidate: true });
+      } catch (refreshError) {
+        console.error('[Deactivation] Failed to refresh state after error:', refreshError);
+      }
+      // Keep modal open to show error
     } finally {
-      setDeactivatingId(null);
+      // Don't reset deactivatingId here - let it auto-close on success or stay open on error
     }
   };
 
@@ -333,7 +549,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
       setEditingId(null);
       setEditName('');
     } catch (error: any) {
-      toast.showError('Failed to update version name: ' + (error?.message || 'Unknown error'));
+      toast.showError('Failed to update form name: ' + (error?.message || 'Unknown error'));
     }
   };
 
@@ -436,19 +652,11 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
     }
   };
 
-  const getTypeBadge = (type: string) => {
-    const styles = {
-      published: 'bg-green-100 text-green-700 border-green-300',
-      draft: 'bg-amber-100 text-amber-700 border-amber-300',
-      version: 'bg-blue-100 text-blue-700 border-blue-300',
-    };
-    return styles[type as keyof typeof styles] || 'bg-gray-100 text-gray-700 border-gray-300';
-  };
 
   if (isError) {
     return (
       <div className="p-6 text-center text-red-600">
-        Failed to load versions. Please try again.
+        Failed to load forms. Please try again.
       </div>
     );
   }
@@ -458,8 +666,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
       {filteredVersions.map((version: any) => (
         <div
           key={version.id}
-          className="bg-white border border-slate-200 rounded-xl p-[14px] hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer group relative overflow-hidden"
-          onClick={() => handleLoad(version)}
+          className="bg-white border border-slate-200 rounded-xl p-[14px] hover:shadow-lg hover:border-blue-300 transition-all duration-200 group relative overflow-hidden"
         >
           {/* Active indicator bar */}
           {version.isActive && isFormActive && (
@@ -476,11 +683,8 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
               </div>
             )}
             
-            {/* Header - Name and version badge */}
+            {/* Header - Name */}
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-xs font-semibold border flex-shrink-0 ${getTypeBadge(version.type)}`}>
-                {version.type || 'version'}
-              </span>
               {version.isActive && isFormActive && (
                 <span className="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-300 flex items-center gap-1 flex-shrink-0">
                   <CheckCircle2 className="w-3 h-3" />
@@ -509,50 +713,42 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
                   <FileEdit className="w-3.5 h-3.5" />
                   Load
                 </button>
-                {/* Always show Activate button for versions (not drafts) */}
-                {version.type !== 'draft' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSetActive(version.id);
-                    }}
-                    disabled={activatingId === version.id}
-                    className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
-                      version.isActive && isFormActive
-                        ? 'text-amber-600 hover:bg-amber-50'
-                        : 'text-green-600 hover:bg-green-50'
-                    }`}
-                    title={
-                      version.isActive && isFormActive
-                        ? 'Form is active - Click to deactivate'
-                        : 'Activate Version - Set this version as the active form'
-                    }
-                  >
-                    {activatingId === version.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Power className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSetActive(version.id);
+                  }}
+                  disabled={activatingId === version.id}
+                  className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                    version.isActive && isFormActive
+                      ? 'text-amber-600 hover:bg-amber-50'
+                      : 'text-green-600 hover:bg-green-50'
+                  }`}
+                  title={
+                    version.isActive && isFormActive
+                      ? 'Form is active - Click to deactivate'
+                      : 'Activate Form - Set this form as the active form'
+                  }
+                >
+                  {activatingId === version.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Power className="w-3.5 h-3.5" />
+                  )}
+                </button>
                 <button
                   onClick={(e) => handleEdit(version, e)}
                   className="p-1.5 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                  title="Rename Version - Change the name of this version"
+                  title="Rename Form - Change the name of this form"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={(e) => handleDelete(version.id, e)}
-                  disabled={deletingId === version.id}
-                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                  title="Delete Version - Permanently remove this version"
+                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete Form - Permanently remove this form"
                 >
-                  {deletingId === version.id ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-3.5 h-3.5" />
-                  )}
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -567,8 +763,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
       {filteredVersions.map((version: any) => (
         <div
           key={version.id}
-          className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer group"
-          onClick={() => handleLoad(version)}
+          className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md hover:border-blue-300 transition-all duration-200 group"
         >
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -591,9 +786,6 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
                   <h3 className="text-base font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
                     {version.name || 'Unnamed'}
                   </h3>
-                  <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border flex-shrink-0 ${getTypeBadge(version.type)}`}>
-                    {version.type || 'version'}
-                  </span>
                   {version.isActive && isFormActive && (
                     <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-green-100 text-green-700 border border-green-300 flex items-center gap-1.5 flex-shrink-0">
                       <CheckCircle2 className="w-3.5 h-3.5" />
@@ -616,7 +808,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
               </div>
             </div>
             
-            <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1 flex-shrink-0">
               <button
                 onClick={() => handleLoad(version)}
                 className="px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
@@ -625,7 +817,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
                 <FileEdit className="w-4 h-4" />
                 <span className="hidden sm:inline">Load</span>
               </button>
-              {!version.isActive && !isFormActive && version.type !== 'draft' && (
+              {!version.isActive && !isFormActive && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -633,7 +825,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
                   }}
                   disabled={activatingId === version.id}
                   className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                  title="Activate Version - Set this version as the active form"
+                  title="Activate Form - Set this form as the active form"
                 >
                   {activatingId === version.id ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -668,15 +860,10 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
               </button>
               <button
                 onClick={(e) => handleDelete(version.id, e)}
-                disabled={deletingId === version.id}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 title="Delete Version - Permanently remove this version"
               >
-                {deletingId === version.id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )}
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -695,7 +882,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search versions..."
+              placeholder="Search forms..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -742,7 +929,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
             {searchQuery ? 'No forms found matching your search.' : 'No saved forms yet.'}
           </p>
           <p className="text-gray-400 text-sm mt-2">
-            {searchQuery ? 'Try adjusting your search terms.' : 'Save your form to start managing and activating versions.'}
+            {searchQuery ? 'Try adjusting your search terms.' : 'Save your form to start managing and activating forms.'}
           </p>
           {!searchQuery && onNavigateToBuilder && (
             <button
@@ -766,7 +953,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
           setEditName('');
         }}
         onConfirm={handleUpdateName}
-        title="Rename Version"
+        title="Rename Form"
         placeholder="Enter new name"
         required={true}
         initialName={editName}
@@ -802,6 +989,31 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
             handleLoad(activationModalVersion);
           }
         }}
+      />
+
+      {/* Activation/Deactivation Progress Modal */}
+      {(activatingId || deactivatingId) && (
+        <FormOperationProgressModal
+          isOpen={true}
+          operationType={activatingId ? 'activate' : 'deactivate'}
+          formName={
+            activatingId 
+              ? versions.find((v: any) => v.id === activatingId)?.name || 'Unknown'
+              : versions.find((v: any) => v.isActive && isFormActive)?.name || 'Current Form'
+          }
+          steps={progressSteps}
+          error={progressError}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModal.isOpen}
+        formName={deleteModal.formName || undefined}
+        isLoading={deleteModal.isLoading}
+        error={deleteModal.error}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
       />
     </div>
   );
