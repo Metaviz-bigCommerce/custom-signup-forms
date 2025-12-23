@@ -107,12 +107,40 @@ export const storeFormSchema = z.object({
   theme: formThemeSchema,
 });
 
+// Email template design schema
+export const emailTemplateDesignSchema = z.object({
+  logoUrl: z.string().url().max(500).optional().nullable(),
+  bannerUrl: z.string().url().max(500).optional().nullable(),
+  primaryColor: z.string().max(20).optional().nullable(),
+  background: z.string().max(20).optional().nullable(),
+  title: z.string().max(200).optional().nullable(),
+  greeting: z.string().max(200).optional().nullable(),
+  ctas: z.array(z.object({
+    id: z.string(),
+    text: z.string().max(100),
+    url: z.string().max(500),
+  })).optional().nullable(),
+  footerNote: z.string().max(500).optional().nullable(),
+  footerLinks: z.array(z.object({
+    id: z.string(),
+    text: z.string().max(100),
+    url: z.string().max(500),
+  })).optional().nullable(),
+  socialLinks: z.array(z.object({
+    id: z.string(),
+    name: z.string().max(100),
+    url: z.string().max(500),
+    iconUrl: z.string().url().max(500),
+  })).optional().nullable(),
+}).optional().nullable();
+
 // Email template schema
 export const emailTemplateSchema = z.object({
   subject: z.string().min(1).max(500),
   body: z.string().min(1).max(10000),
   html: z.string().max(50000).optional().nullable(),
   useHtml: z.boolean().optional().nullable(),
+  design: emailTemplateDesignSchema,
 });
 
 export const emailTemplatesSchema = z.object({

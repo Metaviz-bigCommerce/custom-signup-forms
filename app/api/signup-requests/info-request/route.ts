@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
 					},
 					replyTo: config?.replyTo || undefined,
 					config,
+					templateKey: 'moreInfo',
 				});
 				
 				logger.info('Info request email sent', { ...logContext, storeHash, requestId: id, email });

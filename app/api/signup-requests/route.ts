@@ -146,6 +146,7 @@ export async function PATCH(req: NextRequest) {
             },
             replyTo: config?.replyTo || undefined,
             config,
+            templateKey: status === 'approved' ? 'approval' : status === 'rejected' ? 'rejection' : undefined,
           });
           
           logger.info('Status update email sent', { ...logContext, email, status });

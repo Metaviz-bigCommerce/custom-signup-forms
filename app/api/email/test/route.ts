@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
 			},
 			replyTo: config?.replyTo || undefined,
 			config,
+			templateKey: key,
 		});
 		return NextResponse.json({ ok: true, result: res }, { status: 200 });
 	} catch (e: any) {

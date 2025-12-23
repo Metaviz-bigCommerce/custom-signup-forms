@@ -34,7 +34,7 @@ export default function ActivationConfirmModal({
           <h3 className="text-lg font-semibold text-gray-800">Form Actions</h3>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -61,7 +61,7 @@ export default function ActivationConfirmModal({
                   onActivate();
                   onClose();
                 }}
-                className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Power className="w-4 h-4" />
                 <span>Activate This Form</span>
@@ -74,7 +74,7 @@ export default function ActivationConfirmModal({
                   onDeactivate();
                   onClose();
                 }}
-                className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-3 rounded-lg text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <XCircle className="w-4 h-4" />
                 <span>Deactivate Form</span>
@@ -86,14 +86,14 @@ export default function ActivationConfirmModal({
                 if (onLoad) onLoad();
                 onClose();
               }}
-              className="w-full px-4 py-3 rounded-lg text-sm font-medium text-gray-700 bg-white border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-colors"
+              className="w-full px-4 py-3 rounded-lg text-sm font-medium text-gray-700 bg-white border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-colors cursor-pointer"
             >
               Load into Builder
             </button>
 
             <button
               onClick={onClose}
-              className="w-full px-4 py-2 rounded-lg text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors"
+              className="w-full px-4 py-2 rounded-lg text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
             >
               Cancel
             </button>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useSession } from '@/context/session';
 import { useToast } from '@/components/common/Toast';
+import TestEmailModal from '@/components/TestEmailModal';
 
 type TemplateKey = 'signup' | 'approval' | 'rejection' | 'moreInfo';
 
@@ -108,7 +109,7 @@ const defaultCTAs: Record<TemplateKey, CTA[]> = {
   signup: [{ id: 'view-status', text: 'Check Application Status', url: '{{action_url}}' }],
   approval: [{ id: 'login', text: 'Login to Your Account', url: '{{action_url}}' }],
   rejection: [{ id: 'contact', text: 'Contact Support', url: '{{action_url}}' }],
-  moreInfo: [{ id: 'submit', text: 'Submit Information', url: '{{action_url}}' }]
+  moreInfo: [] // No default CTA - users will reply via email
 };
 
 // Default titles per template type
@@ -117,6 +118,14 @@ const defaultTitles: Record<TemplateKey, string> = {
   approval: 'Welcome Aboard! You\'re Approved',
   rejection: 'Application Status Update',
   moreInfo: 'We Need a Little More Information'
+};
+
+// Default branding colors per template type
+const defaultBranding: Record<TemplateKey, { primaryColor: string; background: string }> = {
+  signup: { primaryColor: '#2563eb', background: '#f7fafc' }, // Sky blue
+  approval: { primaryColor: '#059669', background: '#ecfdf5' }, // Emerald green
+  rejection: { primaryColor: '#e11d48', background: '#fff1f2' }, // Rose red
+  moreInfo: { primaryColor: '#d97706', background: '#fffbeb' } // Amber
 };
 
 const EmailTemplates: React.FC = () => {
@@ -128,6 +137,8 @@ const EmailTemplates: React.FC = () => {
       body: 'We have received your signup request and initiated the review process. Our team is currently validating the information you provided to ensure it meets our account requirements. You will receive an update once this review is complete. If any clarification or additional details are needed, we will contact you directly. Thank you for your patience while we complete this verification step.',
       design: {
         title: defaultTitles.signup,
+        primaryColor: defaultBranding.signup.primaryColor,
+        background: defaultBranding.signup.background,
         ctas: defaultCTAs.signup,
         footerLinks: defaultFooterLinks
       }
@@ -137,6 +148,8 @@ const EmailTemplates: React.FC = () => {
       body: 'Your signup request has been approved, and your account is now active. You may now log in to begin configuring your store and accessing your dashboard. We recommend reviewing the available onboarding resources to support your initial setup. Should you need any assistance during this process, our support team is available to help. Thank you for choosing our platform for your business operations.',
       design: {
         title: defaultTitles.approval,
+        primaryColor: defaultBranding.approval.primaryColor,
+        background: defaultBranding.approval.background,
         ctas: defaultCTAs.approval,
         footerLinks: defaultFooterLinks
       }
@@ -146,6 +159,8 @@ const EmailTemplates: React.FC = () => {
       body: 'After a thorough review of your signup information, we are unable to approve your request at this time. This decision reflects the criteria required for account activation on our platform. If you have updated information or additional context that may support reconsideration, you are welcome to reply to this email. Our team will review any new details you provide. Thank you for your interest in our services and for taking the time to apply.',
       design: {
         title: defaultTitles.rejection,
+        primaryColor: defaultBranding.rejection.primaryColor,
+        background: defaultBranding.rejection.background,
         ctas: defaultCTAs.rejection,
         footerLinks: defaultFooterLinks
       }
@@ -155,6 +170,8 @@ const EmailTemplates: React.FC = () => {
       body: 'To proceed with your signup review, we require the following information: {{required_information}}. Providing accurate details will help us complete the verification process efficiently. You may submit the requested information through your signup portal or by replying directly to this email. Once received, we will resume the review and update you accordingly. Please let us know if you need clarification regarding any part of this request.',
       design: {
         title: defaultTitles.moreInfo,
+        primaryColor: defaultBranding.moreInfo.primaryColor,
+        background: defaultBranding.moreInfo.background,
         ctas: defaultCTAs.moreInfo,
         footerLinks: defaultFooterLinks
       }
@@ -163,6 +180,7 @@ const EmailTemplates: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey>('signup');
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [showTestEmailModal, setShowTestEmailModal] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     content: true,
     branding: false,
@@ -290,7 +308,93 @@ const EmailTemplates: React.FC = () => {
         const res = await fetch(`/api/email-templates?context=${encodeURIComponent(context)}`);
         if (res.ok) {
           const json = await res.json();
-          if (json?.templates) setEmailTemplates(json.templates);
+          // API returns { error: false, data: { templates } }
+          const templates = json?.data?.templates || json?.templates;
+          if (templates) {
+            // Merge loaded templates with defaults to ensure all required fields and branding are present
+            const defaultTemplates: Templates = {
+              signup: { 
+                subject: 'Notification from {{platform_name}}: Your Signup Request Has Been Received', 
+                body: 'We have received your signup request and initiated the review process. Our team is currently validating the information you provided to ensure it meets our account requirements. You will receive an update once this review is complete. If any clarification or additional details are needed, we will contact you directly. Thank you for your patience while we complete this verification step.',
+                design: {
+                  title: defaultTitles.signup,
+                  primaryColor: defaultBranding.signup.primaryColor,
+                  background: defaultBranding.signup.background,
+                  ctas: defaultCTAs.signup,
+                  footerLinks: defaultFooterLinks
+                }
+              },
+              approval: { 
+                subject: '{{platform_name}} Account Update: Your Application Has Been Approved', 
+                body: 'Your signup request has been approved, and your account is now active. You may now log in to begin configuring your store and accessing your dashboard. We recommend reviewing the available onboarding resources to support your initial setup. Should you need any assistance during this process, our support team is available to help. Thank you for choosing our platform for your business operations.',
+                design: {
+                  title: defaultTitles.approval,
+                  primaryColor: defaultBranding.approval.primaryColor,
+                  background: defaultBranding.approval.background,
+                  ctas: defaultCTAs.approval,
+                  footerLinks: defaultFooterLinks
+                }
+              },
+              rejection: { 
+                subject: '{{platform_name}} Review Outcome: Status of Your Signup Request', 
+                body: 'After a thorough review of your signup information, we are unable to approve your request at this time. This decision reflects the criteria required for account activation on our platform. If you have updated information or additional context that may support reconsideration, you are welcome to reply to this email. Our team will review any new details you provide. Thank you for your interest in our services and for taking the time to apply.',
+                design: {
+                  title: defaultTitles.rejection,
+                  primaryColor: defaultBranding.rejection.primaryColor,
+                  background: defaultBranding.rejection.background,
+                  ctas: defaultCTAs.rejection,
+                  footerLinks: defaultFooterLinks
+                }
+              },
+              moreInfo: { 
+                subject: 'Action Required from {{platform_name}}: Additional Details Needed to Proceed', 
+                body: 'To proceed with your signup review, we require the following information: {{required_information}}. Providing accurate details will help us complete the verification process efficiently. You may submit the requested information through your signup portal or by replying directly to this email. Once received, we will resume the review and update you accordingly. Please let us know if you need clarification regarding any part of this request.',
+                design: {
+                  title: defaultTitles.moreInfo,
+                  primaryColor: defaultBranding.moreInfo.primaryColor,
+                  background: defaultBranding.moreInfo.background,
+                  ctas: defaultCTAs.moreInfo,
+                  footerLinks: defaultFooterLinks
+                }
+              }
+            };
+            
+            const merged: Templates = Object.fromEntries(
+              (Object.keys(defaultTemplates) as TemplateKey[]).map((k) => {
+                const loaded = templates[k];
+                const defaultTemplate = defaultTemplates[k];
+                
+                // If loaded template exists, merge it with defaults
+                if (loaded) {
+                  return [k, {
+                    // Use saved values, fallback to defaults
+                    subject: loaded.subject ?? defaultTemplate.subject,
+                    body: loaded.body ?? defaultTemplate.body,
+                    html: loaded.html ?? null,
+                    useHtml: loaded.useHtml ?? true,
+                    design: loaded.design ? {
+                      // Merge design: use saved values, fallback to defaults only if not set
+                      title: loaded.design.title ?? defaultTemplate.design?.title,
+                      greeting: loaded.design.greeting ?? defaultTemplate.design?.greeting,
+                      primaryColor: loaded.design.primaryColor ?? defaultTemplate.design?.primaryColor ?? defaultBranding[k].primaryColor,
+                      background: loaded.design.background ?? defaultTemplate.design?.background ?? defaultBranding[k].background,
+                      logoUrl: loaded.design.logoUrl ?? defaultTemplate.design?.logoUrl,
+                      bannerUrl: loaded.design.bannerUrl ?? defaultTemplate.design?.bannerUrl,
+                      footerNote: loaded.design.footerNote ?? defaultTemplate.design?.footerNote,
+                      // Use saved arrays if they exist (even if empty), otherwise use defaults
+                      ctas: loaded.design.ctas !== undefined ? loaded.design.ctas : (defaultTemplate.design?.ctas || []),
+                      footerLinks: loaded.design.footerLinks !== undefined ? loaded.design.footerLinks : (defaultTemplate.design?.footerLinks || []),
+                      socialLinks: loaded.design.socialLinks !== undefined ? loaded.design.socialLinks : (defaultTemplate.design?.socialLinks || []),
+                    } : defaultTemplate.design,
+                  }];
+                } else {
+                  // No saved template, use default
+                  return [k, defaultTemplate];
+                }
+              })
+            ) as Templates;
+            setEmailTemplates(merged);
+          }
         }
       } catch {}
       setLoaded(true);
@@ -302,11 +406,12 @@ const EmailTemplates: React.FC = () => {
     if (!context) return;
     setSaving(true);
     try {
+      // Save templates with design - HTML will be generated on-the-fly when sending emails with actual user variables
       const toSave: Templates = Object.fromEntries(
         (Object.keys(emailTemplates) as TemplateKey[]).map((k) => {
           const t = emailTemplates[k];
-          const html = generateHtml(t);
-          return [k, { ...t, html, useHtml: true }];
+          // Don't generate HTML with preview vars - save design and let email sending generate HTML with actual vars
+          return [k, { ...t, useHtml: true }];
         })
       ) as Templates;
       await fetch(`/api/email-templates?context=${encodeURIComponent(context)}`, {
@@ -408,21 +513,7 @@ const EmailTemplates: React.FC = () => {
             {/* Action Buttons */}
             <div className="flex items-center gap-3">
               <button
-                onClick={async () => {
-                  const to = prompt('Send a test email to:');
-                  if (!to) return;
-                  try {
-                    const res = await fetch(`/api/email/test?context=${encodeURIComponent(context)}`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ to, key: selectedTemplate }),
-                    });
-                    if (!res.ok) throw new Error(await res.text());
-                    toast.showSuccess('Test email sent! Check your inbox.');
-                  } catch (e: unknown) {
-                    toast.showError('Failed: ' + (e instanceof Error ? e.message : 'Unknown error'));
-                  }
-                }}
+                onClick={() => setShowTestEmailModal(true)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-white/10 text-white rounded-xl text-sm font-medium hover:bg-white/20 transition-all cursor-pointer border border-white/10"
               >
                 <TestTube className="w-4 h-4" />
@@ -485,23 +576,23 @@ const EmailTemplates: React.FC = () => {
             const textColorMuted = isLight ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.8)';
             const iconBg = isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.2)';
             return (
-              <div 
-                className="rounded-xl p-4 transition-colors duration-300"
+          <div 
+            className="rounded-xl p-4 transition-colors duration-300"
                 style={{ backgroundColor: primaryColor }}
-              >
-                <div className="flex items-center gap-3">
+          >
+            <div className="flex items-center gap-3">
                   <div 
                     className="w-10 h-10 rounded-lg flex items-center justify-center"
                     style={{ backgroundColor: iconBg }}
                   >
                     <CurrentIcon className="w-5 h-5" style={{ color: textColor }} />
-                  </div>
-                  <div>
+              </div>
+              <div>
                     <h3 className="font-semibold" style={{ color: textColor }}>{currentMeta.label}</h3>
                     <p className="text-sm" style={{ color: textColorMuted }}>{currentMeta.description}</p>
-                  </div>
-                </div>
               </div>
+            </div>
+          </div>
             );
           })()}
 
@@ -703,40 +794,40 @@ const EmailTemplates: React.FC = () => {
                     <GripVertical className="w-4 h-4 text-slate-400" />
                   </div>
                   <div className="flex-1 grid grid-cols-2 gap-3">
-                    <div>
+              <div>
                       <label className="block text-xs font-medium text-slate-500 mb-1">Button Text</label>
-                      <input
-                        type="text"
+                <input
+                  type="text"
                         value={cta.text}
                         onChange={(e) => {
                           const newCtas = [...(emailTemplates[selectedTemplate].design?.ctas || [])];
                           newCtas[index] = { ...newCtas[index], text: e.target.value };
                           setEmailTemplates({
-                            ...emailTemplates,
+                    ...emailTemplates,
                             [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), ctas: newCtas } }
                           });
                         }}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         placeholder="Button text"
-                      />
-                    </div>
-                    <div>
+                />
+              </div>
+              <div>
                       <label className="block text-xs font-medium text-slate-500 mb-1">Button URL</label>
-                      <input
-                        type="text"
+                <input
+                  type="text"
                         value={cta.url}
                         onChange={(e) => {
                           const newCtas = [...(emailTemplates[selectedTemplate].design?.ctas || [])];
                           newCtas[index] = { ...newCtas[index], url: e.target.value };
                           setEmailTemplates({
-                            ...emailTemplates,
+                    ...emailTemplates,
                             [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), ctas: newCtas } }
                           });
                         }}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         placeholder="https://... or {{action_url}}"
-                      />
-                    </div>
+                />
+              </div>
                   </div>
                   <button
                     onClick={() => {
@@ -791,46 +882,46 @@ const EmailTemplates: React.FC = () => {
               />
             </div>
             
-            <div>
+              <div>
               <label className="block text-sm font-medium text-slate-600 mb-3">Footer Links</label>
               <div className="space-y-2">
                 {(emailTemplates[selectedTemplate].design?.footerLinks || []).map((link, index) => (
                   <div key={link.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="flex-1 grid grid-cols-2 gap-2">
-                      <input
-                        type="text"
+                <input
+                  type="text"
                         value={link.text}
                         onChange={(e) => {
                           const newLinks = [...(emailTemplates[selectedTemplate].design?.footerLinks || [])];
                           newLinks[index] = { ...newLinks[index], text: e.target.value };
                           setEmailTemplates({
-                            ...emailTemplates,
+                    ...emailTemplates,
                             [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), footerLinks: newLinks } }
                           });
                         }}
                         className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         placeholder="Link text"
-                      />
-                      <input
-                        type="text"
+                />
+                <input
+                  type="text"
                         value={link.url}
                         onChange={(e) => {
                           const newLinks = [...(emailTemplates[selectedTemplate].design?.footerLinks || [])];
                           newLinks[index] = { ...newLinks[index], url: e.target.value };
                           setEmailTemplates({
-                            ...emailTemplates,
+                    ...emailTemplates,
                             [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), footerLinks: newLinks } }
                           });
                         }}
                         className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                        placeholder="https://..."
-                      />
-                    </div>
+                  placeholder="https://..."
+                />
+              </div>
                     <button
                       onClick={() => {
                         const newLinks = (emailTemplates[selectedTemplate].design?.footerLinks || []).filter((_, i) => i !== index);
                         setEmailTemplates({
-                          ...emailTemplates,
+                    ...emailTemplates,
                           [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), footerLinks: newLinks } }
                         });
                       }}
@@ -852,7 +943,7 @@ const EmailTemplates: React.FC = () => {
                     const newLink: FooterLink = { id: `link-${Date.now()}`, text: 'New Link', url: '#' };
                     const currentLinks = emailTemplates[selectedTemplate].design?.footerLinks || [];
                     setEmailTemplates({
-                      ...emailTemplates,
+                    ...emailTemplates,
                       [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), footerLinks: [...currentLinks, newLink] } }
                     });
                   }}
@@ -878,7 +969,7 @@ const EmailTemplates: React.FC = () => {
                       ) : (
                         <span className="text-xs font-bold text-slate-400">?</span>
                       )}
-                    </div>
+                  </div>
                     
                     <div className="flex-1 space-y-2">
                       <div className="grid grid-cols-2 gap-2">
@@ -896,14 +987,14 @@ const EmailTemplates: React.FC = () => {
                           className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                           placeholder="Platform name"
                         />
-                        <input
-                          type="url"
+                  <input
+                    type="url"
                           value={social.url}
                           onChange={(e) => {
                             const newSocials = [...(emailTemplates[selectedTemplate].design?.socialLinks || [])];
                             newSocials[index] = { ...newSocials[index], url: e.target.value };
                             setEmailTemplates({
-                              ...emailTemplates,
+                      ...emailTemplates,
                               [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), socialLinks: newSocials } }
                             });
                           }}
@@ -1059,6 +1150,15 @@ const EmailTemplates: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Test Email Modal */}
+      <TestEmailModal
+        isOpen={showTestEmailModal}
+        templateKey={selectedTemplate}
+        context={context || ''}
+        onClose={() => setShowTestEmailModal(false)}
+        showToast={toast}
+      />
     </div>
   );
 };

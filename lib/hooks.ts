@@ -171,13 +171,14 @@ export function useStoreFormActions() {
 
 export function useFormVersions() {
   const encodedContext = useSession()?.context;
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate, isLoading } = useSWR(
     encodedContext ? ["/api/form-versions", encodedContext] : null,
     fetcher
   );
   return {
     versions: data?.versions || data || [],
     isError: error,
+    isLoading,
     mutate,
   };
 }

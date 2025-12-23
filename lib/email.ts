@@ -3,11 +3,25 @@ import { env } from './env';
 
 type TemplateKey = 'signup' | 'approval' | 'rejection' | 'moreInfo';
 
+export type EmailTemplateDesign = {
+	logoUrl?: string;
+	bannerUrl?: string;
+	primaryColor?: string;
+	background?: string;
+	title?: string;
+	greeting?: string;
+	ctas?: Array<{ id: string; text: string; url: string }>;
+	footerNote?: string;
+	footerLinks?: Array<{ id: string; text: string; url: string }>;
+	socialLinks?: Array<{ id: string; name: string; url: string; iconUrl: string }>;
+};
+
 export type EmailTemplate = {
 	subject: string;
 	body: string;
 	html?: string | null;
 	useHtml?: boolean | null;
+	design?: EmailTemplateDesign | null;
 };
 
 export type EmailTemplates = Record<TemplateKey, EmailTemplate>;
@@ -68,6 +82,212 @@ export function renderTemplate(input: string, vars: Record<string, string | numb
 	});
 }
 
+// Default titles per template type
+const defaultTitles: Record<TemplateKey, string> = {
+	signup: 'Application Received Successfully',
+	approval: 'Welcome Aboard! You\'re Approved',
+	rejection: 'Application Status Update',
+	moreInfo: 'We Need a Little More Information'
+};
+
+// Generate HTML email from template with actual user variables
+export function generateEmailHtml(template: EmailTemplate, vars: Record<string, string | number | null | undefined>, templateKey: TemplateKey): string {
+	const d = template.design || {};
+	const brand = d.primaryColor || '#2563eb';
+	const bg = d.background || '#f7fafc';
+	const platformName = String(vars.platform_name || vars.store_name || 'Store');
+	
+	const logo = d.logoUrl 
+		? `<img src="${d.logoUrl}" alt="${platformName}" style="max-width:200px;height:auto;display:block;margin:0 auto">` 
+		: `<div style="font-size:32px;font-weight:900;letter-spacing:.3px;color:${brand};text-align:center">${platformName}</div>`;
+	
+	const banner = d.bannerUrl 
+		? `<tr><td style="padding:0 24px 8px 24px"><img src="${d.bannerUrl}" alt="" style="width:100%;height:auto;border-radius:14px;display:block"></td></tr>` 
+		: '';
+	
+	// Generate CTAs row - exclude CTAs for moreInfo template (users reply via email)
+	const ctas = (templateKey === 'moreInfo') ? [] : (d.ctas || []);
+	const ctasRow = ctas.length > 0
+		? `<tr>
+				<td align="center" style="padding:20px 24px 16px 24px">
+					${ctas.map(cta => `<a href="${renderTemplate(cta.url, vars)}" style="display:inline-block;background:${brand};color:#ffffff;text-decoration:none;font-weight:800;letter-spacing:.2px;padding:13px 24px;border-radius:999px;margin:4px 6px"> ${cta.text} </a>`).join('')}
+				</td>
+			</tr>`
+		: '';
+	
+	// Generate social links row
+	const socialLinks = d.socialLinks || [];
+	const socialsRow = socialLinks.length > 0
+		? `<tr><td align="center" style="padding-top:8px;padding-bottom:8px">
+				<table role="presentation" cellspacing="0" cellpadding="0" border="0">
+					<tr>
+						${socialLinks.map(social => `<td style="padding:0 6px"><a href="${social.url}" target="_blank"><img src="${social.iconUrl}" alt="${social.name}" style="width:24px;height:24px;border-radius:4px;display:block" /></a></td>`).join('')}
+					</tr>
+				</table>
+			</td></tr>`
+		: '';
+	
+	// Generate footer links row
+	const footerLinks = d.footerLinks || [];
+	const footerLinksHtml = footerLinks.length > 0
+		? footerLinks.map(link => `<a href="${link.url}" style="color:${brand};text-decoration:underline">${link.text}</a>`).join(' &nbsp;|&nbsp; ')
+		: '';
+	
+	const footerNote = d.footerNote || 'This email was sent to {{email}}';
+	const heading = renderTemplate(d.title || defaultTitles[templateKey] || platformName, vars);
+	const greeting = renderTemplate(d.greeting || 'Hello {{name}}', vars);
+
+	// For moreInfo template, format required_information in an eye-catching way
+	let bodyText = renderTemplate(template.body, vars);
+	let bodyContent: string;
+	
+	if (templateKey === 'moreInfo' && vars.required_information) {
+		const requiredInfo = String(vars.required_information || '').trim();
+		if (requiredInfo) {
+			// Remove the {{required_information}} placeholder from body text
+			// Also clean up common patterns like "the following information: {{required_information}}"
+			bodyText = bodyText
+				.replace(/\{\{\s*required_information\s*\}\}/g, '')
+				.replace(/:\s*\./g, '.') // Fix "information: ." -> "information."
+				.replace(/\s+/g, ' ') // Normalize whitespace
+				.trim();
+			
+			// Escape HTML in the required info text
+			const escapeHtml = (text: string) => {
+				return text
+					.replace(/&/g, '&amp;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;')
+					.replace(/'/g, '&#039;');
+			};
+			
+			const escapedInfo = escapeHtml(requiredInfo);
+			const infoWithBreaks = escapedInfo.replace(/\n/g, '<br/>');
+			
+			// Create a highlighted information box - make it very prominent
+			// Convert hex to RGB for opacity
+			const hexToRgb = (hex: string) => {
+				const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+				return result ? {
+					r: parseInt(result[1], 16),
+					g: parseInt(result[2], 16),
+					b: parseInt(result[3], 16)
+				} : { r: 37, g: 99, b: 235 }; // default blue
+			};
+			const rgb = hexToRgb(brand);
+			const bgColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`;
+			const borderColor = brand;
+			
+			const infoBox = `
+				<tr>
+					<td style="padding:16px 24px 24px 24px;">
+						<div style="background:${bgColor};border:2px solid ${borderColor};border-radius:16px;padding:24px;margin:16px 0;box-shadow:0 8px 24px rgba(0,0,0,0.12);">
+							<div style="display:flex;gap:16px;align-items:flex-start;">
+								<div style="flex-shrink:0;width:15px;height:15px;background:${brand};border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px ${brand}50;margin:2px 16px 0 0;">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+										<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="#ffffff"/>
+									</svg>
+								</div>
+								<div style="flex:1;">
+									<div style="font-size:12px;font-weight:800;color:${brand};text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">Required Information</div>
+									<div style="font-size:16px;line-height:1.8;color:#0f172a;white-space:pre-line;font-weight:500;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin-bottom:16px;">${infoWithBreaks}</div>
+									<div style="margin-top:16px;padding-top:16px;border-top:1px solid ${brand}30;">
+										<div style="display:flex;align-items:center;gap:8px;">
+											<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+												<path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="${brand}"/>
+											</svg>
+											<div style="font-size:14px;line-height:1.6;color:#475569;font-weight:500;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+												Please reply to this email with the requested information above.
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</td>
+				</tr>
+			`;
+			
+			// Combine body text and info box
+			bodyContent = `
+				<tr>
+					<td style="padding:0 24px">
+						<div style="font-size:14px;color:#334155;text-align:center;margin-bottom:14px">${greeting},</div>
+						<div style="font-size:14px;line-height:1.7;color:#334155;white-space:pre-line;text-align:center">${bodyText}</div>
+					</td>
+				</tr>
+				${infoBox}
+			`;
+		} else {
+			// No required info, use normal body rendering
+			bodyContent = `
+				<tr>
+					<td style="padding:0 24px">
+						<div style="font-size:14px;color:#334155;text-align:center;margin-bottom:14px">${greeting},</div>
+						<div style="font-size:14px;line-height:1.7;color:#334155;white-space:pre-line;text-align:center">${bodyText}</div>
+					</td>
+				</tr>
+			`;
+		}
+	} else {
+		// Normal body rendering for other templates
+		bodyContent = `
+			<tr>
+				<td style="padding:0 24px">
+					<div style="font-size:14px;color:#334155;text-align:center;margin-bottom:14px">${greeting},</div>
+					<div style="font-size:14px;line-height:1.7;color:#334155;white-space:pre-line;text-align:center">${bodyText}</div>
+				</td>
+			</tr>
+		`;
+	}
+
+	return `
+<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1" /><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>${platformName}</title>
+<style>
+	:root { --brand: ${brand}; --bg: ${bg}; }
+	@media (prefers-color-scheme: dark) {
+		body { background-color: #0b1020 !important; }
+	}
+</style>
+</head>
+<body style="background-color:${bg};margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+	<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+		<tr><td style="padding:28px 0;"></td></tr>
+		<tr>
+			<td align="center">
+				<table role="presentation" width="640" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:0 0 8px 0;box-shadow:0 12px 28px -12px rgba(36,38,51,0.18);">
+					<tr><td style="padding:28px 24px 8px 24px">${logo}</td></tr>
+					${banner}
+					<tr>
+						<td style="padding:6px 24px 0 24px">
+							<div style="font-size:24px;line-height:1.3;font-weight:800;text-align:center;margin:8px 0 6px 0;">${heading}</div>
+						</td>
+					</tr>
+					${bodyContent}
+					${ctasRow}
+					${socialsRow}
+					<tr>
+						<td style="padding:12px 24px 6px 24px">
+							<div style="height:1px;background:#e5e7eb"></div>
+						</td>
+					</tr>
+					<tr>
+						<td style="font-size:12px;line-height:1.7;color:#64748b;padding:8px 24px 0 24px;text-align:center">
+							${renderTemplate(footerNote, vars)}${footerLinksHtml ? '<br/>' + footerLinksHtml : ''}
+							<div style="padding-top:6px;color:#94a3b8">Sent by ${renderTemplate('{{store_name}}', vars)} · ${renderTemplate('{{date}}', vars)}</div>
+						</td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		<tr><td style="padding:24px 0;"></td></tr>
+	</table>
+</body></html>
+`.trim();
+}
+
 export async function sendEmail(params: {
 	to: string | string[];
 	subject: string;
@@ -124,12 +344,27 @@ export async function trySendTemplatedEmail(args: {
 	from?: string;
 	replyTo?: string;
 	config?: EmailConfig | null;
+	templateKey?: TemplateKey;
 }) {
-	const { to, template, vars, from, replyTo, config } = args;
+	const { to, template, vars, from, replyTo, config, templateKey } = args;
 	if (!to) return { ok: false, skipped: true };
 	const subject = renderTemplate(template.subject, vars);
 	const body = renderTemplate(template.body, vars);
-	const html = template?.useHtml ? renderTemplate(String(template?.html || ''), vars) : null;
+	
+	// Generate HTML with actual user variables (not preview vars)
+	// If template has design, generate HTML on-the-fly with actual vars
+	// Otherwise, use pre-generated HTML if available
+	let html: string | null = null;
+	if (template?.useHtml) {
+		if (template.design && templateKey) {
+			// Generate HTML from design with actual user variables
+			html = generateEmailHtml(template, vars, templateKey);
+		} else if (template.html) {
+			// Use pre-generated HTML and replace variables
+			html = renderTemplate(String(template.html), vars);
+		}
+	}
+	
 	return await sendEmail({ to, subject, body, html, from, replyTo, config });
 }
 

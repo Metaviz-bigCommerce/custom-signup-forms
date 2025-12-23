@@ -479,6 +479,7 @@ export async function POST(req: NextRequest) {
         },
         replyTo: config?.replyTo || undefined,
         config,
+        templateKey: 'approval',
       });
     } catch {}
 

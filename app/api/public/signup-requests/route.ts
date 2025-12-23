@@ -195,6 +195,7 @@ export async function POST(req: NextRequest) {
           },
           replyTo: config?.replyTo || undefined,
           config,
+          templateKey: 'signup',
         });
       } catch (emailError) {
         logger.error('Failed to send signup confirmation email', emailError, { ...logContext, email });
@@ -291,6 +292,7 @@ export async function POST(req: NextRequest) {
           },
           replyTo: config?.replyTo || undefined,
           config,
+          templateKey: 'signup',
         });
       } catch (emailError) {
         logger.error('Failed to send signup confirmation email', emailError, { ...logContext, email });

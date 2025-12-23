@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useFormVersions, useFormVersionActions, useBcScriptsActions, useStoreFormActions, useStoreForm } from '@/lib/hooks';
-import { Loader2, Trash2, CheckCircle2, FileEdit, Power, Pencil, Search, LayoutGrid, ListChecks, XCircle } from 'lucide-react';
+import { Loader2, Trash2, CheckCircle2, FileEdit, Power, Pencil, Search, LayoutGrid, ListChecks, XCircle, PowerOff } from 'lucide-react';
 import VersionNameModal from './VersionNameModal';
 import { useToast } from '@/components/common/Toast';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -10,96 +10,274 @@ import ActivationConfirmModal from './ActivationConfirmModal';
 import FormOperationProgressModal from './FormOperationProgressModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
 
-// Form Preview Thumbnail Component - Compact preview showing just a small portion
-const FormPreviewThumbnail: React.FC<{ form: any }> = ({ form }) => {
-  const fields = form?.fields || [];
-  const theme = form?.theme || {};
+// Custom scrollbar styles for form preview
+const scrollbarStyles = `
+  .form-preview-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+  .form-preview-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .form-preview-scroll::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4);
+    border-radius: 2px;
+  }
+  .form-preview-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.6);
+  }
+`;
+
+// Enhanced Form Preview Component - Exact replica of LivePreview rendering
+const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean }> = ({ form, isCompact = false }) => {
+  // Ensure we're using the correct form structure
+  const formData = form?.form || form;
+  const fields = formData?.fields || [];
+  const theme = formData?.theme || {};
   
-  const primaryColor = theme.primaryColor || '#2563eb';
-  const title = theme.title || 'Create your account';
-  const subtitle = theme.subtitle || 'Please fill in the form to continue';
-  const buttonBg = theme.buttonBg || primaryColor;
-  const buttonColor = theme.buttonColor || '#fff';
-  const buttonRadius = theme.buttonRadius ?? 10;
+  // Normalize theme layout (same as LivePreview)
+  const normalizeThemeLayout = (t: any) => {
+    if (!t) return {};
+    const normalized = { ...t };
+    if (normalized.layout === 'split') {
+      const hasValidImageUrl = normalized.splitImageUrl && normalized.splitImageUrl.trim().length > 0;
+      if (!hasValidImageUrl) {
+        normalized.layout = 'center';
+      }
+    }
+    return normalized;
+  };
   
-  // Get first 2 fields for preview
-  const previewFields = fields.slice(0, 2);
+  const normalizedTheme = normalizeThemeLayout(theme);
+  
+  // Get theme values with defaults matching LivePreview
+  const pr = normalizedTheme.primaryColor || '#2563eb';
+  const ttl = normalizedTheme.title || 'Create your account';
+  const sub = normalizedTheme.subtitle || 'Please fill in the form to continue';
+  const btnbg = normalizedTheme.buttonBg || pr;
+  const btnc = normalizedTheme.buttonColor || '#fff';
+  const btnr = normalizedTheme.buttonRadius == null ? 10 : normalizedTheme.buttonRadius;
+  const btnt = normalizedTheme.buttonText || 'Create account';
+  const formBg = normalizedTheme.formBackgroundColor || '#ffffff';
+  
+  // Scale factor for preview - smaller for better UI/UX in thumbnail
+  const scale = isCompact ? 0.25 : 0.4;
+  
+  // Group fields by rowGroup for 2-column layout (exact logic from LivePreview)
+  const groupedFields: Array<{ fields: any[]; rowGroup: number | null }> = [];
+  const processedIds = new Set<number>();
+  
+  for (let i = 0; i < fields.length; i++) {
+    if (processedIds.has(fields[i].id)) continue;
+    
+    const field = fields[i];
+    if (field.rowGroup != null) {
+      // Find all fields with the same rowGroup
+      const groupFields = fields.filter((f: any) => f.rowGroup === field.rowGroup);
+      groupedFields.push({ fields: groupFields, rowGroup: field.rowGroup });
+      groupFields.forEach((f: any) => processedIds.add(f.id));
+    } else {
+      // Single field, full width
+      groupedFields.push({ fields: [field], rowGroup: null });
+      processedIds.add(field.id);
+    }
+  }
+  
+  // Render field function (exact logic from LivePreview)
+  const renderField = (field: any) => {
+    const borderColor = field.borderColor || '#e5e7eb';
+    const borderWidth = field.borderWidth || '1';
+    const borderRadius = field.borderRadius || '10';
+    const bgColor = field.bgColor || '#fff';
+    const padding = field.padding || '12';
+    const fontSize = field.fontSize || '14';
+    const textColor = field.textColor || '#0f172a';
+    const labelColor = field.labelColor || '#374151';
+    const labelSize = field.labelSize || '14';
+    const labelWeight = field.labelWeight || '500';
+    
+    const inputStyle = {
+      borderColor: borderColor,
+      borderWidth: (parseFloat(borderWidth) * scale) + 'px',
+      borderStyle: 'solid' as const,
+      borderRadius: (parseFloat(borderRadius) * scale) + 'px',
+      backgroundColor: bgColor,
+      padding: (parseFloat(padding) * scale) + 'px',
+      fontSize: Math.max(9, parseFloat(fontSize) * scale) + 'px',
+      color: textColor,
+      width: '100%',
+      outline: 'none' as const,
+      lineHeight: '1.4'
+    };
+    
+    return (
+      <div key={field.id} style={{ marginBottom: `${6 * scale}px` }}>
+        {/* Label */}
+        <label 
+          style={{ 
+            color: labelColor,
+            fontSize: Math.max(10, parseInt(labelSize) * scale) + 'px',
+            fontWeight: labelWeight,
+            display: 'block',
+            marginBottom: `${6 * scale}px`,
+            lineHeight: '1.2'
+          }}
+        >
+          {field.label}{field.required ? ' *' : ''}
+        </label>
+        
+        {/* Input field - handle all types */}
+        {field.role === 'country' ? (
+          <select style={inputStyle} aria-label={field.label}>
+            <option>Select a country</option>
+          </select>
+        ) : field.role === 'state' ? (
+          <input
+            type="text"
+            placeholder="Select a country first"
+            style={inputStyle}
+            aria-label={field.label}
+            disabled
+          />
+        ) : field.type === 'textarea' ? (
+          <textarea
+            placeholder={field.placeholder || ''}
+            rows={Math.max(2, Math.floor(3 * scale))}
+            style={inputStyle}
+            aria-label={field.label}
+            readOnly
+          />
+        ) : field.type === 'select' ? (
+          <select style={inputStyle} aria-label={field.label}>
+            <option>Select an option</option>
+          </select>
+        ) : field.type === 'file' ? (
+          <input
+            type="file"
+            style={inputStyle}
+            aria-label={field.label}
+            disabled
+          />
+        ) : (
+          <input
+            type={field.role === 'password' ? 'password' : (field.type === 'phone' ? 'tel' : field.type || 'text')}
+            placeholder={field.placeholder || ''}
+            style={inputStyle}
+            aria-label={field.label}
+            readOnly
+          />
+        )}
+      </div>
+    );
+  };
   
   return (
-    <div style={{ 
-      padding: '8px 12px',
-      background: theme.background || '#ffffff',
-      width: '100%',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'flex-start',
-      fontSize: '8px',
-      lineHeight: '1.2'
-    }}>
-      {/* Title */}
+    <>
+      <style>{scrollbarStyles}</style>
       <div style={{ 
-        fontSize: '10px', 
-        fontWeight: '700', 
-        color: '#0f172a', 
-        marginBottom: '3px',
-        whiteSpace: 'nowrap',
+        background: formBg,
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: `${50 * scale}px`,
+        fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif',
+        position: 'relative',
         overflow: 'hidden',
-        textOverflow: 'ellipsis'
+        boxSizing: 'border-box'
       }}>
-        {title}
-      </div>
-      
-      {/* Subtitle */}
-      <div style={{ 
-        fontSize: '7px', 
-        color: '#64748b', 
-        marginBottom: '6px',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis'
-      }}>
-        {subtitle}
-      </div>
-      
-      {/* Fields Preview */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '4px' }}>
-        {previewFields.map((field: any, idx: number) => {
-          const borderColor = field.borderColor || '#e5e7eb';
-          const borderRadius = field.borderRadius || '8';
-          return (
-            <div key={field.id || idx} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <div style={{ 
-                fontSize: '6px', 
-                color: field.labelColor || '#374151',
-                fontWeight: '500'
-              }}>
-                {field.label || 'Field'}
+      {/* Scrollable content area - includes title, subtitle, and form */}
+      <div 
+        className="form-preview-scroll"
+        style={{ 
+          display: 'flex',
+          flexDirection: 'column',
+          flex: '1 1 auto',
+          minHeight: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden'
+        }}
+      >
+        {/* Title - exact match from LivePreview */}
+        <h1 
+          style={{
+            fontSize: `${22 * scale}px`,
+            fontWeight: '800',
+            color: '#0f172a',
+            margin: `0 0 ${6 * scale}px 0`
+          }}
+        >
+          {ttl}
+        </h1>
+        
+        {/* Subtitle - exact match from LivePreview */}
+        <p 
+          style={{
+            fontSize: `${13 * scale}px`,
+            color: '#475569',
+            margin: `0 0 ${18 * scale}px 0`
+          }}
+        >
+          {sub}
+        </p>
+        
+        {/* Form - exact match from LivePreview */}
+        <form style={{ 
+          display: 'grid', 
+          gap: `${14 * scale}px`
+        }}>
+        {groupedFields.map((group) => {
+          // For compact view, always stack fields; for grid view, show paired if available
+          const isPaired = group.rowGroup != null && group.fields.length === 2 && !isCompact;
+          
+          if (isPaired) {
+            // Render paired fields side-by-side
+            return (
+              <div 
+                key={`group-${group.rowGroup}`}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: `${14 * scale}px`
+                }}
+              >
+                {group.fields.map((field: any) => renderField(field))}
               </div>
-              <div style={{
-                border: `0.5px solid ${borderColor}`,
-                borderRadius: borderRadius + 'px',
-                backgroundColor: field.type === 'password' 
-                  ? 'repeating-linear-gradient(45deg, transparent, transparent 1px, #e5e7eb 1px, #e5e7eb 2px)'
-                  : (field.bgColor || '#fff'),
-                height: '8px',
-                minHeight: '8px'
-              }} />
-            </div>
-          );
+            );
+          } else {
+            // Render single field or mobile (stacked)
+            return (
+              <React.Fragment key={group.rowGroup || `single-${group.fields[0].id}`}>
+                {group.fields.map((field: any) => renderField(field))}
+              </React.Fragment>
+            );
+          }
         })}
+        
+        {/* Submit Button - exact match from LivePreview */}
+        {fields.length > 0 && (
+          <button
+            type="button"
+            style={{
+              height: `${46 * scale}px`,
+              border: '0',
+              borderRadius: `${btnr * scale}px`,
+              background: btnbg,
+              color: btnc,
+              fontWeight: '700',
+              letterSpacing: '.02em',
+              cursor: 'default',
+              marginTop: `${8 * scale}px`,
+              width: '100%',
+              fontSize: `${14 * scale}px`
+            }}
+          >
+            {btnt}
+          </button>
+        )}
+        </form>
       </div>
-      
-      {/* Button Preview */}
-      <div style={{
-        backgroundColor: buttonBg,
-        borderRadius: buttonRadius + 'px',
-        height: '10px',
-        minHeight: '10px',
-        marginTop: 'auto',
-        width: '60%'
-      }} />
     </div>
+    </>
   );
 };
 
@@ -112,13 +290,14 @@ interface VersionsListProps {
 }
 
 export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigateToBuilder }: VersionsListProps) {
-  const { versions, mutate, isError } = useFormVersions();
+  const { versions, mutate, isError, isLoading } = useFormVersions();
   const { deleteVersion, setActiveVersion, updateVersion, deactivateAllVersions } = useFormVersionActions();
   const { addScript, updateScript, deleteScript } = useBcScriptsActions();
   const { setActive } = useStoreFormActions();
   const { active: isFormActive, scriptUuid, mutate: mutateStoreForm } = useStoreForm();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [activatingId, setActivatingId] = useState<string | null>(null);
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -136,9 +315,33 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
   });
   const toast = useToast();
 
-  const filteredVersions = versions.filter((v: any) =>
+  // Sort versions: active form first, then by updatedAt (newest first)
+  const sortedVersions = [...versions].sort((a: any, b: any) => {
+    // Active form always comes first
+    if (a.isActive && isFormActive && !(b.isActive && isFormActive)) return -1;
+    if (b.isActive && isFormActive && !(a.isActive && isFormActive)) return 1;
+    
+    // Then sort by updatedAt (newest first)
+    const aTime = a.updatedAt?.seconds || a.updatedAt?._seconds || 0;
+    const bTime = b.updatedAt?.seconds || b.updatedAt?._seconds || 0;
+    return bTime - aTime;
+  });
+
+  const filteredVersions = sortedVersions.filter((v: any) =>
     v.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Cmd+K shortcut to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleDelete = (versionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -527,12 +730,13 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
   };
 
   const handleFormClick = (version: any, e: React.MouseEvent) => {
-    // Don't show modal if clicking on action buttons
+    // Don't load if clicking on action buttons
     const target = e.target as HTMLElement;
     if (target.closest('button') || target.closest('[onClick]')) {
       return;
     }
-    setActivationModalVersion(version);
+    // Load form directly into builder instead of showing popup
+    handleLoad(version);
   };
 
   const handleEdit = (version: any, e: React.MouseEvent) => {
@@ -643,9 +847,9 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
       const day = date.getDate();
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const month = monthNames[date.getMonth()];
-      const year = date.getFullYear().toString().slice(-2);
+      const year = date.getFullYear();
 
-      return `${day}-${month}-${year}`;
+      return `${month} ${day}, ${year}`;
     } catch (e) {
       console.error('Error formatting date:', e, timestamp);
       return 'Unknown';
@@ -661,95 +865,135 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
     );
   }
 
+  // Loading skeleton for grid view
+  const renderGridSkeleton = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm animate-pulse">
+          <div className="h-48 bg-slate-200" />
+          <div className="p-4 space-y-3">
+            <div className="h-4 bg-slate-200 rounded w-3/4" />
+            <div className="h-3 bg-slate-200 rounded w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Loading skeleton for list view
+  const renderListSkeleton = () => (
+    <div className="space-y-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-white border border-slate-200 rounded-xl p-5 animate-pulse">
+          <div className="flex items-center gap-5">
+            <div className="w-32 h-24 bg-slate-200 rounded-xl flex-shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-slate-200 rounded w-1/3" />
+              <div className="h-3 bg-slate-200 rounded w-1/4" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   const renderGridView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {filteredVersions.map((version: any) => (
         <div
           key={version.id}
-          className="bg-white border border-slate-200 rounded-xl p-[14px] hover:shadow-lg hover:border-blue-300 transition-all duration-200 group relative overflow-hidden"
+          className="group relative bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-2xl hover:border-blue-400/50 transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+          onClick={(e) => handleFormClick(version, e)}
         >
-          {/* Active indicator bar */}
-          {version.isActive && isFormActive && (
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-green-600" />
-          )}
+          {/* Hover overlay effect */}
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-indigo-500/0 group-hover:from-blue-500/5 group-hover:to-indigo-500/5 transition-all duration-300 pointer-events-none z-0" />
           
-          <div className="flex flex-col h-full">
-            {/* Form Preview Thumbnail */}
+          <div className="relative z-10 flex flex-col h-full">
+            {/* Form Preview - Enhanced with better styling, no gray background */}
             {version.form && (
-              <div className="mb-3 -mx-[14px] -mt-[14px] bg-slate-50 border-b border-slate-200 overflow-hidden rounded-t-xl" style={{ height: '140px', position: 'relative' }}>
-                <div className="relative w-full h-full" style={{ overflow: 'hidden' }}>
+              <div className="relative border-b border-slate-200 overflow-hidden" style={{ height: '290px', minHeight: '290px' }}>
+                {/* Form Preview Content - Restore scale transform */}
+                <div className="relative w-full h-full" >
                   <FormPreviewThumbnail form={version.form} />
                 </div>
               </div>
             )}
             
-            {/* Header - Name */}
-            <div className="flex items-center gap-2">
-              {version.isActive && isFormActive && (
-                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700 border border-green-300 flex items-center gap-1 flex-shrink-0">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Active
-                </span>
-              )}
-              <h3 className="text-base font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-                {version.name || 'Unnamed'}
-              </h3>
-            </div>
-
-            {/* Date modified and Actions - Single row */}
-            <div className="flex items-center justify-between pt-2" onClick={(e) => e.stopPropagation()}>
-              {/* Left side - Date modified */}
-              <div className="text-xs text-gray-500">
-                <span className="text-gray-400">Last modified:</span> {formatDateShort(version.updatedAt)}
-              </div>
-              
-              {/* Right side - Load button and other buttons */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => handleLoad(version)}
-                  className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
-                  title="Load into Builder - Open this version in the form builder"
-                >
-                  <FileEdit className="w-3.5 h-3.5" />
-                  Load
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSetActive(version.id);
-                  }}
-                  disabled={activatingId === version.id}
-                  className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
-                    version.isActive && isFormActive
-                      ? 'text-amber-600 hover:bg-amber-50'
-                      : 'text-green-600 hover:bg-green-50'
-                  }`}
-                  title={
-                    version.isActive && isFormActive
-                      ? 'Form is active - Click to deactivate'
-                      : 'Activate Form - Set this form as the active form'
-                  }
-                >
-                  {activatingId === version.id ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Power className="w-3.5 h-3.5" />
+            {/* Card Content - Minimal footer like Google Docs */}
+            <div className="flex flex-col flex-1 px-5 pb-4 pt-3">
+              {/* Header - Name with Active Badge */}
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold text-slate-700 truncate group-hover:text-blue-600 transition-colors">
+                    {version.name || 'Unnamed'}
+                  </h3>
+                  {version.isActive && isFormActive && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Active
+                    </span>
                   )}
-                </button>
-                <button
-                  onClick={(e) => handleEdit(version, e)}
-                  className="p-1.5 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                  title="Rename Form - Change the name of this form"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={(e) => handleDelete(version.id, e)}
-                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Delete Form - Permanently remove this form"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                </div>
+              </div>
+
+              {/* Minimal Footer - Just metadata and actions */}
+              <div className="flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                {/* Metadata */}
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span className="text-slate-400">Modified:</span>
+                  <span className="font-medium text-slate-600">{formatDateShort(version.updatedAt)}</span>
+                </div>
+                
+                {/* Secondary Actions - Compact */}
+                <div className="flex items-center gap-0.5">
+                  {version.isActive && isFormActive ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeactivate();
+                      }}
+                      disabled={deactivatingId !== null}
+                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-all duration-200 disabled:opacity-50 hover:scale-110 active:scale-95 cursor-pointer"
+                      title="Deactivate Form - Remove form from storefront"
+                    >
+                      {deactivatingId !== null ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <PowerOff className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSetActive(version.id);
+                      }}
+                      disabled={activatingId === version.id}
+                      className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 disabled:opacity-50 hover:scale-110 active:scale-95 cursor-pointer"
+                      title="Activate Form - Set this form as the active form"
+                    >
+                      {activatingId === version.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Power className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => handleEdit(version, e)}
+                    className="p-1.5 text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
+                    title="Rename Form - Change the name of this form"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => handleDelete(version.id, e)}
+                    className="p-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
+                    title="Delete Form - Permanently remove this form"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -759,72 +1003,79 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
   );
 
   const renderListView = () => (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {filteredVersions.map((version: any) => (
         <div
           key={version.id}
-          className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md hover:border-blue-300 transition-all duration-200 group"
+          className="group relative bg-white border border-slate-200 rounded-xl p-5 hover:shadow-xl hover:border-blue-400/50 transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5"
+          onClick={(e) => handleFormClick(version, e)}
         >
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 flex-1 min-w-0">
-              {/* Active indicator */}
-              {version.isActive && isFormActive && (
-                <div className="w-1 h-12 bg-gradient-to-b from-green-400 to-green-600 rounded-full flex-shrink-0" />
-              )}
-              
-              {/* Form Preview Thumbnail - List View */}
+          {/* Hover overlay effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 to-indigo-500/0 group-hover:from-blue-500/5 group-hover:to-indigo-500/5 rounded-xl transition-all duration-300 pointer-events-none" />
+          
+          <div className="relative z-10 flex items-center justify-between gap-6">
+            <div className="flex items-center gap-5 flex-1 min-w-0">
+              {/* Form Preview Thumbnail - Enhanced List View with better sizing */}
               {version.form && (
-                <div className="w-20 h-16 bg-slate-50 border border-slate-200 rounded-lg overflow-hidden flex-shrink-0 shadow-sm" style={{ minWidth: '80px', position: 'relative' }}>
-                  <div className="relative w-full h-full" style={{ overflow: 'hidden' }}>
-                    <FormPreviewThumbnail form={version.form} />
+                <div className="relative border border-slate-200 rounded-xl overflow-hidden flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow bg-white" style={{ 
+                  width: '180px', 
+                  height: '140px',
+                  minWidth: '180px',
+                  minHeight: '140px'
+                }}>
+                  <div className="relative w-full h-full">
+                    <FormPreviewThumbnail form={version.form} isCompact={true} />
                   </div>
                 </div>
               )}
               
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-1.5">
-                  <h3 className="text-base font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                <div className="flex items-center gap-3 mb-1">
+                  <h3 className="text-base font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
                     {version.name || 'Unnamed'}
                   </h3>
                   {version.isActive && isFormActive && (
-                    <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-green-100 text-green-700 border border-green-300 flex items-center gap-1.5 flex-shrink-0">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       Active
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-4 text-xs text-slate-500">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-gray-400">Updated:</span>
-                    <span className="font-medium">{formatDate(version.updatedAt)}</span>
+                    <span className="text-slate-400">Modified:</span>
+                    <span className="font-medium text-slate-600">{formatDateShort(version.updatedAt)}</span>
                   </div>
-                  {version.createdAt && version.createdAt !== version.updatedAt && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-gray-400">Created:</span>
-                      <span className="font-medium">{formatDate(version.createdAt)}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                onClick={() => handleLoad(version)}
-                className="px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-                title="Load into Builder - Open this version in the form builder"
-              >
-                <FileEdit className="w-4 h-4" />
-                <span className="hidden sm:inline">Load</span>
-              </button>
-              {!version.isActive && !isFormActive && (
+            {/* Actions - Always show activate/deactivate button */}
+            <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              {version.isActive && isFormActive ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeactivate();
+                  }}
+                  disabled={deactivatingId !== null}
+                  className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-all duration-200 disabled:opacity-50 hover:scale-110 active:scale-95 cursor-pointer"
+                  title="Deactivate Form - Remove form from storefront"
+                >
+                  {deactivatingId !== null ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <PowerOff className="w-4 h-4" />
+                  )}
+                </button>
+              ) : (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleSetActive(version.id);
                   }}
                   disabled={activatingId === version.id}
-                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 disabled:opacity-50 hover:scale-110 active:scale-95 cursor-pointer"
                   title="Activate Form - Set this form as the active form"
                 >
                   {activatingId === version.id ? (
@@ -834,33 +1085,16 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
                   )}
                 </button>
               )}
-              {isFormActive && version.isActive && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeactivate();
-                  }}
-                  disabled={deactivatingId !== null}
-                  className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-50"
-                  title="Deactivate Form - Remove form from storefront"
-                >
-                  {deactivatingId !== null ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <XCircle className="w-4 h-4" />
-                  )}
-                </button>
-              )}
               <button
                 onClick={(e) => handleEdit(version, e)}
-                className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                className="p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
                 title="Rename Version - Change the name of this version"
               >
                 <Pencil className="w-4 h-4" />
               </button>
               <button
                 onClick={(e) => handleDelete(version.id, e)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="p-2 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
                 title="Delete Version - Permanently remove this version"
               >
                 <Trash2 className="w-4 h-4" />
@@ -873,72 +1107,127 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
   );
 
   return (
-    <div className="p-6">
-      {/* Header with Search and View Toggle */}
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search forms..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
+    <div className="space-y-6">
+      {/* Header Section - Matching Requests page style */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-2xl p-6 sm:p-8">
+        {/* Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-500/15 rounded-full blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-indigo-500/15 rounded-full blur-3xl" />
+        </div>
+        
+        <div className="relative z-10">
+          {/* Title Row */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-6">
+            <div>
+              <h1 className="text-2xl font-bold !text-white mb-2">Saved Forms</h1>
+              <p className="text-slate-400 text-sm">Manage and activate your signup forms</p>
+            </div>
           </div>
           
-          {/* View Toggle */}
-          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-md transition-all duration-200 ${
-                viewMode === 'grid'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-slate-50'
-              }`}
-              title="Grid View - Display versions in a card grid layout"
-              aria-label="Grid view"
-            >
-              <LayoutGrid className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-md transition-all duration-200 ${
-                viewMode === 'list'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-slate-50'
-              }`}
-              title="List View - Display versions in a compact list layout"
-              aria-label="List view"
-            >
-              <ListChecks className="w-5 h-5" />
-            </button>
+          {/* Search Bar and View Toggle */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative group flex-1">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 rounded-xl blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300" />
+              <div className="relative flex items-center">
+                <div className="absolute left-4 z-10 flex items-center pointer-events-none">
+                  <Search className="w-5 h-5 text-slate-300 group-focus-within:text-blue-400 transition-colors" />
+                </div>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search forms..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-16 py-3.5 bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:bg-white/15 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-4 p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                  >
+                    <XCircle className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {/* View Toggle */}
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm p-1 rounded-xl border border-white/10">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2.5 rounded-lg transition-all duration-200 ${
+                  viewMode === 'grid'
+                    ? 'bg-white/20 text-white shadow-lg shadow-white/10'
+                    : 'text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
+                title="Grid View - Display forms in a card grid layout"
+                aria-label="Grid view"
+              >
+                <LayoutGrid className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2.5 rounded-lg transition-all duration-200 ${
+                  viewMode === 'list'
+                    ? 'bg-white/20 text-white shadow-lg shadow-white/10'
+                    : 'text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
+                title="List View - Display forms in a compact list layout"
+                aria-label="List view"
+              >
+                <ListChecks className="w-5 h-5" />
+              </button>
+            </div>
           </div>
+          
+          {/* Search Results Indicator */}
+          {searchQuery && (
+            <div className="mt-4 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+              <span className="text-sm text-slate-300">
+                Found <span className="font-semibold text-white">{filteredVersions.length}</span> of{' '}
+                <span className="font-semibold text-white">{versions.length}</span> forms
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Content */}
-      {filteredVersions.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
-            <Search className="w-8 h-8 text-slate-400" />
+      {isLoading ? (
+        <div className="transition-all duration-300">
+          {viewMode === 'grid' ? renderGridSkeleton() : renderListSkeleton()}
+        </div>
+      ) : filteredVersions.length === 0 ? (
+        <div className="relative overflow-hidden bg-white rounded-2xl border border-slate-200 p-12 sm:p-16">
+          {/* Background decoration */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-500/5 rounded-full blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-indigo-500/5 rounded-full blur-3xl" />
           </div>
-          <p className="text-gray-500 text-lg font-medium">
-            {searchQuery ? 'No forms found matching your search.' : 'No saved forms yet.'}
-          </p>
-          <p className="text-gray-400 text-sm mt-2">
-            {searchQuery ? 'Try adjusting your search terms.' : 'Save your form to start managing and activating forms.'}
-          </p>
-          {!searchQuery && onNavigateToBuilder && (
-            <button
-              onClick={onNavigateToBuilder}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-            >
-              Go to Builder
-            </button>
-          )}
+          
+          <div className="relative z-10 text-center">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 mb-6 shadow-sm">
+              <Search className="w-10 h-10 text-slate-400" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">
+              {searchQuery ? 'No forms found' : 'No saved forms yet'}
+            </h3>
+            <p className="text-slate-500 text-sm max-w-md mx-auto mb-6">
+              {searchQuery 
+                ? 'Try adjusting your search terms or clear the search to see all forms.' 
+                : 'Create and save your first form to start managing and activating signup forms.'}
+            </p>
+            {!searchQuery && onNavigateToBuilder && (
+              <button
+                onClick={onNavigateToBuilder}
+                className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all duration-200 text-sm font-semibold shadow-sm shadow-blue-500/20 hover:shadow-md hover:shadow-blue-500/30"
+              >
+                Go to Builder
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="transition-all duration-300">

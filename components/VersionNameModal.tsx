@@ -53,7 +53,7 @@ export default function VersionNameModal({
           <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
           <button
             onClick={handleClose}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -79,7 +79,7 @@ export default function VersionNameModal({
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -89,7 +89,7 @@ export default function VersionNameModal({
               className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
                 required && !name.trim()
                   ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
               }`}
             >
               Save
