@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Users, Mail, Calendar, Clock, Check, X, Eye, FileText, Activity } from 'lucide-react';
+import { Users, Mail, Calendar, Clock, Check, X, Eye, FileText, Activity, ChevronRight } from 'lucide-react';
 
 export interface RequestTableItem {
   id: string;
@@ -101,9 +101,12 @@ const formatRelativeTime = (ts?: { seconds?: number; nanoseconds?: number } | st
 };
 
 const LoadingSpinner = () => (
-  <div className="flex flex-col items-center justify-center py-16">
-    <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4" />
-    <p className="text-sm text-slate-500">Loading requests...</p>
+  <div className="flex flex-col items-center justify-center py-20">
+    <div className="relative">
+      <div className="w-12 h-12 border-4 border-slate-200 rounded-full" />
+      <div className="absolute top-0 left-0 w-12 h-12 border-4 border-transparent border-t-blue-500 rounded-full animate-spin" />
+    </div>
+    <p className="mt-4 text-sm text-slate-500 font-medium">Loading requests...</p>
   </div>
 );
 
@@ -120,18 +123,18 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
   footer,
 }) => {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xl shadow-slate-200/50 overflow-hidden">
       {/* Optional Header */}
       {showHeader && (
-        <div className="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white">
+        <div className="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
                 <Activity className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-slate-800 tracking-tight">{headerTitle}</h2>
-                <p className="text-[13px] text-slate-500 tracking-tight">{headerSubtitle}</p>
+                <h2 className="text-xl font-bold text-slate-800 tracking-tight">{headerTitle}</h2>
+                <p className="text-sm text-slate-500">{headerSubtitle}</p>
               </div>
             </div>
             {headerAction}
@@ -143,34 +146,38 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-slate-50/80 border-b border-slate-100">
-              <th className="px-6 py-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
-                <div className="flex items-center gap-2">
-                  <Users className="w-3.5 h-3.5 opacity-60" />
+            <tr className="bg-gradient-to-r from-slate-50 to-slate-100/50">
+              <th className="px-6 py-4 text-left">
+                <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <Users className="w-3.5 h-3.5 text-slate-400" />
                   Applicant
                 </div>
               </th>
-              <th className="px-6 py-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 opacity-60" />
+              <th className="px-6 py-4 text-left">
+                <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
                   Email
                 </div>
               </th>
-              <th className="px-6 py-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 opacity-60" />
+              <th className="px-6 py-4 text-left">
+                <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
                   Date
                 </div>
               </th>
-              <th className="px-6 py-4 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
-                Status
+              <th className="px-6 py-4 text-left">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Status
+                </span>
               </th>
-              <th className="px-6 py-4 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
-                Actions
+              <th className="px-6 py-4 text-right">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Actions
+                </span>
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {loading ? (
               <tr>
                 <td colSpan={5}>
@@ -179,13 +186,13 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
               </tr>
             ) : requests.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-16 text-center">
+                <td colSpan={5} className="px-6 py-20 text-center">
                   <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                      <FileText className="w-8 h-8 text-slate-400" />
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center mb-4 shadow-inner">
+                      <FileText className="w-10 h-10 text-slate-300" />
                     </div>
-                    <p className="font-semibold text-slate-900 mb-1">{emptyMessage}</p>
-                    <p className="text-sm text-slate-500">{emptySubMessage}</p>
+                    <p className="font-bold text-slate-800 text-lg mb-1">{emptyMessage}</p>
+                    <p className="text-sm text-slate-500 max-w-sm">{emptySubMessage}</p>
                   </div>
                 </td>
               </tr>
@@ -199,49 +206,62 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                 return (
                   <tr
                     key={request.id}
-                    className="group hover:bg-slate-50/80 transition-all duration-200 cursor-pointer"
+                    className="group border-b border-slate-100 last:border-b-0 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-300 cursor-pointer"
                     onClick={() => onViewRequest(request)}
-                    style={{ animationDelay: `${index * 50}ms` }}
+                    style={{ 
+                      animation: `fadeInUp 0.4s ease-out forwards`,
+                      animationDelay: `${index * 50}ms`,
+                      opacity: 0 
+                    }}
                   >
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
-                        <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white font-medium text-[13px] shadow-md ring-2 ring-white tracking-wide`}>
+                        <div className={`relative w-11 h-11 rounded-xl bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white font-semibold text-sm shadow-lg group-hover:scale-110 group-hover:shadow-xl transition-all duration-300`}>
                           {initials}
+                          <div className="absolute inset-0 rounded-xl ring-2 ring-white/50" />
                         </div>
                         <div>
-                          <div className="font-medium text-slate-600 tracking-tight">{name || 'Unknown'}</div>
+                          <div className="font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                            {name || 'Unknown'}
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-5">
-                      <span className="text-[14px] text-slate-600 tracking-tight">{email || '—'}</span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="text-[14px] text-slate-600 tracking-tight">
-                        {formatRelativeTime(request.submittedAt)}
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-slate-600 group-hover:text-slate-800 transition-colors">
+                        {email || '—'}
                       </span>
                     </td>
-                    <td className="px-6 py-5">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium tracking-wide ${
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-slate-400" />
+                        <span className="text-sm text-slate-600">
+                          {formatRelativeTime(request.submittedAt)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
                         request.status === 'pending'
-                          ? 'bg-amber-50 text-amber-600 border border-amber-200/50'
+                          ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200/60 shadow-sm shadow-amber-100'
                           : request.status === 'approved'
-                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'
-                          : 'bg-rose-50 text-rose-600 border border-rose-200/50'
+                          ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200/60 shadow-sm shadow-emerald-100'
+                          : 'bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border border-rose-200/60 shadow-sm shadow-rose-100'
                       }`}>
-                        {request.status === 'pending' && <Clock className="w-3 h-3" />}
-                        {request.status === 'approved' && <Check className="w-3 h-3" />}
-                        {request.status === 'rejected' && <X className="w-3 h-3" />}
+                        {request.status === 'pending' && <Clock className="w-3.5 h-3.5" />}
+                        {request.status === 'approved' && <Check className="w-3.5 h-3.5" />}
+                        {request.status === 'rejected' && <X className="w-3.5 h-3.5" />}
                         {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                       </span>
                     </td>
-                    <td className="px-6 py-5 text-right">
+                    <td className="px-6 py-4 text-right">
                       <button
                         onClick={(e) => { e.stopPropagation(); onViewRequest(request); }}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg text-[13px] font-medium tracking-tight hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:shadow-lg hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 cursor-pointer"
+                        className="group/btn inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-blue-600 hover:shadow-lg hover:shadow-blue-500/30 hover:scale-105 transition-all duration-300 cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
-                        View
+                        <span>View</span>
+                        <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform duration-300" />
                       </button>
                     </td>
                   </tr>
@@ -254,10 +274,24 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
 
       {/* Optional Footer */}
       {footer && (
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+        <div className="px-6 py-4 border-t border-slate-100 bg-gradient-to-r from-slate-50/80 to-white">
           {footer}
         </div>
       )}
+
+      {/* CSS Animation */}
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 };
