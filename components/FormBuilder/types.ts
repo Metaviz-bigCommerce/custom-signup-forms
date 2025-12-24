@@ -27,6 +27,12 @@ export type FormField = {
 export type Theme = {
   title: string;
   subtitle: string;
+  titleColor?: string;
+  titleFontSize?: number;
+  titleFontWeight?: string;
+  subtitleColor?: string;
+  subtitleFontSize?: number;
+  subtitleFontWeight?: string;
   primaryColor: string;
   layout: 'center' | 'split';
   splitImageUrl: string;
@@ -35,5 +41,6 @@ export type Theme = {
   buttonColor: string;
   buttonRadius: number;
   formBackgroundColor: string;
+  pageBackgroundColor?: string;
 };
 

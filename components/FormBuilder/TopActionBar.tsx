@@ -106,15 +106,6 @@ const TopActionBar: React.FC<TopActionBarProps> = ({
         <div className="flex items-center gap-2 flex-wrap">
           {/* Secondary Actions - Icon Only */}
           <div className="flex items-center gap-2 border-r border-slate-200 pr-2">
-            {/* Reset Button - Icon Only */}
-            <button
-              onClick={onReset}
-              className="p-2 rounded-lg text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 active:scale-[0.95]"
-              title="Reset form to default"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </button>
-
             {/* Discard Button - Icon Only (only when dirty) */}
             {isDirty && (
               <button

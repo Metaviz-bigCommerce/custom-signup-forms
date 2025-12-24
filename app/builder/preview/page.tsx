@@ -1,16 +1,19 @@
 'use client'
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Minimize2 } from 'lucide-react';
 import { FormField } from '@/components/FormBuilder/types';
 import { normalizeThemeLayout } from '@/components/FormBuilder/utils';
 
 export default function PreviewPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const context = searchParams.get('context') || '';
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [theme, setTheme] = useState<any>({});
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
+  const [sourceTab, setSourceTab] = useState<number>(1); // Default to builder tab (1)
   const [countryData, setCountryData] = useState<Array<{ countryName: string; countryShortCode: string; regions: Array<{ name: string; shortCode?: string }>;}>>([]);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
 
@@ -23,15 +26,29 @@ export default function PreviewPage() {
         setFormFields(data.formFields || []);
         setTheme(data.theme || {});
         setViewMode(data.viewMode || 'desktop');
+        setSourceTab(data.sourceTab || 1); // Store source tab
       } else {
-        // If no data, redirect back
-        router.back();
+        // If no data, redirect back to builder
+        // Use context from URL or stored context
+        const redirectContext = context || (storedData ? JSON.parse(storedData).context : '');
+        const contextParam = redirectContext ? `?context=${redirectContext}` : '';
+        router.push(`/builder${contextParam}`);
       }
     } catch (error) {
       console.error('Failed to load preview data:', error);
-      router.back();
+      // Use context from URL or try to get from stored data
+      let redirectContext = context;
+      try {
+        const storedData = sessionStorage.getItem('previewFormData');
+        if (storedData) {
+          const data = JSON.parse(storedData);
+          redirectContext = redirectContext || data.context || '';
+        }
+      } catch {}
+      const contextParam = redirectContext ? `?context=${redirectContext}` : '';
+      router.push(`/builder${contextParam}`);
     }
-  }, [router]);
+  }, [router, context]);
 
   // Load country data
   useEffect(() => {
@@ -67,14 +84,73 @@ export default function PreviewPage() {
   const pr = normalizedTheme.primaryColor || '#2563eb';
   const ttl = normalizedTheme.title || 'Create your account';
   const sub = normalizedTheme.subtitle || 'Please fill in the form to continue';
-  const btnbg = normalizedTheme.buttonBg || pr;
+  const titleColor = normalizedTheme.titleColor || pr;
+  const titleFontSize = normalizedTheme.titleFontSize ?? 22;
+  const titleFontWeight = normalizedTheme.titleFontWeight || '800';
+  // Subtitle color defaults to primary color (same as title) for consistency
+  const subtitleColor = normalizedTheme.subtitleColor || pr;
+  const subtitleFontSize = normalizedTheme.subtitleFontSize ?? 13;
+  const subtitleFontWeight = normalizedTheme.subtitleFontWeight || '400';
+  const btnbg = (normalizedTheme.buttonBg && normalizedTheme.primaryColor && normalizedTheme.buttonBg !== normalizedTheme.primaryColor)
+    ? normalizedTheme.buttonBg 
+    : pr;
   const btnc = normalizedTheme.buttonColor || '#fff';
   const btnr = normalizedTheme.buttonRadius == null ? 10 : normalizedTheme.buttonRadius;
   const btnt = normalizedTheme.buttonText || 'Create account';
-  const formBg = normalizedTheme.formBackgroundColor || '#ffffff';
+  // Only use formBackgroundColor if it's explicitly set, otherwise don't apply any background
+  const formBg = normalizedTheme.formBackgroundColor;
+  const pageBg = normalizedTheme.pageBackgroundColor || '#f9fafb';
 
   const handleShrink = () => {
-    router.back();
+    // Store the current form state back to sessionStorage so it can be restored
+    // This ensures all customizations are preserved when returning to builder
+    try {
+      // Get context from URL or from stored data
+      const storedContext = context || (() => {
+        try {
+          const storedData = sessionStorage.getItem('previewFormData');
+          if (storedData) {
+            const data = JSON.parse(storedData);
+            return data.context || '';
+          }
+        } catch {}
+        return '';
+      })();
+      
+      // Get additional state from sessionStorage if it exists
+      let additionalState: any = {};
+      try {
+        const builderState = sessionStorage.getItem('formBuilderState');
+        if (builderState) {
+          additionalState = JSON.parse(builderState);
+        }
+      } catch {}
+      
+      sessionStorage.setItem('previewFormData', JSON.stringify({
+        formFields,
+        theme,
+        viewMode,
+        sourceTab,
+        context: storedContext, // Preserve context
+        returnFromPreview: true, // Flag to indicate we're returning from preview
+        // Preserve state needed for top action bar
+        lastSavedState: additionalState.lastSavedState || null,
+        isEditing: additionalState.isEditing || false,
+        currentFormName: additionalState.currentFormName || 'Unnamed',
+        currentFormVersionId: additionalState.currentFormVersionId || null,
+        hasInitializedForm: additionalState.hasInitializedForm || false
+      }));
+      
+      // Always redirect to builder tab (tab 1) since preview is only accessible from builder
+      const contextParam = storedContext ? `?context=${storedContext}` : '';
+      router.push(`/builder${contextParam}`);
+    } catch (error) {
+      console.error('Failed to store return data:', error);
+      // Fallback to builder if storage fails
+      const fallbackContext = context || '';
+      const contextParam = fallbackContext ? `?context=${fallbackContext}` : '';
+      router.push(`/builder${contextParam}`);
+    }
   };
 
   const renderField = (field: FormField) => {
@@ -305,7 +381,7 @@ export default function PreviewPage() {
           margin: '0',
           padding: '0',
           fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji',
-          backgroundColor: '#f9fafb'
+          backgroundColor: pageBg
         }}
       >
         {viewMode === 'desktop' ? (
@@ -364,7 +440,7 @@ export default function PreviewPage() {
                 style={{
                   width: '100%',
                   maxWidth: '520px',
-                  background: formBg,
+                  ...(formBg ? { background: formBg } : {}),
                   backdropFilter: 'saturate(180%) blur(8px)',
                   border: '1px solid #e5e7eb',
                   borderRadius: '16px',
@@ -374,9 +450,9 @@ export default function PreviewPage() {
               >
                 <h1 
                   style={{
-                    fontSize: '22px',
-                    fontWeight: '800',
-                    color: '#0f172a',
+                    fontSize: titleFontSize + 'px',
+                    fontWeight: titleFontWeight,
+                    color: titleColor,
                     margin: '0 0 6px 0'
                   }}
                 >
@@ -385,8 +461,9 @@ export default function PreviewPage() {
                 
                 <p 
                   style={{
-                    fontSize: '13px',
-                    color: '#475569',
+                    fontSize: subtitleFontSize + 'px',
+                    fontWeight: subtitleFontWeight,
+                    color: subtitleColor,
                     margin: '0 0 18px 0'
                   }}
                 >
@@ -395,8 +472,8 @@ export default function PreviewPage() {
                 
                 <form style={{ display: 'grid', gap: '14px' }}>
                   {groupedFields.map((group) => {
-                    const isMobile = viewMode === 'mobile';
-                    const isPaired = group.rowGroup != null && group.fields.length === 2 && !isMobile;
+                    // In desktop view, always allow paired fields
+                    const isPaired = group.rowGroup != null && group.fields.length === 2;
                     
                     if (isPaired) {
                       return (
@@ -473,7 +550,7 @@ export default function PreviewPage() {
                 style={{
                   width: '100%',
                   maxWidth: '520px',
-                  background: formBg,
+                  ...(formBg ? { background: formBg } : {}),
                   backdropFilter: 'saturate(180%) blur(8px)',
                   border: '1px solid #e5e7eb',
                   borderRadius: '16px',
@@ -484,9 +561,9 @@ export default function PreviewPage() {
               >
                 <h1 
                   style={{
-                    fontSize: '22px',
-                    fontWeight: '800',
-                    color: '#0f172a',
+                    fontSize: titleFontSize + 'px',
+                    fontWeight: titleFontWeight,
+                    color: titleColor,
                     margin: '0 0 6px 0'
                   }}
                 >
@@ -495,8 +572,9 @@ export default function PreviewPage() {
                 
                 <p 
                   style={{
-                    fontSize: '13px',
-                    color: '#475569',
+                    fontSize: subtitleFontSize + 'px',
+                    fontWeight: subtitleFontWeight,
+                    color: subtitleColor,
                     margin: '0 0 18px 0'
                   }}
                 >

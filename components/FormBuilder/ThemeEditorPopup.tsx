@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { X, Palette, Type, ChevronDown, ChevronUp, Layout, MousePointerClick, Eye, Image } from 'lucide-react';
+import { X, Palette, Type, ChevronDown, ChevronUp, Layout, MousePointerClick, Eye, Image, Heading, Sparkles } from 'lucide-react';
 import { ColorPicker } from './ColorPicker';
+import { brandingPresets, defaultTheme } from './utils';
 
 interface ThemeEditorPopupProps {
   isOpen: boolean;
@@ -14,14 +15,14 @@ interface ThemeEditorPopupProps {
 const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSave, onClose }) => {
   const [localTheme, setLocalTheme] = useState<any>(null);
   const initialThemeRef = useRef<any>(null);
-  const [openSection, setOpenSection] = useState<'content' | 'layout' | 'button' | null>('content');
+  const [openSection, setOpenSection] = useState<'content' | 'layout' | 'button' | 'typography' | 'branding' | null>('branding');
 
   useEffect(() => {
     if (isOpen) {
       const themeCopy = { ...theme };
       setLocalTheme(themeCopy);
       initialThemeRef.current = themeCopy;
-      setOpenSection('content');
+      setOpenSection('branding');
     } else {
       setLocalTheme(null);
       initialThemeRef.current = null;
@@ -37,6 +38,29 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
   if (!localTheme || !isOpen) return null;
 
   const handleThemeChange = (updates: any) => {
+    // If primaryColor is being updated, automatically sync buttonBg, titleColor, and subtitleColor to match it
+    // This keeps primary color, button background, title color, and subtitle color in sync by default
+    // User can still customize these separately if needed
+    if (updates.primaryColor !== undefined) {
+      const currentButtonBg = localTheme.buttonBg;
+      const currentPrimaryColor = localTheme.primaryColor;
+      const currentTitleColor = localTheme.titleColor;
+      const currentSubtitleColor = localTheme.subtitleColor;
+      // Auto-sync if buttonBg is not set, or if it matches the current primaryColor (not explicitly customized)
+      if (!currentButtonBg || currentButtonBg === currentPrimaryColor) {
+        updates.buttonBg = updates.primaryColor;
+      }
+      // Auto-sync titleColor if it's not explicitly set or matches the current primaryColor
+      if (!currentTitleColor || currentTitleColor === currentPrimaryColor || currentTitleColor === defaultTheme.titleColor) {
+        updates.titleColor = updates.primaryColor;
+      }
+      // Auto-sync subtitleColor if it's not explicitly set or matches the default subtitle color
+      // Use a lighter/darker shade of primary color for subtitle (or same color if user prefers)
+      if (!currentSubtitleColor || currentSubtitleColor === defaultTheme.subtitleColor) {
+        // Use primary color for subtitle as well (user can customize separately if needed)
+        updates.subtitleColor = updates.primaryColor;
+      }
+    }
     const updatedTheme = { ...localTheme, ...updates };
     setLocalTheme(updatedTheme);
   };
@@ -54,12 +78,22 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
     onClose();
   };
 
-  const toggleSection = (section: 'content' | 'layout' | 'button') => {
+  const toggleSection = (section: 'content' | 'layout' | 'button' | 'typography' | 'branding') => {
     setOpenSection((prev) => {
       if (prev === section) {
         return null;
       }
       return section;
+    });
+  };
+
+  const handleBrandingPreset = (preset: { name: string; primaryColor: string; pageBackgroundColor: string }) => {
+    handleThemeChange({
+      primaryColor: preset.primaryColor,
+      pageBackgroundColor: preset.pageBackgroundColor,
+      titleColor: preset.primaryColor, // Also update title color to match
+      subtitleColor: preset.primaryColor, // Also update subtitle color to match
+      buttonBg: preset.primaryColor // Sync button background
     });
   };
 
@@ -91,6 +125,46 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
             {/* Left Panel - Settings */}
             <div className="p-6 space-y-4 border-r border-slate-200">
+              {/* Branding Presets */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <button
+                  onClick={() => toggleSection('branding')}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200"
+                >
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm font-semibold text-slate-700">Branding Presets</span>
+                  </div>
+                  {openSection === 'branding' ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                </button>
+                {openSection === 'branding' && (
+                  <div key="branding-section" className="p-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                    <p className="text-xs text-slate-600 mb-2">Quickly apply professional color schemes</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {brandingPresets.map((preset) => (
+                        <button
+                          key={preset.name}
+                          onClick={() => handleBrandingPreset(preset)}
+                          className="group relative p-3 rounded-lg border-2 border-slate-200 hover:border-purple-400 transition-all duration-200 hover:shadow-md"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <div
+                              className="w-6 h-6 rounded"
+                              style={{ backgroundColor: preset.primaryColor }}
+                            />
+                            <span className="text-xs font-medium text-slate-700">{preset.name}</span>
+                          </div>
+                          <div
+                            className="w-full h-2 rounded"
+                            style={{ backgroundColor: preset.pageBackgroundColor }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Content Settings */}
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <button
@@ -133,6 +207,96 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
                       value={localTheme.formBackgroundColor || '#ffffff'}
                       onChange={(value) => handleThemeChange({ formBackgroundColor: value })}
                     />
+                  </div>
+                )}
+              </div>
+
+              {/* Typography Settings - Title & Subtitle */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <button
+                  onClick={() => toggleSection('typography')}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200"
+                >
+                  <div className="flex items-center gap-2">
+                    <Heading className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm font-semibold text-slate-700">Typography</span>
+                  </div>
+                  {openSection === 'typography' ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                </button>
+                {openSection === 'typography' && (
+                  <div key="typography-section" className="p-4 space-y-5 animate-in slide-in-from-top-2 duration-200">
+                    {/* Title Styling */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold text-slate-800 border-b border-slate-200 pb-2">Title Styling</h4>
+                      <ColorPicker
+                        label="Title Color"
+                        value={localTheme.titleColor || localTheme.primaryColor || defaultTheme.titleColor}
+                        onChange={(value) => handleThemeChange({ titleColor: value })}
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">Font Size (px)</label>
+                          <input
+                            type="number"
+                            value={localTheme.titleFontSize ?? defaultTheme.titleFontSize}
+                            onChange={(e) => handleThemeChange({ titleFontSize: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">Font Weight</label>
+                          <select
+                            value={localTheme.titleFontWeight || defaultTheme.titleFontWeight}
+                            onChange={(e) => handleThemeChange({ titleFontWeight: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="300">Light (300)</option>
+                            <option value="400">Normal (400)</option>
+                            <option value="500">Medium (500)</option>
+                            <option value="600">Semi Bold (600)</option>
+                            <option value="700">Bold (700)</option>
+                            <option value="800">Extra Bold (800)</option>
+                            <option value="900">Black (900)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Subtitle Styling */}
+                    <div className="space-y-3 pt-2 border-t border-slate-200">
+                      <h4 className="text-sm font-semibold text-slate-800 border-b border-slate-200 pb-2">Subtitle Styling</h4>
+                      <ColorPicker
+                        label="Subtitle Color"
+                        value={localTheme.subtitleColor || localTheme.primaryColor || defaultTheme.subtitleColor}
+                        onChange={(value) => handleThemeChange({ subtitleColor: value })}
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">Font Size (px)</label>
+                          <input
+                            type="number"
+                            value={localTheme.subtitleFontSize ?? defaultTheme.subtitleFontSize}
+                            onChange={(e) => handleThemeChange({ subtitleFontSize: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">Font Weight</label>
+                          <select
+                            value={localTheme.subtitleFontWeight || defaultTheme.subtitleFontWeight}
+                            onChange={(e) => handleThemeChange({ subtitleFontWeight: e.target.value })}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="300">Light (300)</option>
+                            <option value="400">Normal (400)</option>
+                            <option value="500">Medium (500)</option>
+                            <option value="600">Semi Bold (600)</option>
+                            <option value="700">Bold (700)</option>
+                            <option value="800">Extra Bold (800)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -189,6 +353,15 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
                         </div>
                       </div>
                     )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Page Background Color</label>
+                      <ColorPicker
+                        label=""
+                        value={localTheme.pageBackgroundColor || defaultTheme.pageBackgroundColor}
+                        onChange={(value) => handleThemeChange({ pageBackgroundColor: value })}
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Background color for the entire signup page (not the form card)</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -255,18 +428,33 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
                   </div>
                 </div>
                 <div 
-                  className="rounded-xl shadow-xl p-6 border border-slate-200"
-                  style={{ backgroundColor: localTheme.formBackgroundColor || '#ffffff' }}
+                  className="rounded-xl shadow-xl p-4 border border-slate-200"
+                  style={{ backgroundColor: localTheme.pageBackgroundColor || defaultTheme.pageBackgroundColor }}
                 >
-                  <div className="space-y-4">
+                  <div
+                    className="rounded-lg p-6 border border-slate-200"
+                    style={{ backgroundColor: localTheme.formBackgroundColor || '#ffffff' }}
+                  >
+                    <div className="space-y-4">
                     <div>
                       <h2 
-                        className="text-2xl font-bold mb-2"
-                        style={{ color: localTheme.primaryColor }}
+                        className="mb-2"
+                        style={{ 
+                          color: localTheme.titleColor || localTheme.primaryColor || defaultTheme.titleColor,
+                          fontSize: (localTheme.titleFontSize ?? defaultTheme.titleFontSize) + 'px',
+                          fontWeight: localTheme.titleFontWeight || defaultTheme.titleFontWeight
+                        }}
                       >
                         {localTheme.title || 'Create your account'}
                       </h2>
-                      <p className="text-gray-600 text-sm mb-6">
+                      <p 
+                        className="mb-6"
+                        style={{
+                          color: localTheme.subtitleColor || localTheme.primaryColor || defaultTheme.subtitleColor,
+                          fontSize: (localTheme.subtitleFontSize ?? defaultTheme.subtitleFontSize) + 'px',
+                          fontWeight: localTheme.subtitleFontWeight || defaultTheme.subtitleFontWeight
+                        }}
+                      >
                         {localTheme.subtitle || 'Please fill in the form to continue'}
                       </p>
                     </div>
@@ -276,6 +464,7 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
                         <input
                           type="text"
                           placeholder="Enter text here"
+                          style={{ backgroundColor: '#ffffff' }}
                           className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -283,9 +472,9 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
                     <button
                       type="button"
                       style={{
-                        backgroundColor: localTheme.buttonBg,
-                        color: localTheme.buttonColor,
-                        borderRadius: localTheme.buttonRadius + 'px',
+                        backgroundColor: localTheme.buttonBg || localTheme.primaryColor || '#2563eb',
+                        color: localTheme.buttonColor || '#ffffff',
+                        borderRadius: (localTheme.buttonRadius ?? 10) + 'px',
                         marginTop: '16px',
                         width: '100%',
                         padding: '12px 24px',
@@ -298,6 +487,7 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
                     >
                       {localTheme.buttonText || 'Create account'}
                     </button>
+                    </div>
                   </div>
                 </div>
               </div>

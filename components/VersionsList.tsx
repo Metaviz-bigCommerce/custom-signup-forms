@@ -55,11 +55,21 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean }> = ({ fo
   const pr = normalizedTheme.primaryColor || '#2563eb';
   const ttl = normalizedTheme.title || 'Create your account';
   const sub = normalizedTheme.subtitle || 'Please fill in the form to continue';
-  const btnbg = normalizedTheme.buttonBg || pr;
+  const titleColor = normalizedTheme.titleColor || pr;
+  const titleFontSize = normalizedTheme.titleFontSize ?? 22;
+  const titleFontWeight = normalizedTheme.titleFontWeight || '800';
+  // Subtitle color defaults to primary color (same as title) for consistency
+  const subtitleColor = normalizedTheme.subtitleColor || pr;
+  const subtitleFontSize = normalizedTheme.subtitleFontSize ?? 13;
+  const subtitleFontWeight = normalizedTheme.subtitleFontWeight || '400';
+  const btnbg = (normalizedTheme.buttonBg && normalizedTheme.primaryColor && normalizedTheme.buttonBg !== normalizedTheme.primaryColor)
+    ? normalizedTheme.buttonBg 
+    : pr;
   const btnc = normalizedTheme.buttonColor || '#fff';
   const btnr = normalizedTheme.buttonRadius == null ? 10 : normalizedTheme.buttonRadius;
   const btnt = normalizedTheme.buttonText || 'Create account';
   const formBg = normalizedTheme.formBackgroundColor || '#ffffff';
+  const pageBg = normalizedTheme.pageBackgroundColor || '#f9fafb';
   
   // Scale factor for preview - smaller for better UI/UX in thumbnail
   const scale = isCompact ? 0.25 : 0.4;
@@ -176,7 +186,7 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean }> = ({ fo
     <>
       <style>{scrollbarStyles}</style>
       <div style={{ 
-        background: formBg,
+        background: pageBg,
         width: '100%',
         height: '100%',
         display: 'flex',
@@ -187,24 +197,37 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean }> = ({ fo
         overflow: 'hidden',
         boxSizing: 'border-box'
       }}>
-      {/* Scrollable content area - includes title, subtitle, and form */}
-      <div 
-        className="form-preview-scroll"
-        style={{ 
-          display: 'flex',
-          flexDirection: 'column',
+        {/* Form card container */}
+        <div style={{
+          background: formBg,
+          borderRadius: `${16 * scale}px`,
+          padding: `${28 * scale}px`,
+          border: `${1 * scale}px solid #e5e7eb`,
+          boxShadow: `0 ${20 * scale}px ${30 * scale}px -${15 * scale}px rgba(0,0,0,.2)`,
+          width: '100%',
           flex: '1 1 auto',
           minHeight: 0,
-          overflowY: 'auto',
-          overflowX: 'hidden'
-        }}
-      >
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+        {/* Scrollable content area - includes title, subtitle, and form */}
+        <div 
+          className="form-preview-scroll"
+          style={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            flex: '1 1 auto',
+            minHeight: 0,
+            overflowY: 'auto',
+            overflowX: 'hidden'
+          }}
+        >
         {/* Title - exact match from LivePreview */}
         <h1 
           style={{
-            fontSize: `${22 * scale}px`,
-            fontWeight: '800',
-            color: '#0f172a',
+            fontSize: `${titleFontSize * scale}px`,
+            fontWeight: titleFontWeight,
+            color: titleColor,
             margin: `0 0 ${6 * scale}px 0`
           }}
         >
@@ -214,8 +237,9 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean }> = ({ fo
         {/* Subtitle - exact match from LivePreview */}
         <p 
           style={{
-            fontSize: `${13 * scale}px`,
-            color: '#475569',
+            fontSize: `${subtitleFontSize * scale}px`,
+            fontWeight: subtitleFontWeight,
+            color: subtitleColor,
             margin: `0 0 ${18 * scale}px 0`
           }}
         >
@@ -277,8 +301,9 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean }> = ({ fo
           </button>
         )}
         </form>
+        </div>
+        </div>
       </div>
-    </div>
     </>
   );
 };
