@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react';
+import { Mail, Settings, Server, User, AtSign, Lock, Save, RefreshCw, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { useSession } from '@/context/session';
 import { useToast } from '@/components/common/Toast';
 
@@ -167,164 +168,330 @@ const EmailConfigForm: React.FC = () => {
 
 	if (loading) {
 		return (
-			<div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-				<div className="animate-pulse space-y-4">
-					<div className="h-5 w-40 bg-gray-200 rounded" />
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="h-10 bg-gray-200 rounded" />
-						<div className="h-10 bg-gray-200 rounded" />
-						<div className="h-10 bg-gray-200 rounded" />
-						<div className="h-10 bg-gray-200 rounded" />
-						<div className="h-10 bg-gray-200 rounded" />
-						<div className="h-10 bg-gray-200 rounded" />
+			<div className="space-y-6">
+				{/* Header Skeleton */}
+				<div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-2xl p-6 sm:p-8">
+					<div className="absolute inset-0 overflow-hidden">
+						<div className="absolute -top-20 -right-20 w-60 h-60 bg-purple-500/15 rounded-full blur-3xl" />
+						<div className="absolute -bottom-20 -left-20 w-60 h-60 bg-blue-500/15 rounded-full blur-3xl" />
 					</div>
-					<div className="h-10 w-32 bg-gray-200 rounded" />
+					<div className="relative z-10">
+						<div className="h-8 w-64 bg-white/10 rounded animate-pulse mb-2" />
+						<div className="h-4 w-96 bg-white/5 rounded animate-pulse" />
+					</div>
+				</div>
+				{/* Content Skeleton */}
+				<div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 p-6">
+					<div className="animate-pulse space-y-6">
+						<div className="h-6 w-48 bg-slate-200 rounded" />
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div className="h-12 bg-slate-100 rounded-xl" />
+							<div className="h-12 bg-slate-100 rounded-xl" />
+							<div className="h-12 bg-slate-100 rounded-xl" />
+							<div className="h-12 bg-slate-100 rounded-xl" />
+						</div>
+						<div className="h-12 w-40 bg-slate-200 rounded-xl" />
+					</div>
 				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
-			<div className="flex items-center justify-between">
-				<h3 className="text-lg font-semibold text-gray-700">Email Settings</h3>
-				<span className="text-xs text-gray-500">{loading ? 'Loading…' : ''}</span>
-			</div>
-
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-				<div>
-					<label className="block text-sm font-medium text-gray-600 mb-1">From Email</label>
-					<input
-						type="email"
-						value={fromEmail}
-						onChange={(e) => setFromEmail(e.target.value)}
-						placeholder="no-reply@yourdomain.com"
-						disabled={useShared}
-						className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent ${useShared ? 'border-gray-100 bg-gray-50 text-gray-500' : 'border-gray-200'}`}
-					/>
-					<p className="text-xs text-gray-500 mt-1">
-						{useShared
-							? 'Using shared sender. Uncheck to use your own SMTP and sender address.'
-							: 'Required: must be an address on your authenticated domain.'}
-					</p>
+		<div className="space-y-6">
+			{/* Header Section */}
+			<div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-2xl p-6 sm:p-8">
+				{/* Background decorative elements */}
+				<div className="absolute inset-0 overflow-hidden">
+					<div className="absolute -top-20 -right-20 w-60 h-60 bg-purple-500/15 rounded-full blur-3xl" />
+					<div className="absolute -bottom-20 -left-20 w-60 h-60 bg-blue-500/15 rounded-full blur-3xl" />
 				</div>
-				<div>
-					<label className="block text-sm font-medium text-gray-600 mb-1">From Name</label>
-					<input
-						type="text"
-						value={fromName}
-						onChange={(e) => setFromName(e.target.value)}
-						placeholder="e.g. Signup Customisation App"
-						className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent"
-					/>
-				</div>
-				<div>
-					<label className="block text-sm font-medium text-gray-600 mb-1">Reply-To</label>
-					<input
-						type="email"
-						value={replyTo}
-						onChange={(e) => setReplyTo(e.target.value)}
-						placeholder="support@yourstore.com"
-						disabled={useShared}
-						className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent ${useShared ? 'border-gray-100 bg-gray-50 text-gray-500' : 'border-gray-200'}`}
-					/>
-					<p className="text-xs text-gray-500 mt-1">
-						{useShared
-							? 'Using shared sender. Reply-To is managed globally.'
-							: 'Optional: where customers’ replies should go.'}
-					</p>
+				
+				<div className="relative z-10">
+					<div className="flex items-center gap-3 mb-2">
+						<div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
+							<Mail className="w-5 h-5 text-white" />
+						</div>
+						<div>
+							<h1 className="text-2xl font-bold !text-white">Email Settings</h1>
+							<p className="text-slate-400 text-sm">Configure your email sending preferences and SMTP credentials</p>
+						</div>
+					</div>
 				</div>
 			</div>
 
-			<div className="mt-2">
-				<label className="inline-flex items-center gap-2 text-sm">
-					<input
-						type="checkbox"
-						checked={useShared}
-						onChange={(e) => setUseShared(e.target.checked)}
-						className="rounded border-gray-300"
-					/>
-					Use shared sender (recommended)
-				</label>
-				<p className="text-xs text-gray-500 mt-1">
-					When enabled, emails send from the app’s shared domain. Uncheck to use your own SMTP
-					credentials (Brevo).
-				</p>
-			</div>
+			{/* Main Content Card */}
+			<div className="relative">
+				{/* Decorative background elements */}
+				<div className="absolute inset-0 overflow-hidden pointer-events-none -z-0">
+					<div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-full blur-3xl" />
+					<div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-purple-500/5 to-pink-500/5 rounded-full blur-3xl" />
+				</div>
 
-			<div className={`${useShared ? 'opacity-50 pointer-events-none' : ''}`}>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-					<div>
-						<label className="block text-sm font-medium text-gray-600 mb-1">SMTP Host</label>
-						<input
-							type="text"
-							value={smtp.host}
-							onChange={(e) => setSmtp({ ...smtp, host: e.target.value })}
-							className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent"
-						/>
-					</div>
-					<div>
-						<label className="block text-sm font-medium text-gray-600 mb-1">SMTP Port</label>
-						<input
-							type="number"
-							value={smtp.port}
-							onChange={(e) => setSmtp({ ...smtp, port: Number(e.target.value || 0) })}
-							className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent"
-						/>
-					</div>
-					<div>
-						<label className="block text-sm font-medium text-gray-600 mb-1">SMTP User</label>
-						<input
-							type="text"
-							value={smtp.user}
-							onChange={(e) => setSmtp({ ...smtp, user: e.target.value })}
-							className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent"
-						/>
-					</div>
-					<div>
-						<label className="block text-sm font-medium text-gray-600 mb-1">SMTP Password</label>
-						<input
-							type="password"
-							value={smtp.pass}
-							onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })}
-							className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent"
-						/>
+				<div className="relative bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
+					<div className="p-6 sm:p-8 space-y-8">
+						{/* Shared Sender Toggle Section */}
+						<div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-6">
+							<div className="flex items-start justify-between gap-4">
+								<div className="flex-1">
+									<div className="flex items-center gap-3 mb-2">
+										<div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+											<Sparkles className="w-4 h-4 text-white" />
+										</div>
+										<h3 className="text-lg font-semibold text-slate-800">Sender Configuration</h3>
+									</div>
+									<p className="text-sm text-slate-600 mb-4">
+										Choose between using the shared sender (recommended) or configure your own SMTP server.
+									</p>
+									
+									{/* Modern Toggle Switch */}
+									<label className="inline-flex items-start gap-3 cursor-pointer group">
+										<div className="relative flex items-center pt-0.5">
+											<input
+												type="checkbox"
+												checked={useShared}
+												onChange={(e) => setUseShared(e.target.checked)}
+												className="sr-only"
+											/>
+											<div className={`w-14 h-8 rounded-full transition-all duration-300 flex items-center ${
+												useShared 
+													? 'bg-gradient-to-r from-blue-600 to-indigo-600' 
+													: 'bg-slate-300'
+											}`}>
+												<div className={`w-6 h-6 bg-white rounded-full shadow-lg transform transition-transform duration-300 ${
+													useShared ? 'translate-x-7' : 'translate-x-1'
+												}`} />
+											</div>
+										</div>
+										<div className="flex-1">
+											<span className={`text-base font-semibold transition-colors block ${
+												useShared ? 'text-blue-700' : 'text-slate-700'
+											}`}>
+												{useShared ? 'Using Shared Sender' : 'Using Custom SMTP'}
+											</span>
+											<p className="text-xs text-slate-500 mt-0.5">
+												{useShared 
+													? "Emails send from the app's shared domain (recommended)"
+													: "Configure your own SMTP credentials (Brevo)"}
+											</p>
+										</div>
+									</label>
+								</div>
+							</div>
+						</div>
+
+						{/* Sender Information Section */}
+						<div className="space-y-6">
+							<div className="flex items-center gap-3 pb-2 border-b border-slate-200">
+								<div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
+									<User className="w-4 h-4 text-white" />
+								</div>
+								<h3 className="text-lg font-semibold text-slate-800">Sender Information</h3>
+							</div>
+
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+								<div className="space-y-2">
+									<label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+										<AtSign className="w-4 h-4 text-slate-500" />
+										From Email
+									</label>
+									<input
+										type="email"
+										value={fromEmail}
+										onChange={(e) => setFromEmail(e.target.value)}
+										placeholder="no-reply@yourdomain.com"
+										disabled={useShared}
+										className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${
+											useShared 
+												? 'border-slate-100 bg-slate-50 text-slate-500 cursor-not-allowed' 
+												: 'border-slate-200 bg-white text-slate-900'
+										}`}
+									/>
+									<p className="text-xs text-slate-500 mt-1.5">
+										{useShared
+											? 'Using shared sender. Toggle off to use your own SMTP and sender address.'
+											: 'Required: must be an address on your authenticated domain.'}
+									</p>
+								</div>
+								<div className="space-y-2">
+									<label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+										<User className="w-4 h-4 text-slate-500" />
+										From Name
+									</label>
+									<input
+										type="text"
+										value={fromName}
+										onChange={(e) => setFromName(e.target.value)}
+										placeholder="e.g. Signup Customisation App"
+										className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-slate-900 transition-all"
+									/>
+									<p className="text-xs text-slate-500 mt-1.5">
+										Display name shown in recipient's inbox
+									</p>
+								</div>
+								<div className="space-y-2 md:col-span-2">
+									<label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+										<Mail className="w-4 h-4 text-slate-500" />
+										Reply-To
+									</label>
+									<input
+										type="email"
+										value={replyTo}
+										onChange={(e) => setReplyTo(e.target.value)}
+										placeholder="support@yourstore.com"
+										disabled={useShared}
+										className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${
+											useShared 
+												? 'border-slate-100 bg-slate-50 text-slate-500 cursor-not-allowed' 
+												: 'border-slate-200 bg-white text-slate-900'
+										}`}
+									/>
+									<p className="text-xs text-slate-500 mt-1.5">
+										{useShared
+											? "Using shared sender. Reply-To is managed globally."
+											: "Optional: where customers' replies should go."}
+									</p>
+								</div>
+							</div>
+						</div>
+
+						{/* SMTP Configuration Section */}
+						<div className={`space-y-6 transition-all duration-300 ${useShared ? 'opacity-40 pointer-events-none' : ''}`}>
+							<div className="flex items-center gap-3 pb-2 border-b border-slate-200">
+								<div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
+									<Server className="w-4 h-4 text-white" />
+								</div>
+								<h3 className="text-lg font-semibold text-slate-800">SMTP Configuration</h3>
+								{useShared && (
+									<span className="ml-auto px-3 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-full">
+										Disabled (using shared sender)
+									</span>
+								)}
+							</div>
+
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+								<div className="space-y-2">
+									<label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+										<Server className="w-4 h-4 text-slate-500" />
+										SMTP Host
+									</label>
+									<input
+										type="text"
+										value={smtp.host}
+										onChange={(e) => setSmtp({ ...smtp, host: e.target.value })}
+										placeholder="smtp-relay.brevo.com"
+										className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-slate-900 transition-all"
+									/>
+								</div>
+								<div className="space-y-2">
+									<label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+										<Settings className="w-4 h-4 text-slate-500" />
+										SMTP Port
+									</label>
+									<input
+										type="number"
+										value={smtp.port}
+										onChange={(e) => setSmtp({ ...smtp, port: Number(e.target.value || 0) })}
+										placeholder="587"
+										className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-slate-900 transition-all"
+									/>
+								</div>
+								<div className="space-y-2">
+									<label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+										<User className="w-4 h-4 text-slate-500" />
+										SMTP Username
+									</label>
+									<input
+										type="text"
+										value={smtp.user}
+										onChange={(e) => setSmtp({ ...smtp, user: e.target.value })}
+										placeholder="Your SMTP username"
+										className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-slate-900 transition-all"
+									/>
+								</div>
+								<div className="space-y-2">
+									<label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+										<Lock className="w-4 h-4 text-slate-500" />
+										SMTP Password
+									</label>
+									<input
+										type="password"
+										value={smtp.pass}
+										onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })}
+										placeholder="Your SMTP password"
+										className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-slate-900 transition-all"
+									/>
+								</div>
+							</div>
+
+							<div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+								<input
+									type="checkbox"
+									checked={!!smtp.secure}
+									onChange={(e) => setSmtp({ ...smtp, secure: e.target.checked })}
+									className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+								/>
+								<div>
+									<label className="text-sm font-medium text-slate-700 cursor-pointer">
+										Use SSL/TLS (port 465)
+									</label>
+									<p className="text-xs text-slate-500 mt-0.5">
+										Enable for secure connections on port 465
+									</p>
+								</div>
+							</div>
+						</div>
+
+						{/* Action Buttons */}
+						<div className="flex items-center gap-4 pt-4 border-t border-slate-200">
+							<button
+								onClick={save}
+								disabled={saving || loading || !isDirty}
+								className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${
+									saving || loading || !isDirty
+										? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+										: 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:scale-[1.02] active:scale-[0.98]'
+								}`}
+							>
+								{saving ? (
+									<>
+										<RefreshCw className="w-4 h-4 animate-spin" />
+										Saving...
+									</>
+								) : (
+									<>
+										<Save className="w-4 h-4" />
+										Save Settings
+									</>
+								)}
+							</button>
+							
+							{notice && (
+								<div
+									className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium border transition-all duration-300 ${
+										notice.type === 'success'
+											? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-500/10'
+											: 'bg-rose-50 text-rose-700 border-rose-200 shadow-sm shadow-rose-500/10'
+									}`}
+								>
+									{notice.type === 'success' ? (
+										<CheckCircle2 className="w-4 h-4" />
+									) : (
+										<AlertCircle className="w-4 h-4" />
+									)}
+									{notice.text}
+								</div>
+							)}
+							
+							{!isDirty && !notice && (
+								<div className="flex items-center gap-2 text-sm text-slate-500">
+									<CheckCircle2 className="w-4 h-4 text-emerald-500" />
+									<span>All changes saved</span>
+								</div>
+							)}
+						</div>
 					</div>
 				</div>
-				<label className="inline-flex items-center gap-2 text-sm mt-2">
-					<input
-						type="checkbox"
-						checked={!!smtp.secure}
-						onChange={(e) => setSmtp({ ...smtp, secure: e.target.checked })}
-						className="rounded border-gray-300"
-					/>
-					Use SSL/TLS (port 465)
-				</label>
-			</div>
-
-			<div className="flex gap-3">
-				<button
-					onClick={save}
-					disabled={saving || loading || !isDirty}
-					className={`px-6 py-3 rounded-lg font-medium ${
-						saving || loading || !isDirty
-							? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-							: 'bg-gray-900 text-white hover:bg-black'
-					}`}
-				>
-					{saving ? 'Saving…' : (isDirty ? 'Save Settings' : 'Save Settings')}
-				</button>
-				{notice ? (
-					<div
-						className={`px-3 py-2 rounded-lg text-sm ${
-							notice.type === 'success'
-								? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-								: 'bg-rose-50 text-rose-700 border border-rose-200'
-						}`}
-					>
-						{notice.text}
-					</div>
-				) : null}
 			</div>
 		</div>
 	);

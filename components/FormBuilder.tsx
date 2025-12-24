@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { FilePlus } from 'lucide-react';
+import { FilePlus, Wrench, FileText } from 'lucide-react';
 import { useBcScriptsActions, useStoreForm, useStoreFormActions, useFormVersionActions, useFormVersions } from '@/lib/hooks';
 import Skeleton from '@/components/Skeleton';
 import VersionsList from '@/components/VersionsList';
@@ -1037,28 +1037,38 @@ const FormBuilder: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Tabs Headers - Always on top */}
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex border-b border-gray-200">
+      {/* Modern Tabs Headers - Always on top */}
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl w-fit">
           <button
             onClick={() => handleTabSwitch(1)}
-            className={`px-4 py-3 text-sm font-medium transition-colors relative focus:outline-none rounded-lg border ${
+            className={`relative flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-all duration-300 rounded-xl focus:outline-none group ${
               activeTab === 1
-                ? "bg-blue-50 text-blue-700 border-blue-400"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 scale-[1.02]"
+                : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/80"
             }`}
           >
-            Builder
+            <Wrench className={`w-4 h-4 transition-all duration-300 relative z-10 ${
+              activeTab === 1 
+                ? "text-white" 
+                : "text-slate-600 group-hover:text-slate-800"
+            } ${activeTab === 1 ? "scale-110" : "group-hover:scale-110"}`} />
+            <span className="relative z-10">Builder</span>
           </button>
           <button
             onClick={() => handleTabSwitch(2)}
-            className={`px-4 py-3 text-sm font-medium transition-colors relative focus:outline-none rounded-lg border ${
+            className={`relative flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-all duration-300 rounded-xl focus:outline-none group ${
               activeTab === 2
-                ? "bg-blue-50 text-blue-700 border-blue-400"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 border-transparent"
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 scale-[1.02]"
+                : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/80"
             }`}
           >
-            Forms
+            <FileText className={`w-4 h-4 transition-all duration-300 relative z-10 ${
+              activeTab === 2 
+                ? "text-white" 
+                : "text-slate-600 group-hover:text-slate-800"
+            } ${activeTab === 2 ? "scale-110" : "group-hover:scale-110"}`} />
+            <span className="relative z-10">Forms</span>
           </button>
         </div>
         

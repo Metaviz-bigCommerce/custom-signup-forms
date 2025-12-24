@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { 
   Eye, Mail, Check, X, Send, Palette, Type, Link2, 
   Share2, ChevronDown, ChevronRight, Sparkles, Save,
@@ -128,6 +128,47 @@ const defaultBranding: Record<TemplateKey, { primaryColor: string; background: s
   moreInfo: { primaryColor: '#d97706', background: '#fffbeb' } // Amber
 };
 
+// Collapsible Section Component - moved outside to prevent recreation on each render
+const Section = React.memo(({ 
+  id, 
+  title, 
+  icon: SectionIcon, 
+  children,
+  isExpanded,
+  onToggle
+}: { 
+  id: string; 
+  title: string; 
+  icon: React.ElementType; 
+  children: React.ReactNode;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+}) => (
+  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+    <button
+      onClick={() => onToggle(id)}
+      className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+    >
+      <div className="flex items-center gap-3">
+        <SectionIcon className="w-4 h-4 text-slate-500" />
+        <span className="font-medium text-slate-700 text-sm">{title}</span>
+      </div>
+      {isExpanded ? (
+        <ChevronDown className="w-4 h-4 text-slate-400" />
+      ) : (
+        <ChevronRight className="w-4 h-4 text-slate-400" />
+      )}
+    </button>
+    {isExpanded && (
+      <div className="p-4 space-y-4 border-t border-slate-100">
+        {children}
+      </div>
+    )}
+  </div>
+));
+
+Section.displayName = 'Section';
+
 const EmailTemplates: React.FC = () => {
   const { context } = useSession();
   const toast = useToast();
@@ -205,9 +246,192 @@ const EmailTemplates: React.FC = () => {
       return v == null ? '' : String(v);
     });
 
-  const toggleSection = (section: string) => {
+  const toggleSection = useCallback((section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
+  }, []);
+
+  // useCallback handlers for all input fields to prevent focus loss
+  const handleSubjectChange = useCallback((value: string) => {
+    setEmailTemplates(prev => ({
+      ...prev,
+      [selectedTemplate]: { ...prev[selectedTemplate], subject: value }
+    }));
+  }, [selectedTemplate]);
+
+  const handleTitleChange = useCallback((value: string) => {
+    setEmailTemplates(prev => ({
+      ...prev,
+      [selectedTemplate]: { 
+        ...prev[selectedTemplate], 
+        design: { ...(prev[selectedTemplate].design||{}), title: value } 
+      }
+    }));
+  }, [selectedTemplate]);
+
+  const handleGreetingChange = useCallback((value: string) => {
+    setEmailTemplates(prev => ({
+      ...prev,
+      [selectedTemplate]: { 
+        ...prev[selectedTemplate], 
+        design: { ...(prev[selectedTemplate].design||{}), greeting: value } 
+      }
+    }));
+  }, [selectedTemplate]);
+
+  const handleBodyChange = useCallback((value: string) => {
+    setEmailTemplates(prev => ({
+      ...prev,
+      [selectedTemplate]: { ...prev[selectedTemplate], body: value }
+    }));
+  }, [selectedTemplate]);
+
+  const handlePrimaryColorChange = useCallback((value: string) => {
+    setEmailTemplates(prev => ({
+      ...prev,
+      [selectedTemplate]: { 
+        ...prev[selectedTemplate], 
+        design: { ...(prev[selectedTemplate].design||{}), primaryColor: value } 
+      }
+    }));
+  }, [selectedTemplate]);
+
+  const handleBackgroundChange = useCallback((value: string) => {
+    setEmailTemplates(prev => ({
+      ...prev,
+      [selectedTemplate]: { 
+        ...prev[selectedTemplate], 
+        design: { ...(prev[selectedTemplate].design||{}), background: value } 
+      }
+    }));
+  }, [selectedTemplate]);
+
+  const handleLogoUrlChange = useCallback((value: string) => {
+    setEmailTemplates(prev => ({
+      ...prev,
+      [selectedTemplate]: { 
+        ...prev[selectedTemplate], 
+        design: { ...(prev[selectedTemplate].design||{}), logoUrl: value } 
+      }
+    }));
+  }, [selectedTemplate]);
+
+  const handleBannerUrlChange = useCallback((value: string) => {
+    setEmailTemplates(prev => ({
+      ...prev,
+      [selectedTemplate]: { 
+        ...prev[selectedTemplate], 
+        design: { ...(prev[selectedTemplate].design||{}), bannerUrl: value } 
+      }
+    }));
+  }, [selectedTemplate]);
+
+  const handleFooterNoteChange = useCallback((value: string) => {
+    setEmailTemplates(prev => ({
+      ...prev,
+      [selectedTemplate]: { 
+        ...prev[selectedTemplate], 
+        design: { ...(prev[selectedTemplate].design||{}), footerNote: value } 
+      }
+    }));
+  }, [selectedTemplate]);
+
+  const handleCtaTextChange = useCallback((index: number, value: string) => {
+    setEmailTemplates(prev => {
+      const newCtas = [...(prev[selectedTemplate].design?.ctas || [])];
+      newCtas[index] = { ...newCtas[index], text: value };
+      return {
+        ...prev,
+        [selectedTemplate]: { 
+          ...prev[selectedTemplate], 
+          design: { ...(prev[selectedTemplate].design||{}), ctas: newCtas } 
+        }
+      };
+    });
+  }, [selectedTemplate]);
+
+  const handleCtaUrlChange = useCallback((index: number, value: string) => {
+    setEmailTemplates(prev => {
+      const newCtas = [...(prev[selectedTemplate].design?.ctas || [])];
+      newCtas[index] = { ...newCtas[index], url: value };
+      return {
+        ...prev,
+        [selectedTemplate]: { 
+          ...prev[selectedTemplate], 
+          design: { ...(prev[selectedTemplate].design||{}), ctas: newCtas } 
+        }
+      };
+    });
+  }, [selectedTemplate]);
+
+  const handleFooterLinkTextChange = useCallback((index: number, value: string) => {
+    setEmailTemplates(prev => {
+      const newLinks = [...(prev[selectedTemplate].design?.footerLinks || [])];
+      newLinks[index] = { ...newLinks[index], text: value };
+      return {
+        ...prev,
+        [selectedTemplate]: { 
+          ...prev[selectedTemplate], 
+          design: { ...(prev[selectedTemplate].design||{}), footerLinks: newLinks } 
+        }
+      };
+    });
+  }, [selectedTemplate]);
+
+  const handleFooterLinkUrlChange = useCallback((index: number, value: string) => {
+    setEmailTemplates(prev => {
+      const newLinks = [...(prev[selectedTemplate].design?.footerLinks || [])];
+      newLinks[index] = { ...newLinks[index], url: value };
+      return {
+        ...prev,
+        [selectedTemplate]: { 
+          ...prev[selectedTemplate], 
+          design: { ...(prev[selectedTemplate].design||{}), footerLinks: newLinks } 
+        }
+      };
+    });
+  }, [selectedTemplate]);
+
+  const handleSocialNameChange = useCallback((index: number, value: string) => {
+    setEmailTemplates(prev => {
+      const newSocials = [...(prev[selectedTemplate].design?.socialLinks || [])];
+      newSocials[index] = { ...newSocials[index], name: value };
+      return {
+        ...prev,
+        [selectedTemplate]: { 
+          ...prev[selectedTemplate], 
+          design: { ...(prev[selectedTemplate].design||{}), socialLinks: newSocials } 
+        }
+      };
+    });
+  }, [selectedTemplate]);
+
+  const handleSocialUrlChange = useCallback((index: number, value: string) => {
+    setEmailTemplates(prev => {
+      const newSocials = [...(prev[selectedTemplate].design?.socialLinks || [])];
+      newSocials[index] = { ...newSocials[index], url: value };
+      return {
+        ...prev,
+        [selectedTemplate]: { 
+          ...prev[selectedTemplate], 
+          design: { ...(prev[selectedTemplate].design||{}), socialLinks: newSocials } 
+        }
+      };
+    });
+  }, [selectedTemplate]);
+
+  const handleSocialIconUrlChange = useCallback((index: number, value: string) => {
+    setEmailTemplates(prev => {
+      const newSocials = [...(prev[selectedTemplate].design?.socialLinks || [])];
+      newSocials[index] = { ...newSocials[index], iconUrl: value };
+      return {
+        ...prev,
+        [selectedTemplate]: { 
+          ...prev[selectedTemplate], 
+          design: { ...(prev[selectedTemplate].design||{}), socialLinks: newSocials } 
+        }
+      };
+    });
+  }, [selectedTemplate]);
 
   const generateHtml = (t: Template) => {
     const d: Design = t.design || {};
@@ -430,41 +654,6 @@ const EmailTemplates: React.FC = () => {
   const currentMeta = templateMeta[selectedTemplate];
   const CurrentIcon = currentMeta.icon;
 
-  // Collapsible Section Component
-  const Section = ({ 
-    id, 
-    title, 
-    icon: SectionIcon, 
-    children 
-  }: { 
-    id: string; 
-    title: string; 
-    icon: React.ElementType; 
-    children: React.ReactNode 
-  }) => (
-    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-      <button
-        onClick={() => toggleSection(id)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
-      >
-        <div className="flex items-center gap-3">
-          <SectionIcon className="w-4 h-4 text-slate-500" />
-          <span className="font-medium text-slate-700 text-sm">{title}</span>
-        </div>
-        {expandedSections[id] ? (
-          <ChevronDown className="w-4 h-4 text-slate-400" />
-        ) : (
-          <ChevronRight className="w-4 h-4 text-slate-400" />
-        )}
-      </button>
-      {expandedSections[id] && (
-        <div className="p-4 space-y-4 border-t border-slate-100">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-
   if (!loaded) {
     return (
       <div className="space-y-6">
@@ -597,17 +786,14 @@ const EmailTemplates: React.FC = () => {
           })()}
 
           {/* Content Section */}
-          <Section id="content" title="Email Content" icon={Type}>
+          <Section id="content" title="Email Content" icon={Type} isExpanded={expandedSections.content} onToggle={toggleSection}>
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-1">Subject Line</label>
               <p className="text-xs text-slate-400 mb-2">Appears in the recipient&apos;s inbox</p>
               <input
                 type="text"
                 value={emailTemplates[selectedTemplate].subject}
-                onChange={(e) => setEmailTemplates({
-                  ...emailTemplates,
-                  [selectedTemplate]: { ...emailTemplates[selectedTemplate], subject: e.target.value }
-                })}
+                onChange={(e) => handleSubjectChange(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
                 placeholder="Enter email subject"
               />
@@ -619,10 +805,7 @@ const EmailTemplates: React.FC = () => {
               <input
                 type="text"
                 value={emailTemplates[selectedTemplate].design?.title ?? ''}
-                onChange={(e) => setEmailTemplates({
-                  ...emailTemplates,
-                  [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), title: e.target.value } }
-                })}
+                onChange={(e) => handleTitleChange(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
                 placeholder={defaultTitles[selectedTemplate]}
               />
@@ -633,10 +816,7 @@ const EmailTemplates: React.FC = () => {
               <input
                 type="text"
                 value={emailTemplates[selectedTemplate].design?.greeting || 'Hello {{name}}'}
-                onChange={(e) => setEmailTemplates({
-                  ...emailTemplates,
-                  [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), greeting: e.target.value } }
-                })}
+                onChange={(e) => handleGreetingChange(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
                 placeholder="Hello {{name}}"
               />
@@ -646,10 +826,7 @@ const EmailTemplates: React.FC = () => {
               <label className="block text-sm font-medium text-slate-600 mb-2">Email Body</label>
               <textarea
                 value={emailTemplates[selectedTemplate].body}
-                onChange={(e) => setEmailTemplates({
-                  ...emailTemplates,
-                  [selectedTemplate]: { ...emailTemplates[selectedTemplate], body: e.target.value }
-                })}
+                onChange={(e) => handleBodyChange(e.target.value)}
                 rows={8}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all resize-none"
                 placeholder="Enter email content"
@@ -673,28 +850,22 @@ const EmailTemplates: React.FC = () => {
           </Section>
 
           {/* Branding Section */}
-          <Section id="branding" title="Branding & Colors" icon={Palette}>
-            <div className="grid grid-cols-2 gap-4">
+          <Section id="branding" title="Branding & Colors" icon={Palette} isExpanded={expandedSections.branding} onToggle={toggleSection}>
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-2">Primary Color</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
                     value={emailTemplates[selectedTemplate].design?.primaryColor || '#2563eb'}
-                    onChange={(e) => setEmailTemplates({
-                      ...emailTemplates,
-                      [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), primaryColor: e.target.value } }
-                    })}
+                    onChange={(e) => handlePrimaryColorChange(e.target.value)}
                     className="w-12 h-10 p-1 border border-slate-200 rounded-lg cursor-pointer"
                   />
                   <input
                     type="text"
                     value={emailTemplates[selectedTemplate].design?.primaryColor || '#2563eb'}
-                    onChange={(e) => setEmailTemplates({
-                      ...emailTemplates,
-                      [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), primaryColor: e.target.value } }
-                    })}
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono"
+                    onChange={(e) => handlePrimaryColorChange(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -704,20 +875,14 @@ const EmailTemplates: React.FC = () => {
                   <input
                     type="color"
                     value={emailTemplates[selectedTemplate].design?.background || '#f7fafc'}
-                    onChange={(e) => setEmailTemplates({
-                      ...emailTemplates,
-                      [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), background: e.target.value } }
-                    })}
+                    onChange={(e) => handleBackgroundChange(e.target.value)}
                     className="w-12 h-10 p-1 border border-slate-200 rounded-lg cursor-pointer"
                   />
                   <input
                     type="text"
                     value={emailTemplates[selectedTemplate].design?.background || '#f7fafc'}
-                    onChange={(e) => setEmailTemplates({
-                      ...emailTemplates,
-                      [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), background: e.target.value } }
-                    })}
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono"
+                    onChange={(e) => handleBackgroundChange(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -761,10 +926,7 @@ const EmailTemplates: React.FC = () => {
               <input
                 type="url"
                 value={emailTemplates[selectedTemplate].design?.logoUrl || ''}
-                onChange={(e) => setEmailTemplates({
-                  ...emailTemplates,
-                  [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), logoUrl: e.target.value } }
-                })}
+                onChange={(e) => handleLogoUrlChange(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
                 placeholder="https://your-domain.com/logo.png"
               />
@@ -775,10 +937,7 @@ const EmailTemplates: React.FC = () => {
               <input
                 type="url"
                 value={emailTemplates[selectedTemplate].design?.bannerUrl || ''}
-                onChange={(e) => setEmailTemplates({
-                  ...emailTemplates,
-                  [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), bannerUrl: e.target.value } }
-                })}
+                onChange={(e) => handleBannerUrlChange(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
                 placeholder="https://your-domain.com/banner.jpg"
               />
@@ -786,7 +945,7 @@ const EmailTemplates: React.FC = () => {
           </Section>
 
           {/* CTA Buttons Section */}
-          <Section id="button" title="Call-to-Action Buttons" icon={MousePointer}>
+          <Section id="button" title="Call-to-Action Buttons" icon={MousePointer} isExpanded={expandedSections.button} onToggle={toggleSection}>
             <div className="space-y-3">
               {(emailTemplates[selectedTemplate].design?.ctas || []).map((cta, index) => (
                 <div key={cta.id} className="flex items-start gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
@@ -799,14 +958,7 @@ const EmailTemplates: React.FC = () => {
                 <input
                   type="text"
                         value={cta.text}
-                        onChange={(e) => {
-                          const newCtas = [...(emailTemplates[selectedTemplate].design?.ctas || [])];
-                          newCtas[index] = { ...newCtas[index], text: e.target.value };
-                          setEmailTemplates({
-                    ...emailTemplates,
-                            [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), ctas: newCtas } }
-                          });
-                        }}
+                        onChange={(e) => handleCtaTextChange(index, e.target.value)}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         placeholder="Button text"
                 />
@@ -816,14 +968,7 @@ const EmailTemplates: React.FC = () => {
                 <input
                   type="text"
                         value={cta.url}
-                        onChange={(e) => {
-                          const newCtas = [...(emailTemplates[selectedTemplate].design?.ctas || [])];
-                          newCtas[index] = { ...newCtas[index], url: e.target.value };
-                          setEmailTemplates({
-                    ...emailTemplates,
-                            [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), ctas: newCtas } }
-                          });
-                        }}
+                        onChange={(e) => handleCtaUrlChange(index, e.target.value)}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         placeholder="https://... or {{action_url}}"
                 />
@@ -868,16 +1013,13 @@ const EmailTemplates: React.FC = () => {
           </Section>
 
           {/* Footer Section */}
-          <Section id="footer" title="Footer & Links" icon={Link2}>
+          <Section id="footer" title="Footer & Links" icon={Link2} isExpanded={expandedSections.footer} onToggle={toggleSection}>
             <div>
               <label className="block text-sm font-medium text-slate-600 mb-2">Footer Note</label>
               <input
                 type="text"
                 value={emailTemplates[selectedTemplate].design?.footerNote || 'This email was sent to {{email}}'}
-                onChange={(e) => setEmailTemplates({
-                  ...emailTemplates,
-                  [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), footerNote: e.target.value } }
-                })}
+                onChange={(e) => handleFooterNoteChange(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
               />
             </div>
@@ -891,28 +1033,14 @@ const EmailTemplates: React.FC = () => {
                 <input
                   type="text"
                         value={link.text}
-                        onChange={(e) => {
-                          const newLinks = [...(emailTemplates[selectedTemplate].design?.footerLinks || [])];
-                          newLinks[index] = { ...newLinks[index], text: e.target.value };
-                          setEmailTemplates({
-                    ...emailTemplates,
-                            [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), footerLinks: newLinks } }
-                          });
-                        }}
+                        onChange={(e) => handleFooterLinkTextChange(index, e.target.value)}
                         className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         placeholder="Link text"
                 />
                 <input
                   type="text"
                         value={link.url}
-                        onChange={(e) => {
-                          const newLinks = [...(emailTemplates[selectedTemplate].design?.footerLinks || [])];
-                          newLinks[index] = { ...newLinks[index], url: e.target.value };
-                          setEmailTemplates({
-                    ...emailTemplates,
-                            [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), footerLinks: newLinks } }
-                          });
-                        }}
+                        onChange={(e) => handleFooterLinkUrlChange(index, e.target.value)}
                         className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   placeholder="https://..."
                 />
@@ -957,7 +1085,7 @@ const EmailTemplates: React.FC = () => {
           </Section>
 
           {/* Socials Section */}
-          <Section id="socials" title="Social Media Links" icon={Share2}>
+          <Section id="socials" title="Social Media Links" icon={Share2} isExpanded={expandedSections.socials} onToggle={toggleSection}>
             <div className="space-y-3">
               {(emailTemplates[selectedTemplate].design?.socialLinks || []).map((social, index) => (
                 <div key={social.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200">
@@ -976,28 +1104,14 @@ const EmailTemplates: React.FC = () => {
                         <input
                           type="text"
                           value={social.name}
-                          onChange={(e) => {
-                            const newSocials = [...(emailTemplates[selectedTemplate].design?.socialLinks || [])];
-                            newSocials[index] = { ...newSocials[index], name: e.target.value };
-                            setEmailTemplates({
-                              ...emailTemplates,
-                              [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), socialLinks: newSocials } }
-                            });
-                          }}
+                          onChange={(e) => handleSocialNameChange(index, e.target.value)}
                           className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                           placeholder="Platform name"
                         />
                   <input
                     type="url"
                           value={social.url}
-                          onChange={(e) => {
-                            const newSocials = [...(emailTemplates[selectedTemplate].design?.socialLinks || [])];
-                            newSocials[index] = { ...newSocials[index], url: e.target.value };
-                            setEmailTemplates({
-                      ...emailTemplates,
-                              [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), socialLinks: newSocials } }
-                            });
-                          }}
+                          onChange={(e) => handleSocialUrlChange(index, e.target.value)}
                           className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                           placeholder="https://..."
                         />
@@ -1005,14 +1119,7 @@ const EmailTemplates: React.FC = () => {
                       <input
                         type="url"
                         value={social.iconUrl}
-                        onChange={(e) => {
-                          const newSocials = [...(emailTemplates[selectedTemplate].design?.socialLinks || [])];
-                          newSocials[index] = { ...newSocials[index], iconUrl: e.target.value };
-                          setEmailTemplates({
-                            ...emailTemplates,
-                            [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), socialLinks: newSocials } }
-                          });
-                        }}
+                        onChange={(e) => handleSocialIconUrlChange(index, e.target.value)}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         placeholder="Icon URL (PNG, SVG, etc.)"
                       />
