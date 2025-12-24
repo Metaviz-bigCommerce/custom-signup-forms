@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Maximize2, Minimize2, Eye } from 'lucide-react';
 import { FormField } from './types';
 import { normalizeThemeLayout } from './utils';
@@ -15,6 +15,8 @@ interface LivePreviewProps {
 
 const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, onViewModeChange }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const context = searchParams.get('context') || '';
   
   // Country/State dynamic data for address fields
   const [countryData, setCountryData] = useState<Array<{ countryName: string; countryShortCode: string; regions: Array<{ name: string; shortCode?: string }>;}>>([]);
@@ -22,13 +24,34 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
 
   const handleExpand = () => {
     // Store form data in sessionStorage for seamless navigation
+    // Also store the source tab (builder tab = 1) and context so we can redirect back correctly
+    // We need to get additional state from the parent component
     try {
+      // Get additional state from sessionStorage if it was stored by FormBuilder
+      let additionalState = {};
+      try {
+        const builderState = sessionStorage.getItem('formBuilderState');
+        if (builderState) {
+          additionalState = JSON.parse(builderState);
+        }
+      } catch {}
+      
       sessionStorage.setItem('previewFormData', JSON.stringify({
         formFields,
         theme,
-        viewMode
+        viewMode,
+        sourceTab: 1, // Builder tab is always tab 1
+        context: context, // Store context for redirect
+        // Store state needed for top action bar
+        lastSavedState: additionalState.lastSavedState || null,
+        isEditing: additionalState.isEditing || false,
+        currentFormName: additionalState.currentFormName || 'Unnamed',
+        currentFormVersionId: additionalState.currentFormVersionId || null,
+        hasInitializedForm: additionalState.hasInitializedForm || false
       }));
-      router.push('/builder/preview');
+      // Include context in the preview URL
+      const contextParam = context ? `?context=${context}` : '';
+      router.push(`/builder/preview${contextParam}`);
     } catch (error) {
       console.error('Failed to store preview data:', error);
     }
@@ -72,11 +95,23 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
   const pr = normalizedTheme.primaryColor || '#2563eb';
   const ttl = normalizedTheme.title || 'Create your account';
   const sub = normalizedTheme.subtitle || 'Please fill in the form to continue';
-  const btnbg = normalizedTheme.buttonBg || pr;
+  const titleColor = normalizedTheme.titleColor || pr;
+  const titleFontSize = normalizedTheme.titleFontSize ?? 22;
+  const titleFontWeight = normalizedTheme.titleFontWeight || '800';
+  // Subtitle color defaults to primary color (same as title) for consistency
+  const subtitleColor = normalizedTheme.subtitleColor || pr;
+  const subtitleFontSize = normalizedTheme.subtitleFontSize ?? 13;
+  const subtitleFontWeight = normalizedTheme.subtitleFontWeight || '400';
+  // Use primaryColor for button background unless buttonBg is explicitly set to a different value
+  // This ensures primaryColor controls the button by default, making primary color changes reflect immediately
+  const btnbg = (normalizedTheme.buttonBg && normalizedTheme.primaryColor && normalizedTheme.buttonBg !== normalizedTheme.primaryColor) 
+    ? normalizedTheme.buttonBg 
+    : pr;
   const btnc = normalizedTheme.buttonColor || '#fff';
   const btnr = normalizedTheme.buttonRadius == null ? 10 : normalizedTheme.buttonRadius;
   const btnt = normalizedTheme.buttonText || 'Create account';
   const formBg = normalizedTheme.formBackgroundColor || '#ffffff';
+  const pageBg = normalizedTheme.pageBackgroundColor || '#f9fafb';
   
   // Form content component - matching exact script structure
   const FormContent = () => (
@@ -84,9 +119,9 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
       {/* Title - exact match from script */}
       <h1 
         style={{
-          fontSize: '22px',
-          fontWeight: '800',
-          color: '#0f172a',
+          fontSize: titleFontSize + 'px',
+          fontWeight: titleFontWeight,
+          color: titleColor,
           margin: '0 0 6px 0'
         }}
       >
@@ -96,8 +131,9 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
       {/* Subtitle - exact match from script */}
       <p 
         style={{
-          fontSize: '13px',
-          color: '#475569',
+          fontSize: subtitleFontSize + 'px',
+          fontWeight: subtitleFontWeight,
+          color: subtitleColor,
           margin: '0 0 18px 0'
         }}
       >
@@ -436,7 +472,8 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
               margin: '0',
               padding: '0',
               minHeight: '100%',
-              fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji'
+              fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji',
+              backgroundColor: pageBg
             }}
           >
             {/* Page container - exact match from script */}
@@ -516,7 +553,8 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
               margin: '0',
               padding: '0',
               minHeight: '100%',
-              fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji'
+              fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, Apple Color Emoji, Segoe UI Emoji',
+              backgroundColor: pageBg
             }}
           >
             {/* Mobile view - same structure but single column */}

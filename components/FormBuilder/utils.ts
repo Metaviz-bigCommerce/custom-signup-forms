@@ -3,6 +3,12 @@ import { FormField, Theme } from './types';
 export const defaultTheme: Theme = {
   title: 'Create your account',
   subtitle: 'Please fill in the form to continue',
+  titleColor: '#2563eb', // Uses primary color by default
+  titleFontSize: 22,
+  titleFontWeight: '800',
+  subtitleColor: '#2563eb', // Also uses primary color by default (matches title)
+  subtitleFontSize: 13,
+  subtitleFontWeight: '400',
   primaryColor: '#2563eb',
   layout: 'center',
   splitImageUrl: '',
@@ -10,8 +16,21 @@ export const defaultTheme: Theme = {
   buttonBg: '#2563eb',
   buttonColor: '#ffffff',
   buttonRadius: 10,
-  formBackgroundColor: '#ffffff'
+  formBackgroundColor: '#ffffff',
+  pageBackgroundColor: '#f9fafb'
 };
+
+// Default branding presets similar to email templates
+export const brandingPresets: Array<{ name: string; primaryColor: string; pageBackgroundColor: string }> = [
+  { name: 'Sky Blue', primaryColor: '#2563eb', pageBackgroundColor: '#f0f9ff' },
+  { name: 'Emerald Green', primaryColor: '#059669', pageBackgroundColor: '#ecfdf5' },
+  { name: 'Rose Red', primaryColor: '#e11d48', pageBackgroundColor: '#fff1f2' },
+  { name: 'Amber', primaryColor: '#d97706', pageBackgroundColor: '#fffbeb' },
+  { name: 'Indigo', primaryColor: '#6366f1', pageBackgroundColor: '#eef2ff' },
+  { name: 'Purple', primaryColor: '#9333ea', pageBackgroundColor: '#faf5ff' },
+  { name: 'Teal', primaryColor: '#0d9488', pageBackgroundColor: '#f0fdfa' },
+  { name: 'Orange', primaryColor: '#ea580c', pageBackgroundColor: '#fff7ed' }
+];
 
 // Helper function to normalize theme layout - if split layout but no valid image URL, use center
 // Also removes formBackgroundColor if it matches the default value (to avoid saving default values)

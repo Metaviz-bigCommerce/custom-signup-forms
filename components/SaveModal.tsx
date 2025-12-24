@@ -45,11 +45,11 @@ export default function SaveModal({
       return;
     }
     
+    // For new forms, always use saveToExisting
+    // For existing forms, use the selected option
     if (isNewForm) {
-      // For new forms, just save with the name
-      onSaveAsNew(trimmedName);
+      onSaveToExisting(trimmedName);
     } else {
-      // For existing forms, use the selected option
       if (saveOption === 'existing') {
         onSaveToExisting(trimmedName);
       } else {
@@ -82,13 +82,8 @@ export default function SaveModal({
         </div>
         
         <form onSubmit={handleSubmit} className="p-6">
-          {isNewForm ? (
-            <div className="mb-4">
-              <p className="text-sm text-gray-700 mb-4">
-                This form will be saved as: <span className="font-semibold text-gray-900">{name.trim() || '[form name]'}</span>
-              </p>
-            </div>
-          ) : (
+          {/* Show save options for existing forms (whether in Save & Switch or regular save) */}
+          {!isNewForm && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 Save Option
@@ -134,6 +129,7 @@ export default function SaveModal({
               </div>
             </div>
           )}
+          
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">

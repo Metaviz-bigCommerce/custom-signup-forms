@@ -81,7 +81,6 @@ const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-slate-800">Form Fields</h3>
-                <p className="text-xs text-slate-500">Drag to reorder</p>
               </div>
             </div>
             <button
@@ -182,7 +181,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="border-t border-slate-200 pt-4">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-1 h-5 bg-gradient-to-b from-indigo-600 to-purple-600 rounded-full" />
-                <h3 className="text-sm font-semibold text-slate-800">Form Fields</h3>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800">Form Fields</h3>
+                  <p className="text-xs text-slate-500">Drag to reorder</p>
+                </div>
               </div>
               <div className="space-y-3">
                 {fieldGroups.map((group) => {
