@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Mail,
@@ -19,6 +19,8 @@ import {
   MessageSquare,
   Check,
 } from 'lucide-react';
+import { useStoreForm } from '@/lib/hooks';
+import { FormField } from '@/components/FormBuilder/types';
 
 export type RequestItem = {
   id: string;
@@ -147,6 +149,86 @@ const formatRelativeTime = (ts?: { seconds?: number; nanoseconds?: number } | st
   return `${diffYears} year${diffYears === 1 ? '' : 's'} ago`;
 };
 
+// Helper function to find option label by value
+const findOptionLabel = (formFields: FormField[], fieldKey: string, value: unknown, countryData?: any[], requestData?: Record<string, unknown>): string | null => {
+  if (!formFields || !Array.isArray(formFields)) return null;
+  
+  // Try to find a field that matches the key (by label or by a normalized key)
+  const normalizedKey = String(fieldKey).toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  for (const field of formFields) {
+    const normalizedLabel = field.label.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // Check if this field matches the key
+    if (
+      field.label.toLowerCase() === fieldKey.toLowerCase() ||
+      normalizedLabel === normalizedKey ||
+      fieldKey.toLowerCase().includes(normalizedLabel) ||
+      normalizedLabel.includes(normalizedKey)
+    ) {
+      // Handle country/state fields with codes
+      if (field.role === 'country' && typeof value === 'string' && countryData && countryData.length > 0) {
+        const country = countryData.find(c => c.countryShortCode === value);
+        if (country) return country.countryName;
+      } else if (field.role === 'state' && typeof value === 'string' && countryData && countryData.length > 0 && requestData) {
+        // Find the country code from request data
+        const countryField = formFields.find(f => f.role === 'country');
+        if (countryField) {
+          const countryKey = Object.keys(requestData).find(k => {
+            const normalizedK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const normalizedCountryLabel = countryField.label.toLowerCase().replace(/[^a-z0-9]/g, '');
+            return normalizedK === normalizedCountryLabel || k.toLowerCase().includes('country');
+          });
+          if (countryKey && requestData[countryKey]) {
+            const countryCode = String(requestData[countryKey]);
+            const country = countryData.find(c => c.countryShortCode === countryCode);
+            if (country && country.regions) {
+              const region = country.regions.find(r => (r.shortCode || r.name) === value);
+              if (region) return region.name;
+            }
+          }
+        }
+        // Fallback: try to find state in any country
+        for (const country of countryData) {
+          if (country.regions) {
+            const region = country.regions.find(r => (r.shortCode || r.name) === value);
+            if (region) return region.name;
+          }
+        }
+      }
+      
+      // Check if this is a select, radio, or checkbox field with options
+      if ((field.type === 'select' || field.type === 'radio' || field.type === 'checkbox') && field.options) {
+        const valueStr = String(value || '').toLowerCase();
+        // Try exact match first
+        const exactMatch = field.options.find(opt => opt.value.toLowerCase() === valueStr);
+        if (exactMatch) return exactMatch.label;
+        
+        // Try case-insensitive match
+        const caseInsensitiveMatch = field.options.find(opt => 
+          opt.value.toLowerCase() === valueStr || 
+          opt.label.toLowerCase() === valueStr
+        );
+        if (caseInsensitiveMatch) return caseInsensitiveMatch.label;
+        
+        // For checkbox, value might be "true", "false", "on", "off", "yes", "no", "1", "0"
+        if (field.type === 'checkbox') {
+          const boolValue = valueStr === 'true' || valueStr === 'on' || valueStr === 'yes' || valueStr === '1';
+          if (boolValue && field.options.length > 0) {
+            // If it's a single checkbox (no options), return the field label
+            if (field.options.length === 0) return field.label;
+            // Otherwise, try to find the matching option
+            const checkedOption = field.options.find(opt => opt.value.toLowerCase() === valueStr);
+            if (checkedOption) return checkedOption.label;
+          }
+        }
+      }
+    }
+  }
+  
+  return null;
+};
+
 const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
   request,
   onClose,
@@ -159,9 +241,129 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
 }) => {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [detailsSearch, setDetailsSearch] = useState('');
+  const [countryData, setCountryData] = useState<Array<{ countryName: string; countryShortCode: string; regions: Array<{ name: string; shortCode?: string }> }>>([]);
+  const { form } = useStoreForm();
+  
+  // Load country data
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch('https://cdn.jsdelivr.net/npm/country-region-data@3.0.0/data.json');
+        const json = await res.json();
+        if (!cancelled && Array.isArray(json)) {
+          setCountryData(json);
+        }
+      } catch {
+        // Ignore errors
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
+  
+  // Get form fields from the form definition
+  const formFields: FormField[] = (form?.fields as FormField[]) || [];
+  
+  // Helper to normalize strings for comparison
+  const normalizeKey = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  // Helper to match request data key to form field label
+  const matchKeyToField = (key: string): FormField | null => {
+    const normalizedKey = normalizeKey(key);
+    for (const field of formFields) {
+      const normalizedLabel = normalizeKey(field.label);
+      if (
+        field.label.toLowerCase() === key.toLowerCase() ||
+        normalizedLabel === normalizedKey ||
+        key.toLowerCase().includes(normalizedLabel) ||
+        normalizedLabel.includes(normalizedKey)
+      ) {
+        return field;
+      }
+      // Also check by role
+      if (field.role === 'first_name' && /first[\s_-]?name/i.test(key)) return field;
+      if (field.role === 'last_name' && /last[\s_-]?name/i.test(key)) return field;
+      if (field.role === 'email' && /email/i.test(key)) return field;
+      if (field.role === 'country' && /country/i.test(key)) return field;
+      if (field.role === 'state' && /state|province/i.test(key)) return field;
+    }
+    return null;
+  };
+  
+  // Sort fields according to form field order, with first name, last name, email first
+  const getFieldSortOrder = (key: string): number => {
+    // Priority order: first_name (0), last_name (1), email (2), then by form field order
+    const lowerKey = key.toLowerCase();
+    if (/first[\s_-]?name/i.test(lowerKey)) return 0;
+    if (/last[\s_-]?name/i.test(lowerKey)) return 1;
+    if (/^email$/i.test(lowerKey)) return 2;
+    
+    // Find the field in formFields array
+    const field = matchKeyToField(key);
+    if (field) {
+      // Return index + 100 to place after priority fields
+      const index = formFields.indexOf(field);
+      return index >= 0 ? index + 100 : 999;
+    }
+    return 999;
+  };
+  
+  // Extract first name, last name, email for reference
+  const firstNameKey = Object.keys(request.data || {}).find(k => /first[\s_-]?name/i.test(k));
+  const lastNameKey = Object.keys(request.data || {}).find(k => /last[\s_-]?name/i.test(k));
+  const emailKey = Object.keys(request.data || {}).find(k => /email/i.test(k)) || 'email';
+  const firstName = firstNameKey ? String(request.data[firstNameKey] || '') : '';
+  const lastName = lastNameKey ? String(request.data[lastNameKey] || '') : '';
+  const requestEmail = extractEmail(request.data, request.email) || '—';
+  
+  // Helper to format field value with label resolution
+  const formatFieldValue = (key: string, value: unknown): string => {
+    // Try to find option label (including country/state)
+    const label = findOptionLabel(formFields, key, value, countryData, request.data);
+    if (label !== null) {
+      return label;
+    }
+    
+    // Fallback to original value formatting
+    return basename(value) || '—';
+  };
+  
+  // Helper to get field display label (for checkbox fields without labels)
+  const getFieldDisplayLabel = (key: string, value: unknown): string => {
+    const normalizedKey = String(key).toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    for (const field of formFields) {
+      const normalizedLabel = field.label.toLowerCase().replace(/[^a-z0-9]/g, '');
+      
+      if (
+        field.label.toLowerCase() === key.toLowerCase() ||
+        normalizedLabel === normalizedKey ||
+        key.toLowerCase().includes(normalizedLabel) ||
+        normalizedLabel.includes(normalizedKey)
+      ) {
+        // For checkbox fields without label, use first selected option's label
+        if (field.type === 'checkbox' && (!field.label || !field.label.trim()) && field.options && field.options.length > 0) {
+          const valueStr = String(value || '').toLowerCase();
+          const matchingOption = field.options.find(opt => opt.value.toLowerCase() === valueStr);
+          if (matchingOption) return matchingOption.label;
+          // If value matches first option, use it
+          if (field.options[0] && (valueStr === 'true' || valueStr === 'on' || valueStr === 'yes' || valueStr === '1')) {
+            return field.options[0].label;
+          }
+        }
+        // Return field label if it exists
+        if (field.label && field.label.trim()) {
+          return field.label;
+        }
+      }
+    }
+    
+    // Fallback to formatted key
+    return key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
+  };
 
   const requestName = extractName(request.data);
-  const requestEmail = extractEmail(request.data, request.email) || '—';
   const requestInitials = requestName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
   const avatarGradient = getAvatarGradient(requestName, request.id);
   const isPending = request.status === 'pending';
@@ -293,56 +495,181 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
                 <span className="hidden sm:inline">{detailsExpanded ? 'Less' : 'More'}</span>
               </button>
               <span className="text-xs text-slate-500 bg-slate-100 px-2.5 py-2 rounded-lg font-medium">
-                {Object.keys(request.data || {}).length}
+                {Object.entries(request.data || {}).filter(([k]) => {
+                  const lowerK = k.toLowerCase();
+                  return !/password/i.test(lowerK);
+                }).length}
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-              {Object.entries(request.data || {})
-                .filter(([k, v]) => {
-                  if (!detailsSearch.trim()) return true;
-                  const s = detailsSearch.toLowerCase();
-                  return k.toLowerCase().includes(s) || String(v ?? '').toLowerCase().includes(s);
-                })
-                .slice(0, detailsExpanded ? undefined : 6)
-                .map(([k, v]) => (
-                  <div
-                    key={k}
-                    className="group bg-white/80 hover:bg-white rounded-xl border border-slate-200/70 hover:border-blue-300 hover:shadow-md hover:shadow-blue-100/50 transition-all duration-200 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-2 leading-none">
-                          {k.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
-                        </div>
-                        <div className="text-sm text-slate-900 break-words font-normal leading-relaxed">
-                          {basename(v) || '—'}
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copyToClipboard(String(v ?? ''));
-                        }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
-                        title="Copy"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-            </div>
+            {/* Render fields in form order, with first name, last name, email first, and grouped fields side by side */}
+            {(() => {
+              // Get all data entries (excluding passwords)
+              const allDataEntries = Object.entries(request.data || {}).filter(([k]) => {
+                const lowerK = k.toLowerCase();
+                return !/password/i.test(lowerK);
+              });
 
-            {!detailsExpanded && Object.keys(request.data || {}).length > 6 && (
-              <button
-                onClick={() => setDetailsExpanded(true)}
-                className="w-full py-2.5 text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg transition-all duration-200 border border-blue-200/60 hover:border-blue-300 cursor-pointer shadow-sm"
-              >
-                Show all {Object.keys(request.data || {}).length} fields
-                <ChevronDown className="w-4 h-4" />
-              </button>
-            )}
+              // Apply search filter
+              const filteredEntries = allDataEntries.filter(([k, v]) => {
+                if (!detailsSearch.trim()) return true;
+                const s = detailsSearch.toLowerCase();
+                return k.toLowerCase().includes(s) || String(v ?? '').toLowerCase().includes(s);
+              });
+
+              // Group fields by rowGroup, maintaining form field order
+              const groupedEntries: Array<{ entries: Array<[string, unknown]>; rowGroup: number | null }> = [];
+              const processedKeys = new Set<string>();
+              const processedFieldIds = new Set<number>();
+              
+              // Sort form fields: first_name, last_name, email first, then by original order
+              const sortedFields = [...formFields].sort((a, b) => {
+                const aPriority = a.role === 'first_name' ? 0 : a.role === 'last_name' ? 1 : a.role === 'email' ? 2 : 100;
+                const bPriority = b.role === 'first_name' ? 0 : b.role === 'last_name' ? 1 : b.role === 'email' ? 2 : 100;
+                if (aPriority !== bPriority) return aPriority - bPriority;
+                return formFields.indexOf(a) - formFields.indexOf(b);
+              });
+
+              // Process fields in sorted order
+              for (const field of sortedFields) {
+                if (processedFieldIds.has(field.id)) continue;
+                
+                // Find matching data entry by comparing field label to data keys
+                const matchingEntry = filteredEntries.find(([key]) => {
+                  if (processedKeys.has(key)) return false;
+                  const matchedField = matchKeyToField(key);
+                  return matchedField?.id === field.id;
+                });
+                
+                if (!matchingEntry) continue;
+
+                if (field.rowGroup != null) {
+                  // Find all fields with the same rowGroup
+                  const groupFields = formFields.filter(f => f.rowGroup === field.rowGroup && !processedFieldIds.has(f.id));
+                  const groupEntries: Array<[string, unknown]> = [matchingEntry];
+                  processedKeys.add(matchingEntry[0]);
+                  processedFieldIds.add(field.id);
+                  
+                  for (const groupField of groupFields) {
+                    if (groupField.id === field.id) continue;
+                    
+                    // Find matching entry for this group field
+                    const groupEntry = filteredEntries.find(([key]) => {
+                      if (processedKeys.has(key)) return false;
+                      const matchedField = matchKeyToField(key);
+                      return matchedField?.id === groupField.id;
+                    });
+                    
+                    if (groupEntry) {
+                      groupEntries.push(groupEntry);
+                      processedKeys.add(groupEntry[0]);
+                      processedFieldIds.add(groupField.id);
+                    }
+                  }
+
+                  groupedEntries.push({ entries: groupEntries, rowGroup: field.rowGroup });
+                } else {
+                  groupedEntries.push({ entries: [matchingEntry], rowGroup: null });
+                  processedKeys.add(matchingEntry[0]);
+                  processedFieldIds.add(field.id);
+                }
+              }
+              
+              // Add any remaining unmatched entries at the end (sorted by key for consistency)
+              const remainingEntries = filteredEntries
+                .filter(([k]) => !processedKeys.has(k))
+                .sort(([a], [b]) => getFieldSortOrder(a) - getFieldSortOrder(b));
+              
+              for (const entry of remainingEntries) {
+                groupedEntries.push({ entries: [entry], rowGroup: null });
+                processedKeys.add(entry[0]);
+              }
+
+              // Limit display based on expanded state
+              const displayGroups = detailsExpanded ? groupedEntries : groupedEntries.slice(0, 6);
+
+              return (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    {displayGroups.map((group, groupIdx) => {
+                      if (group.rowGroup != null && group.entries.length === 2) {
+                        // Render two fields side by side (country/state)
+                        return (
+                          <div key={`group-${group.rowGroup}`} className="grid grid-cols-1 sm:grid-cols-2 gap-3 col-span-1 sm:col-span-2">
+                            {group.entries.map(([k, v]) => (
+                              <div
+                                key={k}
+                                className="group bg-white/80 hover:bg-white rounded-xl border border-slate-200/70 hover:border-blue-300 hover:shadow-md hover:shadow-blue-100/50 transition-all duration-200 p-4"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-2 leading-none">
+                                      {getFieldDisplayLabel(k, v)}
+                                    </div>
+                                    <div className="text-sm text-slate-900 break-words font-normal leading-relaxed">
+                                      {formatFieldValue(k, v)}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      copyToClipboard(String(v ?? ''));
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
+                                    title="Copy"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      } else {
+                        // Render single field
+                        return group.entries.map(([k, v]) => (
+                          <div
+                            key={k}
+                            className="group bg-white/80 hover:bg-white rounded-xl border border-slate-200/70 hover:border-blue-300 hover:shadow-md hover:shadow-blue-100/50 transition-all duration-200 p-4"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-2 leading-none">
+                                  {getFieldDisplayLabel(k, v)}
+                                </div>
+                                <div className="text-sm text-slate-900 break-words font-normal leading-relaxed">
+                                  {formatFieldValue(k, v)}
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyToClipboard(String(v ?? ''));
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
+                                title="Copy"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ));
+                      }
+                    })}
+                  </div>
+
+                  {!detailsExpanded && filteredEntries.length > 6 && (
+                    <button
+                      onClick={() => setDetailsExpanded(true)}
+                      className="w-full py-2.5 text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-lg transition-all duration-200 border border-blue-200/60 hover:border-blue-300 cursor-pointer shadow-sm"
+                    >
+                      Show all {filteredEntries.length} fields
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  )}
+                </>
+              );
+            })()}
 
             {request.files?.length ? (
               <div className="mt-5 pt-5 border-t border-slate-200">

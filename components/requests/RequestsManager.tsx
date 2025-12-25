@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { XCircle, Search } from 'lucide-react';
 import { useSession } from '@/context/session';
 import { useToast } from '@/components/common/Toast';
@@ -21,10 +22,13 @@ type RequestItem = {
 
 const RequestsManager: React.FC = () => {
   const { context } = useSession();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [allItems, setAllItems] = useState<RequestItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'' | 'pending' | 'approved' | 'rejected'>('');
+  // Initialize statusFilter from URL params
+  const initialStatusFilter = (searchParams.get('status') as '' | 'pending' | 'approved' | 'rejected') || '';
+  const [statusFilter, setStatusFilter] = useState<'' | 'pending' | 'approved' | 'rejected'>(initialStatusFilter);
   const [searchFilter, setSearchFilter] = useState('');
   const [selected, setSelected] = useState<RequestItem | null>(null);
   const pageSize = 10;

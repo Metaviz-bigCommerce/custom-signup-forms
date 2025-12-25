@@ -1421,6 +1421,9 @@ const FormBuilder: React.FC = () => {
               console.log('[FormBuilder] onVersionLoaded callback - refresh complete');
             }}
             onNavigateToBuilder={() => handleTabSwitch(1)}
+            currentFormFields={formFields}
+            currentTheme={theme}
+            currentFormVersionId={currentFormVersionId}
           />
         )}
               </div>

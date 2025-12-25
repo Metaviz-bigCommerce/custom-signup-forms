@@ -235,7 +235,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                               >
                                 <GripVertical className="w-4 h-4 text-purple-500 cursor-grab active:cursor-grabbing flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium text-gray-800 truncate">{field.label}</div>
+                                  <div className="text-sm font-medium text-gray-800 truncate">
+                                    {field.type === 'checkbox' && !field.label?.trim() && field.options && field.options.length > 0
+                                      ? field.options[0].label
+                                      : field.label || 'Unnamed Field'}
+                                  </div>
                                   <div className="flex items-center gap-2 mt-0.5">
                                     <div className="text-xs text-gray-500 capitalize">{field.type}</div>
                                     {field.locked && (
@@ -313,7 +317,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                         >
                           <GripVertical className="w-4 h-4 text-gray-400 cursor-grab active:cursor-grabbing flex-shrink-0 hover:text-blue-500 transition-colors" />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-800 truncate">{field.label}</div>
+                            <div className="text-sm font-medium text-gray-800 truncate">
+                              {field.type === 'checkbox' && !field.label?.trim() && field.options && field.options.length > 0
+                                ? field.options[0].label
+                                : field.label || 'Unnamed Field'}
+                            </div>
                             <div className="flex items-center gap-2 mt-0.5">
                               <div className="text-xs text-gray-500 capitalize">{field.type}</div>
                               {field.locked && (
