@@ -29,7 +29,7 @@ export function Tabs({ tabs, defaultTab, className, onTabChange }: TabsProps) {
   return (
     <div className={`w-full flex flex-col ${className || ""}`}>
       {/* Modern Tab Headers */}
-      <div className="flex items-center gap-2 mb-6 p-1 bg-slate-100 rounded-2xl w-fit">
+      <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-6 p-1 bg-slate-100 rounded-2xl w-full sm:w-fit">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -37,20 +37,20 @@ export function Tabs({ tabs, defaultTab, className, onTabChange }: TabsProps) {
             <button
               key={tab.id}
               onClick={() => handleTabClick(tab.id)}
-              className={`relative flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-all duration-300 rounded-xl focus:outline-none group ${
+              className={`relative flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold transition-all duration-300 rounded-xl focus:outline-none group ${
                 isActive
                   ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 scale-[1.02]"
                   : "text-slate-700 hover:text-slate-900 hover:bg-slate-200/80"
               }`}
             >
               {Icon && (
-                <Icon className={`w-4 h-4 transition-all duration-300 relative z-10 ${
+                <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all duration-300 relative z-10 ${
                   isActive 
                     ? "text-white" 
                     : "text-slate-600 group-hover:text-slate-800"
                 } ${isActive ? "scale-110" : "group-hover:scale-110"}`} />
               )}
-              <span className="relative z-10">{tab.label}</span>
+              <span className="relative z-10 whitespace-nowrap">{tab.label}</span>
             </button>
           )
         })}

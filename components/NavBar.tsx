@@ -205,7 +205,6 @@ const NavBar: React.FC = () => {
               )}
             </button>
           </div>
-        </div>
 
         {/* Enhanced Mobile Menu */}
         {mobileMenuOpen && (
@@ -230,10 +229,11 @@ const NavBar: React.FC = () => {
                   </Link>
                 );
               })}
-        </div>
-      </div>
+            </div>
+          </div>
         )}
-    </nav>
+        </div>
+      </nav>
     </>
   );
 };

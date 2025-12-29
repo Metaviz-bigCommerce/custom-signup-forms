@@ -147,20 +147,20 @@ const Section = React.memo(({
   <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
     <button
       onClick={() => onToggle(id)}
-      className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+      className="w-full flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
     >
-      <div className="flex items-center gap-3">
-        <SectionIcon className="w-4 h-4 text-slate-500" />
-        <span className="font-medium text-slate-700 text-sm">{title}</span>
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+        <SectionIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" />
+        <span className="font-medium text-slate-700 text-xs sm:text-sm truncate">{title}</span>
       </div>
       {isExpanded ? (
-        <ChevronDown className="w-4 h-4 text-slate-400" />
+        <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0 ml-2" />
       ) : (
-        <ChevronRight className="w-4 h-4 text-slate-400" />
+        <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0 ml-2" />
       )}
     </button>
     {isExpanded && (
-      <div className="p-4 space-y-4 border-t border-slate-100">
+      <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 border-t border-slate-100">
         {children}
       </div>
     )}
@@ -656,19 +656,19 @@ const EmailTemplates: React.FC = () => {
 
   if (!loaded) {
     return (
-      <div className="space-y-6">
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-2xl p-8">
-          <div className="h-8 w-64 bg-white/10 rounded animate-pulse" />
-          <div className="h-4 w-96 bg-white/5 rounded mt-3 animate-pulse" />
+      <div className="space-y-4 sm:space-y-6">
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-2xl p-4 sm:p-6 lg:p-8">
+          <div className="h-6 sm:h-8 w-48 sm:w-64 bg-white/10 rounded animate-pulse" />
+          <div className="h-3 sm:h-4 w-full sm:w-96 bg-white/5 rounded mt-3 animate-pulse" />
         </div>
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-5 space-y-4">
+        <div className="grid grid-cols-12 gap-4 sm:gap-6">
+          <div className="col-span-12 lg:col-span-5 space-y-3 sm:space-y-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-20 bg-slate-100 rounded-xl animate-pulse" />
             ))}
           </div>
-          <div className="col-span-7">
-            <div className="h-[600px] bg-slate-100 rounded-xl animate-pulse" />
+          <div className="col-span-12 lg:col-span-7">
+            <div className="h-[400px] sm:h-[500px] lg:h-[600px] bg-slate-100 rounded-xl animate-pulse" />
           </div>
         </div>
       </div>
@@ -676,9 +676,9 @@ const EmailTemplates: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header Section */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-2xl p-6 sm:p-8">
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-2xl p-4 sm:p-6 lg:p-8">
         {/* Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-20 -right-20 w-60 h-60 bg-purple-500/15 rounded-full blur-3xl" />
@@ -686,42 +686,42 @@ const EmailTemplates: React.FC = () => {
         </div>
         
         <div className="relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
-                  <Mail className="w-5 h-5 text-white" />
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25 flex-shrink-0">
+                  <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold !text-white">Email Templates</h1>
-                  <p className="text-slate-400 text-sm">Design beautiful emails for your customers</p>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-[26px] sm:text-2xl font-bold !text-white">Email Templates</h1>
+                  <p className="text-slate-400 text-xs sm:text-sm">Design beautiful emails for your customers</p>
                 </div>
               </div>
             </div>
             
             {/* Action Buttons */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setShowTestEmailModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white/10 text-white rounded-xl text-sm font-medium hover:bg-white/20 transition-all cursor-pointer border border-white/10"
+                className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/10 text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-white/20 transition-all cursor-pointer border border-white/10"
               >
-                <TestTube className="w-4 h-4" />
-                Send Test
+                <TestTube className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="whitespace-nowrap">Send Test</span>
               </button>
               <button
                 onClick={save}
                 disabled={saving}
-                className="flex items-center gap-2 px-5 py-2.5 bg-white text-slate-900 rounded-xl text-sm font-semibold hover:bg-blue-50 transition-all cursor-pointer shadow-lg shadow-white/25 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-white text-slate-900 rounded-xl text-xs sm:text-sm font-semibold hover:bg-blue-50 transition-all cursor-pointer shadow-lg shadow-white/25 disabled:opacity-50"
               >
                 {saving ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Saving...
+                    <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                    <span className="whitespace-nowrap">Saving...</span>
                   </>
                 ) : (
                   <>
-                    <Save className="w-4 h-4" />
-                    Save All Templates
+                    <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <span className="whitespace-nowrap">Save All Templates</span>
                   </>
                 )}
               </button>
@@ -729,7 +729,7 @@ const EmailTemplates: React.FC = () => {
           </div>
 
           {/* Template Selector Pills */}
-          <div className="mt-6 flex flex-wrap gap-2">
+          <div className="mt-4 sm:mt-6 flex flex-wrap gap-2">
             {(Object.keys(templateMeta) as TemplateKey[]).map((key) => {
               const meta = templateMeta[key];
               const Icon = meta.icon;
@@ -738,14 +738,14 @@ const EmailTemplates: React.FC = () => {
                 <button
                   key={key}
                   onClick={() => setSelectedTemplate(key)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 cursor-pointer ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 cursor-pointer ${
                     isSelected
                       ? 'bg-white text-slate-900 shadow-lg shadow-white/25'
                       : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white border border-white/10'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  {meta.label}
+                  <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="whitespace-nowrap">{meta.label}</span>
                 </button>
               );
             })}
@@ -754,9 +754,9 @@ const EmailTemplates: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-12 gap-4 sm:gap-6">
         {/* Editor Panel */}
-        <div className="col-span-12 lg:col-span-4 space-y-4">
+        <div className="col-span-12 lg:col-span-4 space-y-3 sm:space-y-4">
           {/* Current Template Info - Uses user's primary color with adaptive text */}
           {(() => {
             const primaryColor = emailTemplates[selectedTemplate].design?.primaryColor || '#2563eb';
@@ -766,19 +766,19 @@ const EmailTemplates: React.FC = () => {
             const iconBg = isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.2)';
             return (
           <div 
-            className="rounded-xl p-4 transition-colors duration-300"
+            className="rounded-xl p-3 sm:p-4 transition-colors duration-300"
                 style={{ backgroundColor: primaryColor }}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
                   <div 
-                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: iconBg }}
                   >
-                    <CurrentIcon className="w-5 h-5" style={{ color: textColor }} />
+                    <CurrentIcon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: textColor }} />
               </div>
-              <div>
-                    <h3 className="font-semibold" style={{ color: textColor }}>{currentMeta.label}</h3>
-                    <p className="text-sm" style={{ color: textColorMuted }}>{currentMeta.description}</p>
+              <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-sm sm:text-base" style={{ color: textColor }}>{currentMeta.label}</h3>
+                    <p className="text-xs sm:text-sm" style={{ color: textColorMuted }}>{currentMeta.description}</p>
               </div>
             </div>
           </div>
@@ -788,60 +788,60 @@ const EmailTemplates: React.FC = () => {
           {/* Content Section */}
           <Section id="content" title="Email Content" icon={Type} isExpanded={expandedSections.content} onToggle={toggleSection}>
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">Subject Line</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-1">Subject Line</label>
               <p className="text-xs text-slate-400 mb-2">Appears in the recipient&apos;s inbox</p>
               <input
                 type="text"
                 value={emailTemplates[selectedTemplate].subject}
                 onChange={(e) => handleSubjectChange(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder="Enter email subject"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">Email Title</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-1">Email Title</label>
               <p className="text-xs text-slate-400 mb-2">Main heading displayed inside the email</p>
               <input
                 type="text"
                 value={emailTemplates[selectedTemplate].design?.title ?? ''}
                 onChange={(e) => handleTitleChange(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder={defaultTitles[selectedTemplate]}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">Greeting</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2">Greeting</label>
               <input
                 type="text"
                 value={emailTemplates[selectedTemplate].design?.greeting || 'Hello {{name}}'}
                 onChange={(e) => handleGreetingChange(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder="Hello {{name}}"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">Email Body</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2">Email Body</label>
               <textarea
                 value={emailTemplates[selectedTemplate].body}
                 onChange={(e) => handleBodyChange(e.target.value)}
                 rows={8}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all resize-none"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all resize-none"
                 placeholder="Enter email content"
               />
             </div>
 
             {/* Variables */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-2 sm:p-3">
               <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-blue-600" />
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 flex-shrink-0" />
                 <span className="text-xs font-semibold text-blue-800">Available Variables</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {['{{name}}', '{{email}}', '{{date}}', '{{store_name}}', '{{platform_name}}', '{{required_information}}'].map(v => (
-                  <code key={v} className="px-2 py-1 bg-white border border-blue-200 rounded text-[11px] text-blue-700 font-mono">
+                  <code key={v} className="px-2 py-1 bg-white border border-blue-200 rounded text-[10px] sm:text-[11px] text-blue-700 font-mono">
                     {v}
                   </code>
                 ))}
@@ -851,46 +851,46 @@ const EmailTemplates: React.FC = () => {
 
           {/* Branding Section */}
           <Section id="branding" title="Branding & Colors" icon={Palette} isExpanded={expandedSections.branding} onToggle={toggleSection}>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">Primary Color</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2">Primary Color</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
                     value={emailTemplates[selectedTemplate].design?.primaryColor || '#2563eb'}
                     onChange={(e) => handlePrimaryColorChange(e.target.value)}
-                    className="w-12 h-10 p-1 border border-slate-200 rounded-lg cursor-pointer"
+                    className="w-10 h-9 sm:w-12 sm:h-10 p-1 border border-slate-200 rounded-lg cursor-pointer flex-shrink-0"
                   />
                   <input
                     type="text"
                     value={emailTemplates[selectedTemplate].design?.primaryColor || '#2563eb'}
                     onChange={(e) => handlePrimaryColorChange(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 border border-slate-200 rounded-lg text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 min-w-0"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-2">Background</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2">Background</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
                     value={emailTemplates[selectedTemplate].design?.background || '#f7fafc'}
                     onChange={(e) => handleBackgroundChange(e.target.value)}
-                    className="w-12 h-10 p-1 border border-slate-200 rounded-lg cursor-pointer"
+                    className="w-10 h-9 sm:w-12 sm:h-10 p-1 border border-slate-200 rounded-lg cursor-pointer flex-shrink-0"
                   />
                   <input
                     type="text"
                     value={emailTemplates[selectedTemplate].design?.background || '#f7fafc'}
                     onChange={(e) => handleBackgroundChange(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 border border-slate-200 rounded-lg text-xs sm:text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 min-w-0"
                   />
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">Quick Themes</label>
-              <div className="flex flex-wrap gap-2">
+              <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2">Quick Themes</label>
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {[
                   { name: 'Sky', primaryColor: '#2563eb', background: '#f7fafc' },
                   { name: 'Emerald', primaryColor: '#059669', background: '#ecfdf5' },
@@ -912,9 +912,9 @@ const EmailTemplates: React.FC = () => {
                         }
                       }
                     })}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs sm:text-sm transition-colors cursor-pointer"
                   >
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: t.primaryColor }} />
+                    <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex-shrink-0" style={{ backgroundColor: t.primaryColor }} />
                     {t.name}
                   </button>
                 ))}
@@ -922,23 +922,23 @@ const EmailTemplates: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">Logo URL</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2">Logo URL</label>
               <input
                 type="url"
                 value={emailTemplates[selectedTemplate].design?.logoUrl || ''}
                 onChange={(e) => handleLogoUrlChange(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder="https://your-domain.com/logo.png"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">Banner Image URL</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2">Banner Image URL</label>
               <input
                 type="url"
                 value={emailTemplates[selectedTemplate].design?.bannerUrl || ''}
                 onChange={(e) => handleBannerUrlChange(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder="https://your-domain.com/banner.jpg"
               />
             </div>
@@ -948,11 +948,11 @@ const EmailTemplates: React.FC = () => {
           <Section id="button" title="Call-to-Action Buttons" icon={MousePointer} isExpanded={expandedSections.button} onToggle={toggleSection}>
             <div className="space-y-3">
               {(emailTemplates[selectedTemplate].design?.ctas || []).map((cta, index) => (
-                <div key={cta.id} className="flex items-start gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="pt-2">
-                    <GripVertical className="w-4 h-4 text-slate-400" />
+                <div key={cta.id} className="flex items-start gap-2 p-2 sm:p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="pt-2 flex-shrink-0">
+                    <GripVertical className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" />
                   </div>
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 min-w-0">
               <div>
                       <label className="block text-xs font-medium text-slate-500 mb-1">Button Text</label>
                 <input
@@ -1015,21 +1015,21 @@ const EmailTemplates: React.FC = () => {
           {/* Footer Section */}
           <Section id="footer" title="Footer & Links" icon={Link2} isExpanded={expandedSections.footer} onToggle={toggleSection}>
             <div>
-              <label className="block text-sm font-medium text-slate-600 mb-2">Footer Note</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2">Footer Note</label>
               <input
                 type="text"
                 value={emailTemplates[selectedTemplate].design?.footerNote || 'This email was sent to {{email}}'}
                 onChange={(e) => handleFooterNoteChange(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
               />
             </div>
             
               <div>
-              <label className="block text-sm font-medium text-slate-600 mb-3">Footer Links</label>
+              <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2 sm:mb-3">Footer Links</label>
               <div className="space-y-2">
                 {(emailTemplates[selectedTemplate].design?.footerLinks || []).map((link, index) => (
                   <div key={link.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
-                    <div className="flex-1 grid grid-cols-2 gap-2">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2 min-w-0">
                 <input
                   type="text"
                         value={link.text}
@@ -1088,19 +1088,19 @@ const EmailTemplates: React.FC = () => {
           <Section id="socials" title="Social Media Links" icon={Share2} isExpanded={expandedSections.socials} onToggle={toggleSection}>
             <div className="space-y-3">
               {(emailTemplates[selectedTemplate].design?.socialLinks || []).map((social, index) => (
-                <div key={social.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="flex items-start gap-3">
+                <div key={social.id} className="p-2 sm:p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex items-start gap-2 sm:gap-3">
                     {/* Icon Preview */}
-                    <div className="w-12 h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {social.iconUrl ? (
-                        <img src={social.iconUrl} alt={social.name} className="w-8 h-8 object-contain" />
+                        <img src={social.iconUrl} alt={social.name} className="w-6 h-6 sm:w-8 sm:h-8 object-contain" />
                       ) : (
                         <span className="text-xs font-bold text-slate-400">?</span>
                       )}
                   </div>
                     
-                    <div className="flex-1 space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="flex-1 space-y-2 min-w-0">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <input
                           type="text"
                           value={social.name}
@@ -1150,7 +1150,7 @@ const EmailTemplates: React.FC = () => {
               {/* Quick add preset platforms */}
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-2">Quick Add Popular Platforms</label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {presetSocialPlatforms.map((preset) => {
                     const alreadyAdded = (emailTemplates[selectedTemplate].design?.socialLinks || []).some(
                       s => s.name.toLowerCase() === preset.name.toLowerCase()
@@ -1220,17 +1220,17 @@ const EmailTemplates: React.FC = () => {
 
         {/* Preview Panel */}
         <div className="col-span-12 lg:col-span-8">
-          <div className="sticky top-6">
+          <div className="lg:sticky lg:top-6">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
               {/* Preview Header */}
-              <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
+              <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                      <Eye className="w-4 h-4 text-white" />
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center flex-shrink-0">
+                      <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-800">Live Preview</h3>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-sm sm:text-base text-slate-800">Live Preview</h3>
                       <p className="text-xs text-slate-500">Changes update in real-time</p>
                     </div>
                   </div>
@@ -1243,12 +1243,12 @@ const EmailTemplates: React.FC = () => {
               </div>
 
               {/* Preview Content */}
-              <div className="bg-slate-100 p-4">
+              <div className="bg-slate-100 p-2 sm:p-4">
                 <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
                   <iframe
                     title="email-preview"
                     sandbox=""
-                    className="w-full h-[650px]"
+                    className="w-full h-[400px] sm:h-[500px] lg:h-[650px]"
                     srcDoc={generateHtml(emailTemplates[selectedTemplate])}
                   />
                 </div>

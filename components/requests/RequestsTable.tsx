@@ -123,54 +123,139 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
   footer,
 }) => {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xl shadow-slate-200/50 overflow-hidden">
+    <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/60 shadow-xl shadow-slate-200/50 overflow-hidden">
       {/* Optional Header */}
       {showHeader && (
-        <div className="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <Activity className="w-5 h-5 text-white" />
+        <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 lg:py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 min-w-0 flex-1">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
+                <Activity className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 text-white" />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-800 tracking-tight">{headerTitle}</h2>
-                <p className="text-sm text-slate-500">{headerSubtitle}</p>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-800 tracking-tight truncate">{headerTitle}</h2>
+                <p className="text-xs sm:text-sm text-slate-500 line-clamp-1 sm:line-clamp-none">{headerSubtitle}</p>
               </div>
             </div>
-            {headerAction}
+            {headerAction && (
+              <div className="shrink-0 w-full sm:w-auto">
+                {headerAction}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Mobile Card View */}
+      <div className="md:hidden">
+        {loading ? (
+          <LoadingSpinner />
+        ) : requests.length === 0 ? (
+          <div className="px-3 sm:px-4 py-16 sm:py-20 text-center">
+            <div className="flex flex-col items-center">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center mb-4 shadow-inner">
+                <FileText className="w-10 h-10 text-slate-300" />
+              </div>
+              <p className="font-bold text-slate-800 text-lg mb-1">{emptyMessage}</p>
+              <p className="text-sm text-slate-500 max-w-sm">{emptySubMessage}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="p-2.5 sm:p-3 md:p-4 space-y-2.5 sm:space-y-3">
+            {requests.map((request, index) => {
+              const name = extractName(request.data);
+              const email = extractEmail(request);
+              const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+              const avatarGradient = getAvatarGradient(name, request.id);
+
+              return (
+                <div
+                  key={request.id}
+                  onClick={() => onViewRequest(request)}
+                  className="group bg-white border border-slate-200/60 rounded-lg sm:rounded-xl p-3 sm:p-4 hover:border-blue-300 hover:shadow-md hover:shadow-blue-100/50 transition-all duration-300 cursor-pointer"
+                  style={{ 
+                    animation: `fadeInUp 0.4s ease-out forwards`,
+                    animationDelay: `${index * 50}ms`,
+                    opacity: 0 
+                  }}
+                >
+                  <div className="flex items-start gap-2.5 sm:gap-3 mb-2.5 sm:mb-3">
+                    <div className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white font-semibold text-xs sm:text-sm shadow-lg shrink-0`}>
+                      {initials}
+                      <div className="absolute inset-0 rounded-lg sm:rounded-xl ring-2 ring-white/50" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm sm:text-base text-slate-800 group-hover:text-blue-600 transition-colors mb-1 truncate">
+                        {name || 'Unknown'}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500 mb-1.5 sm:mb-2">
+                        <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                        <span className="truncate">{email || '—'}</span>
+                      </div>
+                      <span className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-medium transition-all duration-300 ${
+                        request.status === 'pending'
+                          ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200/60 shadow-sm shadow-amber-100'
+                          : request.status === 'approved'
+                          ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200/60 shadow-sm shadow-emerald-100'
+                          : 'bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border border-rose-200/60 shadow-sm shadow-rose-100'
+                      }`}>
+                        {request.status === 'pending' && <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
+                        {request.status === 'approved' && <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
+                        {request.status === 'rejected' && <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
+                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2.5 sm:pt-3 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500">
+                      <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span>{formatRelativeTime(request.submittedAt)}</span>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onViewRequest(request); }}
+                      className="group/btn inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-slate-800 text-white rounded-md sm:rounded-lg text-[11px] sm:text-xs font-medium hover:bg-blue-600 hover:shadow-md hover:shadow-blue-500/30 transition-all duration-300 cursor-pointer"
+                    >
+                      <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span>View</span>
+                      <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover/btn:translate-x-0.5 transition-transform duration-300" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="bg-gradient-to-r from-slate-50 to-slate-100/50">
-              <th className="px-6 py-4 text-left">
+              <th className="px-4 lg:px-6 py-3 lg:py-4 text-left">
                 <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   <Users className="w-3.5 h-3.5 text-slate-400" />
                   Applicant
                 </div>
               </th>
-              <th className="px-6 py-4 text-left">
+              <th className="px-4 lg:px-6 py-3 lg:py-4 text-left">
                 <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   <Mail className="w-3.5 h-3.5 text-slate-400" />
                   Email
                 </div>
               </th>
-              <th className="px-6 py-4 text-left">
+              <th className="px-4 lg:px-6 py-3 lg:py-4 text-left">
                 <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   <Calendar className="w-3.5 h-3.5 text-slate-400" />
                   Date
                 </div>
               </th>
-              <th className="px-6 py-4 text-left">
+              <th className="px-4 lg:px-6 py-3 lg:py-4 text-left">
                 <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   Status
                 </span>
               </th>
-              <th className="px-6 py-4 text-right">
+              <th className="px-4 lg:px-6 py-3 lg:py-4 text-right">
                 <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   Actions
                 </span>
@@ -214,54 +299,54 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                       opacity: 0 
                     }}
                   >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className={`relative w-11 h-11 rounded-xl bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white font-semibold text-sm shadow-lg group-hover:scale-110 group-hover:shadow-xl transition-all duration-300`}>
+                    <td className="px-4 lg:px-6 py-3 lg:py-4">
+                      <div className="flex items-center gap-3 lg:gap-4">
+                        <div className={`relative w-10 h-10 lg:w-11 lg:h-11 rounded-xl bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white font-semibold text-xs lg:text-sm shadow-lg group-hover:scale-110 group-hover:shadow-xl transition-all duration-300`}>
                           {initials}
                           <div className="absolute inset-0 rounded-xl ring-2 ring-white/50" />
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                          <div className="font-semibold text-sm lg:text-base text-slate-800 group-hover:text-blue-600 transition-colors">
                             {name || 'Unknown'}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-slate-600 group-hover:text-slate-800 transition-colors">
+                    <td className="px-4 lg:px-6 py-3 lg:py-4">
+                      <span className="text-xs lg:text-sm text-slate-600 group-hover:text-slate-800 transition-colors">
                         {email || '—'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 lg:px-6 py-3 lg:py-4">
                       <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm text-slate-600">
+                        <Clock className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-400" />
+                        <span className="text-xs lg:text-sm text-slate-600">
                           {formatRelativeTime(request.submittedAt)}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
+                    <td className="px-4 lg:px-6 py-3 lg:py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 lg:px-3 py-1 lg:py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
                         request.status === 'pending'
                           ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200/60 shadow-sm shadow-amber-100'
                           : request.status === 'approved'
                           ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200/60 shadow-sm shadow-emerald-100'
                           : 'bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border border-rose-200/60 shadow-sm shadow-rose-100'
                       }`}>
-                        {request.status === 'pending' && <Clock className="w-3.5 h-3.5" />}
-                        {request.status === 'approved' && <Check className="w-3.5 h-3.5" />}
-                        {request.status === 'rejected' && <X className="w-3.5 h-3.5" />}
+                        {request.status === 'pending' && <Clock className="w-3 h-3 lg:w-3.5 lg:h-3.5" />}
+                        {request.status === 'approved' && <Check className="w-3 h-3 lg:w-3.5 lg:h-3.5" />}
+                        {request.status === 'rejected' && <X className="w-3 h-3 lg:w-3.5 lg:h-3.5" />}
                         {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 lg:px-6 py-3 lg:py-4 text-right">
                       <button
                         onClick={(e) => { e.stopPropagation(); onViewRequest(request); }}
-                        className="group/btn inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-blue-600 hover:shadow-lg hover:shadow-blue-500/30 hover:scale-105 transition-all duration-300 cursor-pointer"
+                        className="group/btn inline-flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-2 lg:py-2.5 bg-slate-800 text-white rounded-xl text-xs lg:text-sm font-medium hover:bg-blue-600 hover:shadow-lg hover:shadow-blue-500/30 hover:scale-105 transition-all duration-300 cursor-pointer"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                         <span>View</span>
-                        <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform duration-300" />
+                        <ChevronRight className="w-3.5 h-3.5 lg:w-4 lg:h-4 group-hover/btn:translate-x-0.5 transition-transform duration-300" />
                       </button>
                     </td>
                   </tr>
@@ -274,7 +359,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
 
       {/* Optional Footer */}
       {footer && (
-        <div className="px-6 py-4 border-t border-slate-100 bg-gradient-to-r from-slate-50/80 to-white">
+        <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-t border-slate-100 bg-gradient-to-r from-slate-50/80 to-white">
           {footer}
         </div>
       )}
