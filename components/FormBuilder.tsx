@@ -624,7 +624,8 @@ const FormBuilder: React.FC = () => {
       
       toast.showSuccess('Form saved.');
       
-      // Clear builder state and redirect to Forms tab after successful save
+      // Clear builder state and switch to Forms tab immediately
+      // This ensures clean state when user navigates back to Builder
       clearBuilderState();
       updateTabAndUrl(1);
     } catch (e: unknown) {
@@ -663,7 +664,8 @@ const FormBuilder: React.FC = () => {
       await mutateVersions();
       toast.showSuccess('Form saved as new.');
       
-      // Clear builder state and switch to Forms tab after successful save
+      // Clear builder state and switch to Forms tab immediately
+      // This ensures clean state when user navigates back to Builder
       clearBuilderState();
       updateTabAndUrl(1);
     } catch (e: unknown) {
@@ -855,6 +857,13 @@ const FormBuilder: React.FC = () => {
     // Mark as user-initiated to prevent useEffect from overriding
     isUserTabSwitch.current = true;
     
+    // If switching to Builder tab from Forms tab and builder is already in clean state,
+    // skip unsaved changes check and just switch tabs
+    if (newTab === 2 && activeTab === 1 && formFields.length === 0 && !hasInitializedForm) {
+      updateTabAndUrl(newTab);
+      return;
+    }
+    
     // Only show unsaved changes modal if form has been initialized and has changes
     if (isDirty && hasInitializedForm && formFields.length > 0 && activeTab !== newTab) {
       setPendingTabSwitch(newTab);
@@ -967,7 +976,8 @@ const FormBuilder: React.FC = () => {
       const targetTab = pendingTabSwitch;
       setPendingTabSwitch(null);
       
-      // If switching to Forms tab (tab 1), clear builder state
+      // If switching to Forms tab (tab 1), clear builder state immediately
+      // This ensures clean state when user navigates back to Builder
       if (targetTab === 1) {
         clearBuilderState();
       }
@@ -1016,7 +1026,8 @@ const FormBuilder: React.FC = () => {
       const targetTab = pendingTabSwitch;
       setPendingTabSwitch(null);
       
-      // If switching to Forms tab (tab 1), clear builder state
+      // If switching to Forms tab (tab 1), clear builder state immediately
+      // This ensures clean state when user navigates back to Builder
       if (targetTab === 1) {
         clearBuilderState();
       }
