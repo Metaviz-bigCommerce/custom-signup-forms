@@ -64,7 +64,7 @@ export const fileSchema = z.object({
 export const formFieldSchema = z.object({
   id: z.number(),
   type: z.enum(['text', 'email', 'phone', 'number', 'textarea', 'select', 'radio', 'checkbox', 'date', 'file', 'url']),
-  label: z.string().min(1).max(200),
+  label: z.string().max(200),
   placeholder: z.string().max(200).optional(),
   required: z.boolean(),
   labelColor: z.string().max(20),
@@ -84,6 +84,30 @@ export const formFieldSchema = z.object({
     value: z.string().max(200),
   })).optional(),
   rowGroup: z.number().nullable().optional(),
+}).superRefine((data, ctx) => {
+  // For checkbox fields, allow empty label (label is optional)
+  if (data.type === 'checkbox') {
+    // Allow empty string for checkbox labels
+    if (data.label.length === 0) {
+      // If label is empty, at least one option is required
+      if (!data.options || data.options.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Checkbox fields without a label must have at least one option',
+          path: ['options'],
+        });
+      }
+    }
+  } else {
+    // For all other fields, require at least 1 character
+    if (data.label.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Label must have at least 1 character',
+        path: ['label'],
+      });
+    }
+  }
 });
 
 export const formThemeSchema = z.object({

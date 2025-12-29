@@ -208,7 +208,8 @@ export async function DELETE (req: NextRequest, res: NextResponse) {
     const logEntry4 = {location:'bc-scripts/route.ts:187',message:'DELETE endpoint success - verified',data:{uuid,dbCleared:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D,F'};
     await fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logEntry4)}).catch(()=>{});
     // #endregion
-    return NextResponse.json({ ok: true }, { status: 204 });
+    // Return 204 No Content for successful DELETE (no body needed)
+    return new NextResponse(null, { status: 204 });
   } catch (error: any) {
     // #region agent log
     const logEntry5 = {location:'bc-scripts/route.ts:141',message:'DELETE endpoint error',data:{errorMessage:error?.message,errorStatus:error?.response?.status,fullError:JSON.stringify(error).substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,E,F'};

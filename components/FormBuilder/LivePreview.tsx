@@ -204,45 +204,27 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
             return (
               <div key={field.id}>
                 {/* Label - exact match from script */}
-                <label 
-                  style={{ 
-                    color: field.labelColor,
-                    fontSize: field.labelSize + 'px',
-                    fontWeight: field.labelWeight,
-                    display: 'block',
-                    marginBottom: '6px'
-                  }}
-                >
-                  {field.label}{field.required ? ' *' : ''}
-                </label>
+                {/* Hide label for checkbox if empty (option-only checkbox) */}
+                {(field.type !== 'checkbox' || field.label?.trim()) && (
+                  <label 
+                    style={{ 
+                      color: field.labelColor,
+                      fontSize: field.labelSize + 'px',
+                      fontWeight: field.labelWeight,
+                      display: 'block',
+                      marginBottom: '6px'
+                    }}
+                  >
+                    {field.label}{field.required ? ' *' : ''}
+                  </label>
+                )}
                 
                 {/* Input field - exact match from script */}
                 {field.role === 'country' ? (
-                  <select
-                    value={selectedCountryCode}
-                    onChange={(e) => setSelectedCountryCode(e.target.value)}
-                    style={{
-                      borderColor: borderColor,
-                      borderWidth: borderWidth + 'px',
-                      borderStyle: 'solid',
-                      borderRadius: borderRadius + 'px',
-                      backgroundColor: bgColor,
-                      padding: padding + 'px',
-                      fontSize: fontSize + 'px',
-                      color: textColor,
-                      width: '100%',
-                      outline: 'none'
-                    }}
-                    aria-label={field.label}
-                  >
-                    <option value="">Select a country</option>
-                    {countryData.map(c => (
-                      <option key={c.countryShortCode} value={c.countryShortCode}>{c.countryName}</option>
-                    ))}
-                  </select>
-                ) : field.role === 'state' ? (
-                  countryData.find(c => c.countryShortCode === selectedCountryCode)?.regions?.length ? (
+                  <div style={{ position: 'relative', width: '100%' }}>
                     <select
+                      value={selectedCountryCode}
+                      onChange={(e) => setSelectedCountryCode(e.target.value)}
                       style={{
                         borderColor: borderColor,
                         borderWidth: borderWidth + 'px',
@@ -250,18 +232,97 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
                         borderRadius: borderRadius + 'px',
                         backgroundColor: bgColor,
                         padding: padding + 'px',
+                        paddingRight: (parseInt(padding) || 12) + 30 + 'px', // Extra padding for dropdown arrow
                         fontSize: fontSize + 'px',
                         color: textColor,
                         width: '100%',
-                        outline: 'none'
+                        outline: 'none',
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
+                        MozAppearance: 'none'
                       }}
+                      className="appearance-none bg-no-repeat bg-right pr-8"
                       aria-label={field.label}
                     >
-                      <option value="">Select a state/province</option>
-                      {countryData.find(c => c.countryShortCode === selectedCountryCode)!.regions.map((r, i) => (
-                        <option key={(r.shortCode || r.name) + i} value={r.shortCode || r.name}>{r.name}</option>
+                      <option value="">Select a country</option>
+                      {countryData.map(c => (
+                        <option key={c.countryShortCode} value={c.countryShortCode}>{c.countryName}</option>
                       ))}
                     </select>
+                    <svg
+                      style={{
+                        position: 'absolute',
+                        right: (parseInt(padding) || 12) + 8 + 'px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        pointerEvents: 'none',
+                        width: '16px',
+                        height: '16px'
+                      }}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M6 9L12 15L18 9"
+                        stroke="#6b7280"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                ) : field.role === 'state' ? (
+                  countryData.find(c => c.countryShortCode === selectedCountryCode)?.regions?.length ? (
+                    <div style={{ position: 'relative', width: '100%' }}>
+                      <select
+                        style={{
+                          borderColor: borderColor,
+                          borderWidth: borderWidth + 'px',
+                          borderStyle: 'solid',
+                          borderRadius: borderRadius + 'px',
+                          backgroundColor: bgColor,
+                          padding: padding + 'px',
+                          paddingRight: (parseInt(padding) || 12) + 30 + 'px', // Extra padding for dropdown arrow
+                          fontSize: fontSize + 'px',
+                          color: textColor,
+                          width: '100%',
+                          outline: 'none',
+                          appearance: 'none',
+                          WebkitAppearance: 'none',
+                          MozAppearance: 'none'
+                        }}
+                        className="appearance-none bg-no-repeat bg-right pr-8"
+                        aria-label={field.label}
+                      >
+                        <option value="">Select a state/province</option>
+                        {countryData.find(c => c.countryShortCode === selectedCountryCode)!.regions.map((r, i) => (
+                          <option key={(r.shortCode || r.name) + i} value={r.shortCode || r.name}>{r.name}</option>
+                        ))}
+                      </select>
+                      <svg
+                        style={{
+                          position: 'absolute',
+                          right: (parseInt(padding) || 12) + 8 + 'px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          pointerEvents: 'none',
+                          width: '16px',
+                          height: '16px'
+                        }}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M6 9L12 15L18 9"
+                          stroke="#6b7280"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </div>
                   ) : (
                     <input
                       type="text"
@@ -301,23 +362,116 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
                     aria-label={field.label}
                   />
                 ) : field.type === 'select' ? (
-                  <select
-                    style={{
-                      borderColor: borderColor,
-                      borderWidth: borderWidth + 'px',
-                      borderStyle: 'solid',
-                      borderRadius: borderRadius + 'px',
-                      backgroundColor: bgColor,
-                      padding: padding + 'px',
-                      fontSize: fontSize + 'px',
-                      color: textColor,
-                      width: '100%',
-                      outline: 'none'
-                    }}
-                    aria-label={field.label}
-                  >
-                    <option>Select an option</option>
-                  </select>
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    <select
+                      style={{
+                        borderColor: borderColor,
+                        borderWidth: borderWidth + 'px',
+                        borderStyle: 'solid',
+                        borderRadius: borderRadius + 'px',
+                        backgroundColor: bgColor,
+                        padding: padding + 'px',
+                        paddingRight: (parseInt(padding) || 12) + 30 + 'px', // Extra padding for dropdown arrow
+                        fontSize: fontSize + 'px',
+                        color: textColor,
+                        width: '100%',
+                        outline: 'none',
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
+                        MozAppearance: 'none'
+                      }}
+                      aria-label={field.label}
+                    >
+                      <option value="">{field.placeholder || 'Select an option'}</option>
+                      {(field.options || []).map((opt, idx) => (
+                        <option key={idx} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <svg
+                      style={{
+                        position: 'absolute',
+                        right: (parseInt(padding) || 12) + 8 + 'px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        pointerEvents: 'none',
+                        width: '16px',
+                        height: '16px'
+                      }}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M6 9L12 15L18 9"
+                        stroke="#6b7280"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                ) : field.type === 'radio' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {(field.options || []).map((opt, idx) => (
+                      <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input
+                          type="radio"
+                          name={`radio-${field.id}`}
+                          value={opt.value}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer'
+                          }}
+                          className="radio-custom"
+                        />
+                        <span style={{ fontSize: fontSize + 'px', color: textColor }}>
+                          {opt.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ) : field.type === 'checkbox' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {(field.options && field.options.length > 0) ? (
+                      // Checkbox group
+                      (field.options || []).map((opt, idx) => (
+                        <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            value={opt.value}
+                            style={{
+                              width: '18px',
+                              height: '18px',
+                              cursor: 'pointer'
+                            }}
+                            className="checkbox-custom"
+                          />
+                          <span style={{ fontSize: fontSize + 'px', color: textColor }}>
+                            {opt.label}
+                          </span>
+                        </label>
+                      ))
+                    ) : (
+                      // Single checkbox (only shown if label exists, otherwise validation requires options)
+                      field.label?.trim() && (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            style={{
+                              width: '18px',
+                              height: '18px',
+                              cursor: 'pointer'
+                            }}
+                            className="checkbox-custom"
+                          />
+                          <span style={{ fontSize: fontSize + 'px', color: textColor }}>
+                            {field.label}
+                          </span>
+                        </label>
+                      )
+                    )}
+                  </div>
                 ) : field.type === 'file' ? (
                   <input
                     type="file"
@@ -339,6 +493,13 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
                   <input
                     type={field.role === 'password' ? 'password' : (field.type === 'phone' ? 'tel' : field.type)}
                     placeholder={field.placeholder || ''}
+                    pattern={field.type === 'phone' ? '[0-9]*' : undefined}
+                    inputMode={field.type === 'phone' ? 'numeric' : undefined}
+                    onKeyPress={field.type === 'phone' ? (e) => {
+                      if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    } : undefined}
                     style={{
                       borderColor: borderColor,
                       borderWidth: borderWidth + 'px',
@@ -409,6 +570,62 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
           0% { transform: translateY(0); }
           50% { transform: translateY(-8px); }
           100% { transform: translateY(0); }
+        }
+        
+        /* Custom radio button styling */
+        .radio-custom {
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          border: 2px solid #d1d5db;
+          border-radius: 50%;
+          background-color: white;
+          position: relative;
+        }
+        
+        .radio-custom:checked {
+          border-color: #000000;
+          background-color: #000000;
+        }
+        
+        .radio-custom:checked::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background-color: white;
+        }
+        
+        /* Custom checkbox styling */
+        .checkbox-custom {
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          border: 2px solid #d1d5db;
+          border-radius: 4px;
+          background-color: white;
+          position: relative;
+        }
+        
+        .checkbox-custom:checked {
+          border-color: #000000;
+          background-color: #000000;
+        }
+        
+        .checkbox-custom:checked::after {
+          content: '✓';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: white;
+          font-size: 12px;
+          font-weight: bold;
+          line-height: 1;
         }
       `}</style>
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   Plus, Clock, TrendingUp, ArrowRight,
   Settings, Sparkles, Zap, ChevronRight,
@@ -31,6 +32,7 @@ type SignupRequestItem = {
 
 const Dashboard: React.FC = () => {
   const { context } = useSession();
+  const router = useRouter();
   const [allRequests, setAllRequests] = useState<SignupRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,12 @@ const Dashboard: React.FC = () => {
   const [requestInfoTargetId, setRequestInfoTargetId] = useState<string | null>(null);
   const [showRequestInfoModal, setShowRequestInfoModal] = useState(false);
   const toast = useToast();
+
+  const handleStatCardClick = (status: '' | 'pending' | 'approved' | 'rejected') => {
+    const contextParam = context ? `context=${context}` : '';
+    const statusParam = status ? `&status=${status}` : '';
+    router.push(`/requests?${contextParam}${statusParam}`);
+  };
 
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
   const [animatedStats, setAnimatedStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
@@ -272,7 +280,7 @@ const Dashboard: React.FC = () => {
       hoverGradient: 'group-hover:from-pink-600 group-hover:to-rose-600',
     },
     {
-      href: `/preview?context=${context}`,
+      href: `/builder/preview?context=${context}`,
       icon: Eye,
       title: 'Preview Form',
       description: 'See how it looks live',
@@ -329,9 +337,12 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statCards.map((card) => {
           const Icon = card.icon;
+          // Map card id to status filter
+          const statusFilter = card.id === 'pending' ? 'pending' : card.id === 'approved' ? 'approved' : card.id === 'rejected' ? 'rejected' : '';
           return (
             <div
               key={card.id}
+              onClick={() => handleStatCardClick(statusFilter)}
               onMouseEnter={() => setHoveredCard(card.id)}
               onMouseLeave={() => setHoveredCard(null)}
               className={`relative overflow-hidden bg-white rounded-2xl border border-gray-100 p-6 transition-all duration-500 cursor-pointer

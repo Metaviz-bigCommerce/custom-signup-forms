@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { X, Settings, Type, ChevronDown, ChevronUp, MousePointerClick, Eye } from 'lucide-react';
+import { X, Settings, Type, ChevronDown, ChevronUp, MousePointerClick, Eye, Plus, Trash2 } from 'lucide-react';
 import { FormField } from './types';
 import { ColorPicker } from './ColorPicker';
 
@@ -50,8 +50,47 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
 
   const handleSave = () => {
     if (!localField || !fieldIdRef.current) return;
+    
+    // Validate radio field has at least 2 options
+    if (localField.type === 'radio' && (!localField.options || localField.options.length < 2)) {
+      alert('Radio fields must have at least 2 options');
+      return;
+    }
+    
+    // Validate checkbox: if no label, at least one option is required
+    if (localField.type === 'checkbox' && !localField.label?.trim() && (!localField.options || localField.options.length === 0)) {
+      alert('Checkbox fields without a label must have at least one option');
+      return;
+    }
+    
     onSave(localField);
     onClose();
+  };
+
+  const addOption = () => {
+    if (!localField) return;
+    const currentOptions = localField.options || [];
+    const newOption = { label: `Option ${currentOptions.length + 1}`, value: `option${currentOptions.length + 1}` };
+    handleChange({ options: [...currentOptions, newOption] });
+  };
+
+  const removeOption = (index: number) => {
+    if (!localField || !localField.options) return;
+    // For radio, ensure at least 2 options remain
+    if (localField.type === 'radio' && localField.options.length <= 2) {
+      alert('Radio fields must have at least 2 options');
+      return;
+    }
+    const newOptions = localField.options.filter((_, i) => i !== index);
+    handleChange({ options: newOptions });
+  };
+
+  const updateOption = (index: number, updates: Partial<{ label: string; value: string }>) => {
+    if (!localField || !localField.options) return;
+    const newOptions = localField.options.map((opt, i) => 
+      i === index ? { ...opt, ...updates } : opt
+    );
+    handleChange({ options: newOptions });
   };
 
   const handleClose = () => {
@@ -71,8 +110,64 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={handleClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+    <>
+      <style>{`
+        .radio-custom-preview {
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          border: 2px solid #d1d5db;
+          border-radius: 50%;
+          background-color: white;
+          position: relative;
+        }
+        
+        .radio-custom-preview:checked {
+          border-color: #000000;
+          background-color: #000000;
+        }
+        
+        .radio-custom-preview:checked::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background-color: white;
+        }
+        
+        .checkbox-custom-preview {
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          border: 2px solid #d1d5db;
+          border-radius: 4px;
+          background-color: white;
+          position: relative;
+        }
+        
+        .checkbox-custom-preview:checked {
+          border-color: #000000;
+          background-color: #000000;
+        }
+        
+        .checkbox-custom-preview:checked::after {
+          content: '✓';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: white;
+          font-size: 12px;
+          font-weight: bold;
+          line-height: 1;
+        }
+      `}</style>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={handleClose}>
+        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-fadeIn" onClick={(e) => e.stopPropagation()}>
         {/* Header - Enhanced with light gradient */}
         <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-200 px-6 py-5 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
@@ -111,23 +206,30 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
                 {openSection === 'basic' && (
                   <div className="p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Label</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Label
+                        {localField.type === 'checkbox' && <span className="text-gray-400 text-xs ml-1">(optional)</span>}
+                      </label>
                       <input
                         type="text"
                         value={localField.label}
                         onChange={(e) => handleChange({ label: e.target.value })}
                         className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder={localField.type === 'checkbox' ? 'Leave empty for option-only checkboxes' : ''}
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Placeholder</label>
-                      <input
-                        type="text"
-                        value={localField.placeholder}
-                        onChange={(e) => handleChange({ placeholder: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      />
-                    </div>
+                    {/* Hide placeholder for radio and checkbox fields */}
+                    {localField.type !== 'radio' && localField.type !== 'checkbox' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Placeholder</label>
+                        <input
+                          type="text"
+                          value={localField.placeholder}
+                          onChange={(e) => handleChange({ placeholder: e.target.value })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        />
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md border border-slate-200">
                       <input
                         type="checkbox"
@@ -141,6 +243,81 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
                         Required field {localField.locked ? '(always on)' : ''}
                       </label>
                     </div>
+                    
+                    {/* Options management for select, radio, and checkbox */}
+                    {(localField.type === 'select' || localField.type === 'radio' || localField.type === 'checkbox') && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-sm font-medium text-gray-700">
+                            {localField.type === 'radio' ? 'Radio Options' : localField.type === 'checkbox' ? 'Checkbox Options' : 'Select Options'}
+                            {localField.type === 'radio' && <span className="text-red-500 ml-1">*</span>}
+                          </label>
+                          <button
+                            type="button"
+                            onClick={addOption}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Add Option
+                          </button>
+                        </div>
+                        {localField.type === 'radio' && (
+                          <p className="text-xs text-gray-500">Radio fields require at least 2 options</p>
+                        )}
+                        {localField.type === 'checkbox' && (
+                          <p className="text-xs text-gray-500">
+                            {localField.label ? (
+                              'Add options to create a checkbox group, or leave empty for a single checkbox'
+                            ) : (
+                              'At least one option is required when no label is provided'
+                            )}
+                          </p>
+                        )}
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {(localField.options || []).map((option, index) => (
+                            <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md border border-slate-200">
+                              <div className="flex-1 grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-500 mb-1">Label</label>
+                                  <input
+                                    type="text"
+                                    value={option.label}
+                                    onChange={(e) => updateOption(index, { label: e.target.value })}
+                                    className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Option label"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-500 mb-1">Value</label>
+                                  <input
+                                    type="text"
+                                    value={option.value}
+                                    onChange={(e) => updateOption(index, { value: e.target.value })}
+                                    className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="option_value"
+                                  />
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeOption(index)}
+                                disabled={
+                                  (localField.type === 'radio' && (localField.options?.length || 0) <= 2) ||
+                                  (localField.type === 'checkbox' && !localField.label?.trim() && (localField.options?.length || 0) <= 1)
+                                }
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Remove option"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                          {(!localField.options || localField.options.length === 0) && (
+                            <p className="text-xs text-gray-400 text-center py-2">No options added yet</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -307,10 +484,118 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
                         className="w-full outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
                         rows={3}
                       />
+                    ) : localField.type === 'select' ? (
+                      <div style={{ position: 'relative', width: '100%' }}>
+                        <select
+                          style={{
+                            borderColor: localField.borderColor,
+                            borderWidth: localField.borderWidth + 'px',
+                            borderRadius: localField.borderRadius + 'px',
+                            backgroundColor: localField.bgColor,
+                            padding: localField.padding + 'px',
+                            paddingRight: (parseInt(localField.padding) || 10) + 30 + 'px', // Extra padding for dropdown arrow
+                            fontSize: localField.fontSize + 'px',
+                            color: localField.textColor,
+                            width: '100%',
+                            appearance: 'none',
+                            WebkitAppearance: 'none',
+                            MozAppearance: 'none'
+                          }}
+                          className="w-full outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        >
+                          <option value="">{localField.placeholder || 'Select an option'}</option>
+                          {(localField.options || []).map((opt, idx) => (
+                            <option key={idx} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                        <svg
+                          style={{
+                            position: 'absolute',
+                            right: (parseInt(localField.padding) || 10) + 8 + 'px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            pointerEvents: 'none',
+                            width: '16px',
+                            height: '16px'
+                          }}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M6 9L12 15L18 9"
+                            stroke="#6b7280"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </div>
+                    ) : localField.type === 'radio' ? (
+                      <div className="space-y-2">
+                        {(localField.options || []).map((opt, idx) => (
+                          <label key={idx} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`preview-radio-${localField.id}`}
+                              value={opt.value}
+                              style={{
+                                width: '18px',
+                                height: '18px'
+                              }}
+                              className="radio-custom-preview"
+                            />
+                            <span style={{ fontSize: localField.fontSize + 'px', color: localField.textColor }}>
+                              {opt.label}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : localField.type === 'checkbox' ? (
+                      <div className="space-y-2">
+                        {(localField.options && localField.options.length > 0) ? (
+                          // Checkbox group
+                          (localField.options || []).map((opt, idx) => (
+                            <label key={idx} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                value={opt.value}
+                                style={{
+                                  width: '18px',
+                                  height: '18px'
+                                }}
+                                className="checkbox-custom-preview"
+                              />
+                              <span style={{ fontSize: localField.fontSize + 'px', color: localField.textColor }}>
+                                {opt.label}
+                              </span>
+                            </label>
+                          ))
+                        ) : (
+                          // Single checkbox (only shown if label exists)
+                          localField.label?.trim() && (
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                style={{
+                                  width: '18px',
+                                  height: '18px'
+                                }}
+                                className="checkbox-custom-preview"
+                              />
+                              <span style={{ fontSize: localField.fontSize + 'px', color: localField.textColor }}>
+                                {localField.label}
+                              </span>
+                            </label>
+                          )
+                        )}
+                      </div>
                     ) : (
                       <input
                         type={localField.type === 'phone' ? 'tel' : localField.type}
                         placeholder={localField.placeholder}
+                        pattern={localField.type === 'phone' ? '[0-9]*' : undefined}
+                        inputMode={localField.type === 'phone' ? 'numeric' : undefined}
                         style={{
                           borderColor: localField.borderColor,
                           borderWidth: localField.borderWidth + 'px',
@@ -360,6 +645,7 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
         </div>
       </div>
     </div>
+    </>
   );
 };
 

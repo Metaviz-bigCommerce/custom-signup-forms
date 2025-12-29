@@ -97,15 +97,19 @@ export function useBcScriptsActions() {
     }
     // DELETE operations often return 204 No Content with empty body - this is success
     // For 204, responseText will be empty, and we should treat that as success
-    let jsonResult = {};
-    if (responseText && responseText.trim()) {
-      try {
-        jsonResult = JSON.parse(responseText);
-      } catch (parseError) {
-        // If JSON parse fails but status is ok (204), treat as success
-        // Some APIs return empty body or non-JSON for successful DELETE
-        jsonResult = {};
-      }
+    // Return a success indicator object instead of empty object to avoid false error detection
+    if (res.status === 204 || !responseText || !responseText.trim()) {
+      // 204 No Content or empty response = success
+      return { success: true, deleted: true };
+    }
+    
+    // If there's a response body, try to parse it
+    let jsonResult = { success: true };
+    try {
+      jsonResult = { ...JSON.parse(responseText), success: true };
+    } catch (parseError) {
+      // If JSON parse fails but status is ok, treat as success
+      jsonResult = { success: true, deleted: true };
     }
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'hooks.ts:102',message:'deleteScript returning',data:{jsonResult,responseTextLength:responseText?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D'})}).catch(()=>{});

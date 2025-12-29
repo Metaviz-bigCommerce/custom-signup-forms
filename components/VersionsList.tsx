@@ -27,14 +27,91 @@ const scrollbarStyles = `
   .form-preview-scroll::-webkit-scrollbar-thumb:hover {
     background: rgba(148, 163, 184, 0.6);
   }
+  
+  /* Custom radio button styling */
+  input[type="radio"].radio-custom-preview {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    border: 2px solid #d1d5db !important;
+    border-radius: 50% !important;
+    background-color: white !important;
+    position: relative !important;
+  }
+  
+  input[type="radio"].radio-custom-preview:checked {
+    border-color: #000000 !important;
+    background-color: #000000 !important;
+  }
+  
+  input[type="radio"].radio-custom-preview:checked::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    background-color: white !important;
+  }
+  
+  /* Custom checkbox styling - ensure square shape */
+  input[type="checkbox"].checkbox-custom-preview {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    border: 2px solid #d1d5db !important;
+    border-radius: 4px !important;
+    background-color: white !important;
+    position: relative !important;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
+    flex-shrink: 0 !important;
+  }
+  
+  input[type="checkbox"].checkbox-custom-preview:checked {
+    border-color: #000000 !important;
+    background-color: #000000 !important;
+  }
+  
+  input[type="checkbox"].checkbox-custom-preview:checked::after {
+    content: '✓' !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    color: white !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    line-height: 1 !important;
+  }
+  
+  /* Ensure radio buttons stay circular */
+  input[type="radio"].radio-custom-preview {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    border: 2px solid #d1d5db !important;
+    border-radius: 50% !important;
+    background-color: white !important;
+    position: relative !important;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
+    flex-shrink: 0 !important;
+  }
 `;
 
 // Enhanced Form Preview Component - Exact replica of LivePreview rendering
-const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean }> = ({ form, isCompact = false }) => {
-  // Ensure we're using the correct form structure
+const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean; currentFields?: any[]; currentTheme?: any; isCurrentForm?: boolean }> = ({ form, isCompact = false, currentFields, currentTheme, isCurrentForm = false }) => {
+  // Use current fields/theme if this is the form being edited, otherwise use saved form data
   const formData = form?.form || form;
-  const fields = formData?.fields || [];
-  const theme = formData?.theme || {};
+  const fields = (isCurrentForm && currentFields) ? currentFields : (formData?.fields || []);
+  const theme = (isCurrentForm && currentTheme) ? currentTheme : (formData?.theme || {});
   
   // Normalize theme layout (same as LivePreview)
   const normalizeThemeLayout = (t: any) => {
@@ -114,58 +191,184 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean }> = ({ fo
       borderRadius: (parseFloat(borderRadius) * scale) + 'px',
       backgroundColor: bgColor,
       padding: (parseFloat(padding) * scale) + 'px',
+      paddingRight: ((parseFloat(padding) || 12) * scale + 30 * scale) + 'px',
       fontSize: Math.max(9, parseFloat(fontSize) * scale) + 'px',
       color: textColor,
       width: '100%',
       outline: 'none' as const,
-      lineHeight: '1.4'
+      lineHeight: '1.4',
+      appearance: 'none' as const,
+      WebkitAppearance: 'none' as const,
+      MozAppearance: 'none' as const
     };
+    
+    // For checkbox, hide label if empty
+    const showLabel = field.type !== 'checkbox' || field.label?.trim();
+    // For checkbox without label, use first option label as heading
+    const checkboxLabel = field.type === 'checkbox' && !field.label?.trim() && field.options && field.options.length > 0
+      ? field.options[0].label
+      : field.label;
     
     return (
       <div key={field.id} style={{ marginBottom: `${6 * scale}px` }}>
         {/* Label */}
-        <label 
-          style={{ 
-            color: labelColor,
-            fontSize: Math.max(10, parseInt(labelSize) * scale) + 'px',
-            fontWeight: labelWeight,
-            display: 'block',
-            marginBottom: `${6 * scale}px`,
-            lineHeight: '1.2'
-          }}
-        >
-          {field.label}{field.required ? ' *' : ''}
-        </label>
+        {showLabel && (
+          <label 
+            style={{ 
+              color: labelColor,
+              fontSize: Math.max(10, parseInt(labelSize) * scale) + 'px',
+              fontWeight: labelWeight,
+              display: 'block',
+              marginBottom: `${6 * scale}px`,
+              lineHeight: '1.2'
+            }}
+          >
+            {checkboxLabel}{field.required ? ' *' : ''}
+          </label>
+        )}
         
         {/* Input field - handle all types */}
         {field.role === 'country' ? (
-          <select style={inputStyle} aria-label={field.label}>
-            <option>Select a country</option>
-          </select>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <select style={inputStyle} aria-label={field.label}>
+              <option>Select a country</option>
+            </select>
+            <svg
+              style={{
+                position: 'absolute',
+                right: ((parseFloat(padding) || 12) * scale + 8 * scale) + 'px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                pointerEvents: 'none',
+                width: `${16 * scale}px`,
+                height: `${16 * scale}px`
+              }}
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M6 9L12 15L18 9"
+                stroke="#6b7280"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
         ) : field.role === 'state' ? (
-          <input
-            type="text"
-            placeholder="Select a country first"
-            style={inputStyle}
-            aria-label={field.label}
-            disabled
-          />
+          <div style={{ position: 'relative', width: '100%' }}>
+            <input
+              type="text"
+              placeholder="Select a country first"
+              style={{ ...inputStyle, paddingRight: (parseFloat(padding) * scale) + 'px' }}
+              aria-label={field.label}
+              disabled
+            />
+          </div>
         ) : field.type === 'textarea' ? (
           <textarea
             placeholder={field.placeholder || ''}
             rows={Math.max(2, Math.floor(3 * scale))}
-            style={inputStyle}
+            style={{ ...inputStyle, paddingRight: (parseFloat(padding) * scale) + 'px' }}
             aria-label={field.label}
             readOnly
           />
         ) : field.type === 'select' ? (
-          <select style={inputStyle} aria-label={field.label}>
-            <option>Select an option</option>
-          </select>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <select style={inputStyle} aria-label={field.label}>
+              <option value="">{field.placeholder || 'Select an option'}</option>
+              {(field.options || []).map((opt: any, idx: number) => (
+                <option key={idx} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <svg
+              style={{
+                position: 'absolute',
+                right: ((parseFloat(padding) || 12) * scale + 8 * scale) + 'px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                pointerEvents: 'none',
+                width: `${16 * scale}px`,
+                height: `${16 * scale}px`
+              }}
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M6 9L12 15L18 9"
+                stroke="#6b7280"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        ) : field.type === 'radio' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: `${8 * scale}px` }}>
+            {(field.options || []).map((opt: any, idx: number) => (
+              <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: `${8 * scale}px`, cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name={`preview-radio-${field.id}`}
+                  value={opt.value}
+                  style={{
+                    width: `${18 * scale}px`,
+                    height: `${18 * scale}px`,
+                    cursor: 'pointer'
+                  }}
+                  className="radio-custom-preview"
+                />
+                <span style={{ fontSize: Math.max(9, parseFloat(fontSize) * scale) + 'px', color: textColor }}>
+                  {opt.label}
+                </span>
+              </label>
+            ))}
+          </div>
+        ) : field.type === 'checkbox' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: `${8 * scale}px` }}>
+            {(field.options && field.options.length > 0) ? (
+              (field.options || []).map((opt: any, idx: number) => (
+                <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: `${8 * scale}px`, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    value={opt.value}
+                    style={{
+                      width: `${18 * scale}px`,
+                      height: `${18 * scale}px`,
+                      cursor: 'pointer'
+                    }}
+                    className="checkbox-custom-preview"
+                  />
+                  <span style={{ fontSize: Math.max(9, parseFloat(fontSize) * scale) + 'px', color: textColor }}>
+                    {opt.label}
+                  </span>
+                </label>
+              ))
+            ) : (
+              field.label?.trim() && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: `${8 * scale}px`, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    style={{
+                      width: `${18 * scale}px`,
+                      height: `${18 * scale}px`,
+                      cursor: 'pointer'
+                    }}
+                    className="checkbox-custom-preview"
+                  />
+                  <span style={{ fontSize: Math.max(9, parseFloat(fontSize) * scale) + 'px', color: textColor }}>
+                    {field.label}
+                  </span>
+                </label>
+              )
+            )}
+          </div>
         ) : field.type === 'file' ? (
           <input
             type="file"
-            style={inputStyle}
+            style={{ ...inputStyle, paddingRight: (parseFloat(padding) * scale) + 'px' }}
             aria-label={field.label}
             disabled
           />
@@ -173,7 +376,9 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean }> = ({ fo
           <input
             type={field.role === 'password' ? 'password' : (field.type === 'phone' ? 'tel' : field.type || 'text')}
             placeholder={field.placeholder || ''}
-            style={inputStyle}
+            pattern={field.type === 'phone' ? '[0-9]*' : undefined}
+            inputMode={field.type === 'phone' ? 'numeric' : undefined}
+            style={{ ...inputStyle, paddingRight: (parseFloat(padding) * scale) + 'px' }}
             aria-label={field.label}
             readOnly
           />
@@ -314,9 +519,12 @@ interface VersionsListProps {
   onLoadVersion: (version: any) => void;
   onVersionLoaded?: () => void;
   onNavigateToBuilder?: () => void;
+  currentFormFields?: any[];
+  currentTheme?: any;
+  currentFormVersionId?: string | null;
 }
 
-export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigateToBuilder }: VersionsListProps) {
+export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigateToBuilder, currentFormFields, currentTheme, currentFormVersionId }: VersionsListProps) {
   const { versions, mutate, isError, isLoading } = useFormVersions();
   const { deleteVersion, setActiveVersion, updateVersion, deactivateAllVersions } = useFormVersionActions();
   const { addScript, updateScript, deleteScript } = useBcScriptsActions();
@@ -728,15 +936,38 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
           // #endregion
           
           // Extract error information - check multiple ways to detect meaningful errors
-          const errorMsg = scriptError?.message || '';
+          const errorMsg = scriptError?.message || String(scriptError || '');
           const errorMsgTrimmed = errorMsg.trim();
-          const hasMeaningfulMessage = errorMsgTrimmed.length > 0 && errorMsgTrimmed !== '{}';
+          
+          // Check if error is actually just an empty object or meaningless
+          // Check if the error itself is empty/null/undefined
+          const errorStringified = JSON.stringify(scriptError);
+          const isErrorEmpty = !scriptError || 
+                               scriptError === null ||
+                               scriptError === undefined ||
+                               (typeof scriptError === 'object' && 
+                                !(scriptError instanceof Error) && 
+                                Object.keys(scriptError).length === 0) ||
+                               errorStringified === '{}' ||
+                               errorStringified === 'null';
+          
+          // Check if error message is meaningful (not empty, not '{}', not just whitespace, not '[object Object]')
+          const hasMeaningfulMessage = errorMsgTrimmed.length > 0 && 
+                                      errorMsgTrimmed !== '{}' &&
+                                      errorMsgTrimmed !== '[object Object]' &&
+                                      errorMsgTrimmed !== 'null' &&
+                                      errorMsgTrimmed !== 'undefined';
           
           // Since deletion is working correctly, any error without a meaningful message is a false positive
           // Empty objects, empty strings, or objects with no message property should be treated as success
-          if (!hasMeaningfulMessage) {
+          if (isErrorEmpty || !hasMeaningfulMessage) {
             // Silently treat as success - no logging for empty/meaningless errors
             // This covers: {}, empty string, undefined, null, objects with no message
+            console.log('[Deactivation] Script deletion completed (empty/no error detected, treating as success)', { 
+              scriptUuid,
+              errorType: typeof scriptError,
+              errorStringified: errorStringified.substring(0, 100)
+            });
             updateProgressStep('delete-script', 'completed');
           } else {
             // Only log as error if we have a meaningful error message (not just empty object)
@@ -747,9 +978,10 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
             
             if (is404Error) {
               // 404 is expected when script is already deleted - treat as success
+              console.log('[Deactivation] Script deletion completed (404 - script not found, already deleted)');
               updateProgressStep('delete-script', 'completed');
             } else {
-              // Real error with meaningful message
+              // Real error with meaningful message - only log actual errors
               console.error('[Deactivation] Script deletion error - this means the form may still appear on website!', { 
                 scriptUuid, 
                 error: scriptError,
@@ -1021,7 +1253,12 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
               <div className="relative border-b border-slate-200 overflow-hidden" style={{ height: '290px', minHeight: '290px' }}>
                 {/* Form Preview Content - Restore scale transform */}
                 <div className="relative w-full h-full" >
-                  <FormPreviewThumbnail form={version.form} />
+                  <FormPreviewThumbnail 
+                    form={version.form} 
+                    currentFields={currentFormFields}
+                    currentTheme={currentTheme}
+                    isCurrentForm={currentFormVersionId === version.id}
+                  />
                 </div>
               </div>
             )}
@@ -1127,7 +1364,13 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
                   minHeight: '140px'
                 }}>
                   <div className="relative w-full h-full">
-                    <FormPreviewThumbnail form={version.form} isCompact={true} />
+                    <FormPreviewThumbnail 
+                      form={version.form} 
+                      isCompact={true}
+                      currentFields={currentFormFields}
+                      currentTheme={currentTheme}
+                      isCurrentForm={currentFormVersionId === version.id}
+                    />
                   </div>
                 </div>
               )}

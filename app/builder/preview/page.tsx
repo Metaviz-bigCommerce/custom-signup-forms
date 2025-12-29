@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Minimize2 } from 'lucide-react';
+import { Minimize2, AlertCircle, ArrowRight } from 'lucide-react';
 import { FormField } from '@/components/FormBuilder/types';
 import { normalizeThemeLayout } from '@/components/FormBuilder/utils';
 
@@ -16,39 +16,75 @@ export default function PreviewPage() {
   const [sourceTab, setSourceTab] = useState<number>(1); // Default to builder tab (1)
   const [countryData, setCountryData] = useState<Array<{ countryName: string; countryShortCode: string; regions: Array<{ name: string; shortCode?: string }>;}>>([]);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [hasActiveForm, setHasActiveForm] = useState(false);
 
   useEffect(() => {
-    // Load form data from sessionStorage
-    try {
-      const storedData = sessionStorage.getItem('previewFormData');
-      if (storedData) {
-        const data = JSON.parse(storedData);
-        setFormFields(data.formFields || []);
-        setTheme(data.theme || {});
-        setViewMode(data.viewMode || 'desktop');
-        setSourceTab(data.sourceTab || 1); // Store source tab
-      } else {
-        // If no data, redirect back to builder
-        // Use context from URL or stored context
-        const redirectContext = context || (storedData ? JSON.parse(storedData).context : '');
-        const contextParam = redirectContext ? `?context=${redirectContext}` : '';
-        router.push(`/builder${contextParam}`);
+    const loadActiveForm = async () => {
+      if (!context) {
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Failed to load preview data:', error);
-      // Use context from URL or try to get from stored data
-      let redirectContext = context;
+
       try {
-        const storedData = sessionStorage.getItem('previewFormData');
-        if (storedData) {
-          const data = JSON.parse(storedData);
-          redirectContext = redirectContext || data.context || '';
+        // Always load the active form from API first
+        const res = await fetch(`/api/store-form?context=${encodeURIComponent(context)}`);
+        if (!res.ok) {
+          throw new Error('Failed to load form');
         }
-      } catch {}
-      const contextParam = redirectContext ? `?context=${redirectContext}` : '';
-      router.push(`/builder${contextParam}`);
-    }
-  }, [router, context]);
+        const json = await res.json();
+        const formData = json.error === false && json.data ? json.data : json;
+        
+        if (formData.active && formData.form) {
+          // Use the active form from API
+          setFormFields(formData.form.fields || []);
+          setTheme(formData.form.theme || {});
+          setViewMode('desktop');
+          setHasActiveForm(true);
+        } else {
+          // If no active form, try sessionStorage (for builder preview with unsaved changes)
+          const storedData = sessionStorage.getItem('previewFormData');
+          if (storedData) {
+            try {
+              const data = JSON.parse(storedData);
+              setFormFields(data.formFields || []);
+              setTheme(data.theme || {});
+              setViewMode(data.viewMode || 'desktop');
+              setSourceTab(data.sourceTab || 1);
+              setHasActiveForm(true);
+            } catch (e) {
+              console.error('Failed to parse sessionStorage data:', e);
+              setHasActiveForm(false);
+            }
+          } else {
+            setHasActiveForm(false);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load preview data:', error);
+        // Fallback to sessionStorage on error
+        try {
+          const storedData = sessionStorage.getItem('previewFormData');
+          if (storedData) {
+            const data = JSON.parse(storedData);
+            setFormFields(data.formFields || []);
+            setTheme(data.theme || {});
+            setViewMode(data.viewMode || 'desktop');
+            setSourceTab(data.sourceTab || 1);
+            setHasActiveForm(true);
+          } else {
+            setHasActiveForm(false);
+          }
+        } catch (e) {
+          setHasActiveForm(false);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadActiveForm();
+  }, [context]);
 
   // Load country data
   useEffect(() => {
@@ -97,8 +133,8 @@ export default function PreviewPage() {
   const btnc = normalizedTheme.buttonColor || '#fff';
   const btnr = normalizedTheme.buttonRadius == null ? 10 : normalizedTheme.buttonRadius;
   const btnt = normalizedTheme.buttonText || 'Create account';
-  // Only use formBackgroundColor if it's explicitly set, otherwise don't apply any background
-  const formBg = normalizedTheme.formBackgroundColor;
+  // Default to white background if formBackgroundColor is not set, matching LivePreview behavior
+  const formBg = normalizedTheme.formBackgroundColor || '#ffffff';
   const pageBg = normalizedTheme.pageBackgroundColor || '#f9fafb';
 
   const handleShrink = () => {
@@ -162,46 +198,34 @@ export default function PreviewPage() {
     const fontSize = field.fontSize || '14';
     const textColor = field.textColor || '#0f172a';
     
+    // For checkbox, hide label if empty
+    const showLabel = field.type !== 'checkbox' || field.label?.trim();
+    // For checkbox without label, use first option label as heading
+    const checkboxLabel = field.type === 'checkbox' && !field.label?.trim() && field.options && field.options.length > 0
+      ? field.options[0].label
+      : field.label;
+    
     return (
       <div key={field.id}>
-        <label 
-          style={{ 
-            color: field.labelColor,
-            fontSize: field.labelSize + 'px',
-            fontWeight: field.labelWeight,
-            display: 'block',
-            marginBottom: '6px'
-          }}
-        >
-          {field.label}{field.required ? ' *' : ''}
-        </label>
+        {showLabel && (
+          <label 
+            style={{ 
+              color: field.labelColor,
+              fontSize: field.labelSize + 'px',
+              fontWeight: field.labelWeight,
+              display: 'block',
+              marginBottom: '6px'
+            }}
+          >
+            {checkboxLabel}{field.required ? ' *' : ''}
+          </label>
+        )}
         
         {field.role === 'country' ? (
-          <select
-            value={selectedCountryCode}
-            onChange={(e) => setSelectedCountryCode(e.target.value)}
-            style={{
-              borderColor: borderColor,
-              borderWidth: borderWidth + 'px',
-              borderStyle: 'solid',
-              borderRadius: borderRadius + 'px',
-              backgroundColor: bgColor,
-              padding: padding + 'px',
-              fontSize: fontSize + 'px',
-              color: textColor,
-              width: '100%',
-              outline: 'none'
-            }}
-            aria-label={field.label}
-          >
-            <option value="">Select a country</option>
-            {countryData.map(c => (
-              <option key={c.countryShortCode} value={c.countryShortCode}>{c.countryName}</option>
-            ))}
-          </select>
-        ) : field.role === 'state' ? (
-          countryData.find(c => c.countryShortCode === selectedCountryCode)?.regions?.length ? (
+          <div style={{ position: 'relative', width: '100%' }}>
             <select
+              value={selectedCountryCode}
+              onChange={(e) => setSelectedCountryCode(e.target.value)}
               style={{
                 borderColor: borderColor,
                 borderWidth: borderWidth + 'px',
@@ -209,18 +233,95 @@ export default function PreviewPage() {
                 borderRadius: borderRadius + 'px',
                 backgroundColor: bgColor,
                 padding: padding + 'px',
+                paddingRight: (parseInt(padding) || 12) + 30 + 'px',
                 fontSize: fontSize + 'px',
                 color: textColor,
                 width: '100%',
-                outline: 'none'
+                outline: 'none',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none'
               }}
               aria-label={field.label}
             >
-              <option value="">Select a state/province</option>
-              {countryData.find(c => c.countryShortCode === selectedCountryCode)!.regions.map((r, i) => (
-                <option key={(r.shortCode || r.name) + i} value={r.shortCode || r.name}>{r.name}</option>
+              <option value="">Select a country</option>
+              {countryData.map(c => (
+                <option key={c.countryShortCode} value={c.countryShortCode}>{c.countryName}</option>
               ))}
             </select>
+            <svg
+              style={{
+                position: 'absolute',
+                right: (parseInt(padding) || 12) + 8 + 'px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                pointerEvents: 'none',
+                width: '16px',
+                height: '16px'
+              }}
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M6 9L12 15L18 9"
+                stroke="#6b7280"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        ) : field.role === 'state' ? (
+          countryData.find(c => c.countryShortCode === selectedCountryCode)?.regions?.length ? (
+            <div style={{ position: 'relative', width: '100%' }}>
+              <select
+                style={{
+                  borderColor: borderColor,
+                  borderWidth: borderWidth + 'px',
+                  borderStyle: 'solid',
+                  borderRadius: borderRadius + 'px',
+                  backgroundColor: bgColor,
+                  padding: padding + 'px',
+                  paddingRight: (parseInt(padding) || 12) + 30 + 'px',
+                  fontSize: fontSize + 'px',
+                  color: textColor,
+                  width: '100%',
+                  outline: 'none',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none'
+                }}
+                aria-label={field.label}
+              >
+                <option value="">Select a state/province</option>
+                {countryData.find(c => c.countryShortCode === selectedCountryCode)!.regions.map((r, i) => (
+                  <option key={(r.shortCode || r.name) + i} value={r.shortCode || r.name}>{r.name}</option>
+                ))}
+              </select>
+              <svg
+                style={{
+                  position: 'absolute',
+                  right: (parseInt(padding) || 12) + 8 + 'px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  pointerEvents: 'none',
+                  width: '16px',
+                  height: '16px'
+                }}
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M6 9L12 15L18 9"
+                  stroke="#6b7280"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
           ) : (
             <input
               type="text"
@@ -260,23 +361,114 @@ export default function PreviewPage() {
             aria-label={field.label}
           />
         ) : field.type === 'select' ? (
-          <select
-            style={{
-              borderColor: borderColor,
-              borderWidth: borderWidth + 'px',
-              borderStyle: 'solid',
-              borderRadius: borderRadius + 'px',
-              backgroundColor: bgColor,
-              padding: padding + 'px',
-              fontSize: fontSize + 'px',
-              color: textColor,
-              width: '100%',
-              outline: 'none'
-            }}
-            aria-label={field.label}
-          >
-            <option>Select an option</option>
-          </select>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <select
+              style={{
+                borderColor: borderColor,
+                borderWidth: borderWidth + 'px',
+                borderStyle: 'solid',
+                borderRadius: borderRadius + 'px',
+                backgroundColor: bgColor,
+                padding: padding + 'px',
+                paddingRight: (parseInt(padding) || 12) + 30 + 'px',
+                fontSize: fontSize + 'px',
+                color: textColor,
+                width: '100%',
+                outline: 'none',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none'
+              }}
+              aria-label={field.label}
+            >
+              <option value="">{field.placeholder || 'Select an option'}</option>
+              {(field.options || []).map((opt, idx) => (
+                <option key={idx} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <svg
+              style={{
+                position: 'absolute',
+                right: (parseInt(padding) || 12) + 8 + 'px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                pointerEvents: 'none',
+                width: '16px',
+                height: '16px'
+              }}
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M6 9L12 15L18 9"
+                stroke="#6b7280"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        ) : field.type === 'radio' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {(field.options || []).map((opt, idx) => (
+              <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name={`radio-${field.id}`}
+                  value={opt.value}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    cursor: 'pointer'
+                  }}
+                  className="radio-custom"
+                />
+                <span style={{ fontSize: fontSize + 'px', color: textColor }}>
+                  {opt.label}
+                </span>
+              </label>
+            ))}
+          </div>
+        ) : field.type === 'checkbox' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {(field.options && field.options.length > 0) ? (
+              (field.options || []).map((opt, idx) => (
+                <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    value={opt.value}
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      cursor: 'pointer'
+                    }}
+                    className="checkbox-custom"
+                  />
+                  <span style={{ fontSize: fontSize + 'px', color: textColor }}>
+                    {opt.label}
+                  </span>
+                </label>
+              ))
+            ) : (
+              field.label?.trim() && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      cursor: 'pointer'
+                    }}
+                    className="checkbox-custom"
+                  />
+                  <span style={{ fontSize: fontSize + 'px', color: textColor }}>
+                    {field.label}
+                  </span>
+                </label>
+              )
+            )}
+          </div>
         ) : field.type === 'file' ? (
           <input
             type="file"
@@ -298,6 +490,13 @@ export default function PreviewPage() {
           <input
             type={field.role === 'password' ? 'password' : (field.type === 'phone' ? 'tel' : field.type)}
             placeholder={field.placeholder || ''}
+            pattern={field.type === 'phone' ? '[0-9]*' : undefined}
+            inputMode={field.type === 'phone' ? 'numeric' : undefined}
+            onKeyPress={field.type === 'phone' ? (e) => {
+              if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)) {
+                e.preventDefault();
+              }
+            } : undefined}
             style={{
               borderColor: borderColor,
               borderWidth: borderWidth + 'px',
@@ -344,8 +543,45 @@ export default function PreviewPage() {
     }
   }
 
-  if (!formFields.length) {
-    return null;
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading preview...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show prompt if no active form
+  if (!hasActiveForm || !formFields.length) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-gray-50">
+        <div className="max-w-md w-full mx-auto px-6">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 text-center">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-amber-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">No Active Form</h2>
+            <p className="text-gray-600 mb-6">
+              There is no active form to preview. Please activate a form in the Form Builder to see its live preview.
+            </p>
+            <button
+              onClick={() => {
+                const contextParam = context ? `?context=${context}` : '';
+                router.push(`/builder${contextParam}`);
+              }}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
+            >
+              Go to Form Builder
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -360,6 +596,62 @@ export default function PreviewPage() {
           margin: 0;
           padding: 0;
           overflow: hidden;
+        }
+        
+        /* Custom radio button styling */
+        .radio-custom {
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          border: 2px solid #d1d5db;
+          border-radius: 50%;
+          background-color: white;
+          position: relative;
+        }
+        
+        .radio-custom:checked {
+          border-color: #000000;
+          background-color: #000000;
+        }
+        
+        .radio-custom:checked::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background-color: white;
+        }
+        
+        /* Custom checkbox styling */
+        .checkbox-custom {
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          border: 2px solid #d1d5db;
+          border-radius: 4px;
+          background-color: white;
+          position: relative;
+        }
+        
+        .checkbox-custom:checked {
+          border-color: #000000;
+          background-color: #000000;
+        }
+        
+        .checkbox-custom:checked::after {
+          content: '✓';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: white;
+          font-size: 12px;
+          font-weight: bold;
+          line-height: 1;
         }
       `}</style>
       
@@ -440,7 +732,7 @@ export default function PreviewPage() {
                 style={{
                   width: '100%',
                   maxWidth: '520px',
-                  ...(formBg ? { background: formBg } : {}),
+                  background: formBg,
                   backdropFilter: 'saturate(180%) blur(8px)',
                   border: '1px solid #e5e7eb',
                   borderRadius: '16px',
@@ -550,7 +842,7 @@ export default function PreviewPage() {
                 style={{
                   width: '100%',
                   maxWidth: '520px',
-                  ...(formBg ? { background: formBg } : {}),
+                  background: formBg,
                   backdropFilter: 'saturate(180%) blur(8px)',
                   border: '1px solid #e5e7eb',
                   borderRadius: '16px',
