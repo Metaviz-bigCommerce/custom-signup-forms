@@ -24,6 +24,11 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  // #region agent log
+  if (isOpen) {
+    fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ConfirmDialog.tsx:27',message:'ConfirmDialog rendering (isOpen=true)',data:{isOpen,title,confirmVariant},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C'})}).catch(()=>{});
+  }
+  // #endregion
   if (!isOpen) return null;
 
   const confirmButtonClass =

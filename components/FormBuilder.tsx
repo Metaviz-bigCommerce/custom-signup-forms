@@ -549,9 +549,13 @@ const FormBuilder: React.FC = () => {
       
       toast.showSuccess('Form saved.');
       
-      // Clear builder state and redirect to Forms tab after successful save
-      clearBuilderState();
+      // Switch to Forms tab first, then clear builder state after a brief delay
+      // This prevents form preview from briefly showing default theme colors
       setActiveTab(2);
+      // Use setTimeout to clear state after tab switch is complete
+      setTimeout(() => {
+        clearBuilderState();
+      }, 0);
     } catch (e: unknown) {
       toast.showError('Failed to save form: ' + (e instanceof Error ? e.message : 'Unknown error'));
     } finally {
@@ -588,9 +592,13 @@ const FormBuilder: React.FC = () => {
       await mutateVersions();
       toast.showSuccess('Form saved as new.');
       
-      // Clear builder state and switch to Forms tab after successful save
-      clearBuilderState();
+      // Switch to Forms tab first, then clear builder state after a brief delay
+      // This prevents form preview from briefly showing default theme colors
       setActiveTab(2);
+      // Use setTimeout to clear state after tab switch is complete
+      setTimeout(() => {
+        clearBuilderState();
+      }, 0);
     } catch (e: unknown) {
       toast.showError('Failed to save: ' + (e instanceof Error ? e.message : 'Unknown error'));
     } finally {
@@ -871,12 +879,15 @@ const FormBuilder: React.FC = () => {
       const targetTab = pendingTabSwitch;
       setPendingTabSwitch(null);
       
-      // If switching to Forms tab (tab 2), clear builder state
-      if (targetTab === 2) {
-        clearBuilderState();
-      }
-      
       setActiveTab(targetTab);
+      
+      // If switching to Forms tab (tab 2), clear builder state after tab switch
+      // This prevents form preview from briefly showing default theme colors
+      if (targetTab === 2) {
+        setTimeout(() => {
+          clearBuilderState();
+        }, 0);
+      }
     } catch (e: unknown) {
       toast.showError('Failed to save: ' + (e instanceof Error ? e.message : 'Unknown error'));
     } finally {
@@ -920,12 +931,15 @@ const FormBuilder: React.FC = () => {
       const targetTab = pendingTabSwitch;
       setPendingTabSwitch(null);
       
-      // If switching to Forms tab (tab 2), clear builder state
-      if (targetTab === 2) {
-        clearBuilderState();
-      }
-      
       setActiveTab(targetTab);
+      
+      // If switching to Forms tab (tab 2), clear builder state after tab switch
+      // This prevents form preview from briefly showing default theme colors
+      if (targetTab === 2) {
+        setTimeout(() => {
+          clearBuilderState();
+        }, 0);
+      }
     } catch (e: unknown) {
       toast.showError('Failed to save: ' + (e instanceof Error ? e.message : 'Unknown error'));
     } finally {
@@ -941,9 +955,13 @@ const FormBuilder: React.FC = () => {
     setPendingTabSwitch(null);
     setShowUnsavedChangesModal(false);
     
-    // If switching to Forms tab (tab 2), always clear builder state
+    // If switching to Forms tab (tab 2), always clear builder state after tab switch
+    // This prevents form preview from briefly showing default theme colors
     if (targetTab === 2) {
-      clearBuilderState();
+      setActiveTab(targetTab);
+      setTimeout(() => {
+        clearBuilderState();
+      }, 0);
     } else {
       // Fully discard all unsaved changes and reset to clean state
       if (!lastSavedState) {
@@ -1421,8 +1439,8 @@ const FormBuilder: React.FC = () => {
               console.log('[FormBuilder] onVersionLoaded callback - refresh complete');
             }}
             onNavigateToBuilder={() => handleTabSwitch(1)}
-            currentFormFields={formFields}
-            currentTheme={theme}
+            currentFormFields={isEditing && activeTab === 1 ? formFields : undefined}
+            currentTheme={isEditing && activeTab === 1 ? theme : undefined}
             currentFormVersionId={currentFormVersionId}
           />
         )}

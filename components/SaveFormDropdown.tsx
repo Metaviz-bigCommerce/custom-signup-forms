@@ -48,7 +48,7 @@ export default function SaveFormDropdown({
         <button
           onClick={handleButtonClick}
           disabled={!canSave || isSaving}
-          className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
+          className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
             canSave && !isSaving
               ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg active:scale-[0.98] shadow-md'
               : 'bg-slate-200 text-slate-400 cursor-not-allowed'

@@ -484,7 +484,7 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
                   value={detailsSearch}
                   onChange={(e) => setDetailsSearch(e.target.value)}
                   placeholder="Search fields..."
-                  className="w-full pl-8 sm:pl-9 pr-3 py-2 bg-white/60 border border-slate-200/60 rounded-lg text-xs sm:text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                  className="w-full pl-8 sm:pl-9 pr-3 py-2 bg-white/60 border border-slate-200/60 rounded-lg text-xs sm:text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all duration-200 cursor-text"
                 />
               </div>
               <button

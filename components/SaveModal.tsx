@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
 interface SaveModalProps {
@@ -23,6 +23,7 @@ export default function SaveModal({
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [saveOption, setSaveOption] = useState<'existing' | 'new'>('existing');
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -43,6 +44,11 @@ export default function SaveModal({
     if (!trimmedName) {
       setError('Name is required');
       return;
+    }
+    
+    // Blur the submit button to remove focus and prevent visual outline
+    if (submitButtonRef.current) {
+      submitButtonRef.current.blur();
     }
     
     // For new forms, always use saveToExisting
@@ -74,7 +80,7 @@ export default function SaveModal({
           <h3 className="text-lg font-semibold text-gray-800">Save Form</h3>
           <button
             onClick={handleClose}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -143,7 +149,7 @@ export default function SaveModal({
                 setError('');
               }}
               placeholder="Enter name..."
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all cursor-text ${
                 error ? 'border-red-300' : 'border-slate-300'
               }`}
               autoFocus
@@ -157,17 +163,18 @@ export default function SaveModal({
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer"
             >
               Cancel
             </button>
             <button
+              ref={submitButtonRef}
               type="submit"
               disabled={!name.trim()}
-              className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                 !name.trim()
                   ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
               }`}
             >
               Save

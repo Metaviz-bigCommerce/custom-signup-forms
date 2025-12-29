@@ -19,6 +19,7 @@ interface TopActionBarProps {
   onDiscard: () => void;
   onSaveToExisting: (name: string) => Promise<void>;
   onSaveAsNew: (name: string) => Promise<void>;
+  onBeforeSave?: () => void;
 }
 
 const TopActionBar: React.FC<TopActionBarProps> = ({
@@ -36,6 +37,7 @@ const TopActionBar: React.FC<TopActionBarProps> = ({
   onDiscard,
   onSaveToExisting,
   onSaveAsNew,
+  onBeforeSave,
 }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-4">
@@ -127,6 +129,7 @@ const TopActionBar: React.FC<TopActionBarProps> = ({
               isNewForm={isNewForm}
               onSaveToExisting={onSaveToExisting}
               onSaveAsNew={onSaveAsNew}
+              onBeforeSave={onBeforeSave}
             />
           </div>
         </div>
