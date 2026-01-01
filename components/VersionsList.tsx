@@ -1372,8 +1372,8 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
               <div className="flex items-center justify-between gap-1.5 sm:gap-2 mt-auto" onClick={(e) => e.stopPropagation()}>
                 {/* Metadata - Enhanced */}
                 <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-500">
-                  <span className="text-slate-400 hidden sm:inline">Modified:</span>
-                  <span className="font-medium text-slate-600 truncate">{formatDateShort(version.updatedAt)}</span>
+                  <span className="text-slate-400 hidden sm:inline">Created On:</span>
+                  <span className="font-medium text-slate-600 truncate">{formatDateShort(version.createdAt)}</span>
                 </div>
                 
                 {/* Secondary Actions - Enhanced with better spacing */}
@@ -1485,8 +1485,8 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-2 md:gap-4 text-[10px] sm:text-xs md:text-sm text-slate-500 mt-0.5 sm:mt-1">
                   <div className="flex items-center gap-1 sm:gap-1.5">
-                    <span className="text-slate-400 hidden sm:inline">Modified:</span>
-                    <span className="font-medium text-slate-600 truncate">{formatDateShort(version.updatedAt)}</span>
+                    <span className="text-slate-400 hidden sm:inline">Created On:</span>
+                    <span className="font-medium text-slate-600 truncate">{formatDateShort(version.createdAt)}</span>
                   </div>
                 </div>
               </div>

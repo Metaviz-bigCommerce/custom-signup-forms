@@ -3,9 +3,9 @@ import Skeleton from '@/components/Skeleton';
 
 export default function Loading() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <NavBar />
-      <main className="max-w-7xl mx-auto px-6 py-8 bg-gray-50">
+      <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-12 gap-6 h-full">
           <div className="col-span-3 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <Skeleton className="h-6 w-40 mb-4" />

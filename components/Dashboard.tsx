@@ -319,6 +319,7 @@ const Dashboard: React.FC = () => {
       description: 'See how it looks live',
       gradient: 'from-teal-500 to-emerald-500',
       hoverGradient: 'group-hover:from-teal-600 group-hover:to-emerald-600',
+      hidden: true, // Hidden from dashboard - can be re-enabled if needed
     },
   ];
 
@@ -444,28 +445,28 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
-          {quickActions.map((action) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 md:gap-4">
+          {quickActions.filter(action => !action.hidden).map((action) => {
             const Icon = action.icon;
             return (
               <Link
                 key={action.href}
                 href={action.href}
-                className="group relative overflow-hidden bg-white rounded-lg sm:rounded-xl md:rounded-2xl border border-gray-100 p-3.5 sm:p-4 md:p-5 lg:p-6 transition-all duration-300 hover:shadow-xl hover:shadow-gray-200/50 hover:-translate-y-1 active:scale-[0.98]"
+                className="group relative overflow-hidden bg-white rounded-lg sm:rounded-xl md:rounded-2xl border border-gray-100 p-3.5 sm:p-4 md:p-5 lg:p-6 transition-all duration-300 ease-out will-change-transform hover:shadow-xl hover:shadow-gray-200/50 hover:-translate-y-1 active:scale-[0.98]"
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
+                <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300 ease-out`} />
                 
                 <div className="relative z-10">
-                  <div className={`w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br ${action.gradient} ${action.hoverGradient} flex items-center justify-center mb-2.5 sm:mb-3 md:mb-4 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-lg`}>
-                    <Icon className="w-4.5 h-4.5 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-6 lg:h-6 text-white" />
+                  <div className={`w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br ${action.gradient} ${action.hoverGradient} flex items-center justify-center mb-2.5 sm:mb-3 md:mb-4 transition-all duration-300 ease-out will-change-transform group-hover:scale-110 group-hover:rotate-3 shadow-lg`}>
+                    <Icon className="w-4.5 h-4.5 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-6 lg:h-6 text-white transition-transform duration-300 ease-out" />
                   </div>
                   
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-xs sm:text-sm md:text-base text-gray-900 mb-0.5 sm:mb-1 group-hover:text-gray-800 truncate">{action.title}</h3>
-                      <p className="text-[11px] sm:text-xs md:text-sm text-gray-500 line-clamp-2 leading-snug">{action.description}</p>
+                      <h3 className="font-semibold text-xs sm:text-sm md:text-base text-gray-900 mb-0.5 sm:mb-1 group-hover:text-gray-800 truncate transition-colors duration-300 ease-out">{action.title}</h3>
+                      <p className="text-[11px] sm:text-xs md:text-sm text-gray-500 line-clamp-2 leading-snug transition-colors duration-300 ease-out group-hover:text-gray-600">{action.description}</p>
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-1 transition-all shrink-0" />
+                    <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-1 transition-all duration-300 ease-out shrink-0 will-change-transform" />
                   </div>
                 </div>
               </Link>

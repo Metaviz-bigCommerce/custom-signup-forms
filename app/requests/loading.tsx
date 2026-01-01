@@ -3,9 +3,9 @@ import Skeleton from '@/components/Skeleton';
 
 export default function Loading() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <NavBar />
-      <main className="max-w-7xl mx-auto px-6 py-8 bg-gray-50 space-y-6">
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <Skeleton className="h-7 w-56" />
           <div className="flex gap-3">
