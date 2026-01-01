@@ -24,6 +24,8 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* Improve Windows rendering consistency */
+  -webkit-text-stroke: 0.01em transparent;
 }
 
 body {
@@ -34,6 +36,10 @@ body {
   line-height: 1.6;
   letter-spacing: -0.011em;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  /* Improve Windows rendering consistency */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Headings - Bold & Impactful */
@@ -42,6 +48,10 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.025em;
   line-height: 1.25;
   color: #0f172a;
+  /* Ensure consistent rendering across platforms */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 h1 {
@@ -207,18 +217,20 @@ textarea::placeholder {
   animation: slideIn 0.3s ease-out forwards;
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-    --muted: #94a3b8;
+/* Windows Edge specific fixes for color rendering */
+@supports (-ms-ime-align: auto) {
+  /* Edge-specific rendering improvements */
+  body {
+    -webkit-font-smoothing: subpixel-antialiased;
+    text-rendering: geometricPrecision;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    color: #f1f5f9;
+    -webkit-font-smoothing: subpixel-antialiased;
+    text-rendering: geometricPrecision;
   }
 }
+
 
 /* Print Styles */
 @media print {
