@@ -260,19 +260,18 @@ const RequestsManager: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
             <div>
               <div className="flex items-center gap-3 mb-2">
-
                 <div>
-                  <h1 className="text-xl sm:text-2xl font-bold !text-white">Signup Requests</h1>
+                  <h1 className="text-lg min-[361px]:text-xl sm:text-2xl font-bold !text-white whitespace-nowrap min-[361px]:whitespace-normal">Signup Requests</h1>
                   <p className="text-slate-400 text-xs sm:text-sm">Manage and review all signup submissions</p>
                 </div>
               </div>
             </div>
             
             {/* Status Filter Pills */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-nowrap min-[361px]:flex-wrap gap-1.5 min-[361px]:gap-2 overflow-x-auto min-[361px]:overflow-x-visible -mx-1 min-[361px]:mx-0 px-1 min-[361px]:px-0">
               <button 
                 onClick={() => setStatusFilter('')} 
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-xl transition-all duration-300 cursor-pointer ${
+                className={`px-2 min-[361px]:px-3 sm:px-4 py-1 min-[361px]:py-1.5 sm:py-2 text-[10px] min-[361px]:text-xs sm:text-sm font-medium rounded-lg min-[361px]:rounded-xl transition-all duration-300 cursor-pointer whitespace-nowrap flex-shrink-0 ${
                   statusFilter === '' 
                     ? 'bg-white text-slate-900 shadow-lg shadow-white/25' 
                     : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white border border-white/10'
@@ -282,7 +281,7 @@ const RequestsManager: React.FC = () => {
               </button>
               <button 
                 onClick={() => setStatusFilter('pending')} 
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-xl transition-all duration-300 cursor-pointer ${
+                className={`px-2 min-[361px]:px-3 sm:px-4 py-1 min-[361px]:py-1.5 sm:py-2 text-[10px] min-[361px]:text-xs sm:text-sm font-medium rounded-lg min-[361px]:rounded-xl transition-all duration-300 cursor-pointer whitespace-nowrap flex-shrink-0 ${
                   statusFilter === 'pending' 
                     ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' 
                     : 'bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border border-amber-500/20'
@@ -292,7 +291,7 @@ const RequestsManager: React.FC = () => {
               </button>
               <button 
                 onClick={() => setStatusFilter('approved')} 
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-xl transition-all duration-300 cursor-pointer ${
+                className={`px-2 min-[361px]:px-3 sm:px-4 py-1 min-[361px]:py-1.5 sm:py-2 text-[10px] min-[361px]:text-xs sm:text-sm font-medium rounded-lg min-[361px]:rounded-xl transition-all duration-300 cursor-pointer whitespace-nowrap flex-shrink-0 ${
                   statusFilter === 'approved' 
                     ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
                     : 'bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/20'
@@ -302,7 +301,7 @@ const RequestsManager: React.FC = () => {
               </button>
               <button 
                 onClick={() => setStatusFilter('rejected')} 
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-xl transition-all duration-300 cursor-pointer ${
+                className={`px-2 min-[361px]:px-3 sm:px-4 py-1 min-[361px]:py-1.5 sm:py-2 text-[10px] min-[361px]:text-xs sm:text-sm font-medium rounded-lg min-[361px]:rounded-xl transition-all duration-300 cursor-pointer whitespace-nowrap flex-shrink-0 ${
                   statusFilter === 'rejected' 
                     ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30' 
                     : 'bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 border border-rose-500/20'

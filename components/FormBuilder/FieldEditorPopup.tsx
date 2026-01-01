@@ -166,42 +166,43 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
           line-height: 1;
         }
       `}</style>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={handleClose}>
-        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-fadeIn" onClick={(e) => e.stopPropagation()}>
-        {/* Header - Enhanced with light gradient */}
-        <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-200 px-6 py-5 flex items-center justify-between z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
-              <Settings className="w-5 h-5 text-white" />
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-3 md:p-4" onClick={handleClose}>
+        <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+        {/* Header - Enhanced with light gradient - Fully responsive */}
+        <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-200 px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 flex items-center justify-between z-10">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 flex-shrink-0">
+              <Settings className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5 text-white" />
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800">Edit Field</h3>
-              <p className="text-xs text-slate-600 capitalize font-medium">{localField.type} field</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-800 truncate">Edit Field</h3>
+              <p className="text-[10px] sm:text-xs text-slate-600 capitalize font-medium truncate">{localField.type} field</p>
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white/80 rounded-lg transition-all duration-200 hover:scale-110 cursor-pointer"
+            className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-white/80 rounded-lg transition-all duration-200 hover:scale-110 cursor-pointer flex-shrink-0 touch-manipulation"
+            aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-            {/* Left Panel - Settings */}
-            <div className="p-6 space-y-4 border-r border-slate-200">
+            {/* Left Panel - Settings - Fully responsive */}
+            <div className="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 border-r-0 lg:border-r border-slate-200">
               {/* Basic Settings */}
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <button
                   onClick={() => toggleSection('basic')}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-blue-50 hover:to-indigo-50 flex items-center justify-between transition-all duration-200 cursor-pointer"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-white hover:from-blue-50 hover:to-indigo-50 flex items-center justify-between transition-all duration-200 cursor-pointer touch-manipulation"
                 >
-                  <div className="flex items-center gap-2">
-                    <Type className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm font-semibold text-slate-700">Basic Settings</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Type className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold text-slate-700 truncate">Basic Settings</span>
                   </div>
-                  {openSection === 'basic' ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                  {openSection === 'basic' ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" />}
                 </button>
                 {openSection === 'basic' && (
                   <div className="p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
@@ -327,13 +328,13 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <button
                   onClick={() => toggleSection('labelStyle')}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-blue-50 hover:to-indigo-50 flex items-center justify-between transition-all duration-200 cursor-pointer"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-white hover:from-blue-50 hover:to-indigo-50 flex items-center justify-between transition-all duration-200 cursor-pointer touch-manipulation"
                 >
-                  <div className="flex items-center gap-2">
-                    <Type className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm font-semibold text-slate-700">Label Styling</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Type className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold text-slate-700 truncate">Label Styling</span>
                   </div>
-                  {openSection === 'labelStyle' ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                  {openSection === 'labelStyle' ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" />}
                 </button>
                 {openSection === 'labelStyle' && (
                   <div className="p-4 space-y-5 animate-in slide-in-from-top-2 duration-200">
@@ -374,17 +375,17 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <button
                   onClick={() => toggleSection('inputStyle')}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-blue-50 hover:to-indigo-50 flex items-center justify-between transition-all duration-200 cursor-pointer"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-white hover:from-blue-50 hover:to-indigo-50 flex items-center justify-between transition-all duration-200 cursor-pointer touch-manipulation"
                 >
-                  <div className="flex items-center gap-2">
-                    <MousePointerClick className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm font-semibold text-slate-700">Input Styling</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <MousePointerClick className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold text-slate-700 truncate">Input Styling</span>
                   </div>
-                  {openSection === 'inputStyle' ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                  {openSection === 'inputStyle' ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" />}
                 </button>
                 {openSection === 'inputStyle' && (
                   <div className="p-4 space-y-5 animate-in slide-in-from-top-2 duration-200">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <ColorPicker
                         label="Border Color"
                         value={localField.borderColor}
@@ -400,7 +401,7 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div className="w-full">
                         <label className="block text-xs font-medium text-gray-500 mb-2">Border Radius (px)</label>
                         <input
@@ -420,7 +421,7 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <ColorPicker
                         label="Background"
                         value={localField.bgColor}
@@ -446,19 +447,19 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
               </div>
             </div>
 
-            {/* Right Panel - Live Preview */}
-            <div className="p-6 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
-              <div className="sticky top-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center shadow-lg">
-                    <Eye className="w-4 h-4 text-white" />
+            {/* Right Panel - Live Preview - Fully responsive */}
+            <div className="p-3 sm:p-4 md:p-6 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30 border-t lg:border-t-0 lg:border-l border-slate-200">
+              <div className="sticky top-3 sm:top-4 md:top-6">
+                <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center shadow-lg flex-shrink-0">
+                    <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                   </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-slate-800">Live Preview</h4>
-                    <p className="text-xs text-slate-500">Real-time updates</p>
+                  <div className="min-w-0">
+                    <h4 className="text-xs sm:text-sm font-semibold text-slate-800 truncate">Live Preview</h4>
+                    <p className="text-[10px] sm:text-xs text-slate-500 truncate">Real-time updates</p>
                   </div>
                 </div>
-                <div className="bg-white rounded-xl shadow-xl p-6 border border-slate-200">
+                <div className="bg-white rounded-lg sm:rounded-xl shadow-xl p-3 sm:p-4 md:p-6 border border-slate-200">
                   <div className="space-y-3">
                     <label 
                       style={{ 
@@ -617,24 +618,24 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-gradient-to-r from-white to-slate-50 border-t border-slate-200 px-6 py-4 flex items-center justify-between">
+        <div className="sticky bottom-0 bg-gradient-to-r from-white to-slate-50 border-t border-slate-200 px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
           {hasChanges && (
-            <div className="flex items-center gap-2 text-sm text-amber-600 font-medium">
-              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-              <span>You have unsaved changes</span>
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-amber-600 font-medium">
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse flex-shrink-0"></div>
+              <span className="truncate">You have unsaved changes</span>
             </div>
           )}
-          <div className="flex gap-3 ml-auto">
+          <div className="flex gap-2 sm:gap-3 ml-auto w-full sm:w-auto">
             <button
               onClick={handleClose}
-              className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-700 bg-white border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 cursor-pointer"
+              className="flex-1 sm:flex-none px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium text-slate-700 bg-white border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 cursor-pointer touch-manipulation"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={!hasChanges}
-              className={`px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 ${
+              className={`flex-1 sm:flex-none px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold text-white transition-all duration-200 touch-manipulation ${
                 hasChanges 
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transform hover:scale-105 cursor-pointer' 
                   : 'bg-slate-300 cursor-not-allowed'

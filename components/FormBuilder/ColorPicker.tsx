@@ -7,9 +7,9 @@ interface ColorPickerProps {
 }
 
 export const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, onChange }) => (
-  <div className="w-full">
+  <div className="w-full min-w-0">
     <label className="block text-xs font-medium text-gray-500 mb-2">{label}</label>
-    <div className="flex gap-2 items-center">
+    <div className="flex gap-2 items-center min-w-0">
       <input
         type="color"
         value={value}
@@ -20,8 +20,9 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ label, value, onChange
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="flex-1 min-w-0 px-3 py-2 h-10 border border-slate-300 rounded-md text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="flex-1 min-w-[90px] max-w-full px-2 sm:px-3 py-2 h-10 border border-slate-300 rounded-md text-xs sm:text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         placeholder="#000000"
+        style={{ minWidth: '90px' }}
       />
     </div>
   </div>

@@ -660,8 +660,20 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
     setDeleteModal(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
+      // Check if the form being deleted is active
+      const versionToDelete = versions.find((v: any) => v.id === deleteModal.versionId);
+      const wasActive = versionToDelete?.isActive && isFormActive;
+      
       await deleteVersion(deleteModal.versionId);
+      
+      // Refresh versions list
       await mutate();
+      
+      // If an active form was deleted, refresh store form state to reflect deactivation
+      if (wasActive) {
+        await mutateStoreForm(undefined, { revalidate: true });
+      }
+      
       toast.showSuccess('Form deleted successfully.');
       
       // Close modal and refresh list
@@ -1116,7 +1128,8 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
 
   const handleLoad = (version: any) => {
     onLoadVersion(version);
-    if (onVersionLoaded) onVersionLoaded();
+    // Note: onVersionLoaded is now called from FormBuilder after tab switch
+    // to prevent loading skeletons from showing
   };
 
   const handleFormClick = (version: any, e: React.MouseEvent) => {
@@ -1259,13 +1272,16 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
 
   // Loading skeleton for grid view - Enhanced responsive design
   const renderGridSkeleton = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
         <div key={i} className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 overflow-hidden shadow-sm animate-pulse" style={{ animationDelay: `${i * 50}ms` }}>
-          <div className="h-48 sm:h-56 bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200" />
-          <div className="p-4 sm:p-5 space-y-3">
-            <div className="h-4 bg-slate-200 rounded w-3/4" />
-            <div className="h-3 bg-slate-200 rounded w-1/2" />
+          <div className="h-[200px] md:h-[280px] bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200" />
+          <div className="px-3 sm:px-4 md:px-5 pb-2.5 sm:pb-3 md:pb-4 pt-2.5 sm:pt-3 md:pt-4 space-y-2 sm:space-y-2.5">
+            <div className="flex items-start justify-between gap-1.5 sm:gap-2">
+              <div className="h-2.5 sm:h-3 md:h-3.5 bg-slate-200 rounded w-3/4" />
+              <div className="h-4 sm:h-4.5 bg-slate-200 rounded-full w-12 sm:w-14 flex-shrink-0" />
+            </div>
+            <div className="h-2 sm:h-2.5 bg-slate-200 rounded w-1/2" />
           </div>
         </div>
       ))}
@@ -1274,14 +1290,24 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
 
   // Loading skeleton for list view - Enhanced responsive design
   const renderListSkeleton = () => (
-    <div className="space-y-2 sm:space-y-3">
+    <div className="space-y-2 sm:space-y-2.5 md:space-y-3">
       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
-        <div key={i} className="bg-white border border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5 animate-pulse" style={{ animationDelay: `${i * 50}ms` }}>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 lg:gap-5">
-            <div className="w-full sm:w-32 lg:w-40 h-20 sm:h-24 lg:h-28 bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 rounded-lg sm:rounded-xl flex-shrink-0" />
-            <div className="flex-1 space-y-2 w-full sm:w-auto">
-              <div className="h-4 bg-slate-200 rounded w-1/3 sm:w-1/2" />
-              <div className="h-3 bg-slate-200 rounded w-1/4 sm:w-1/3" />
+        <div key={i} className="bg-white border border-slate-200 rounded-lg sm:rounded-xl md:rounded-2xl p-3 sm:p-3.5 md:p-4 lg:p-5 animate-pulse" style={{ animationDelay: `${i * 50}ms` }}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 sm:gap-3 md:gap-4 lg:gap-6">
+            <div className="flex items-center gap-3 sm:gap-4 md:gap-5 lg:gap-6 flex-1 min-w-0 w-full sm:w-auto">
+              <div className="w-[120px] h-[120px] min-w-[120px] min-h-[120px] sm:w-[150px] sm:h-[140px] sm:min-w-[150px] sm:min-h-[140px] md:w-[180px] md:h-[160px] md:min-w-[180px] md:min-h-[160px] lg:w-[220px] lg:h-[200px] lg:min-w-[220px] lg:min-h-[200px] bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 rounded-md sm:rounded-lg md:rounded-xl flex-shrink-0 shadow-sm" />
+              <div className="flex-1 min-w-0 space-y-1.5 sm:space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 md:gap-3">
+                  <div className="h-3 sm:h-3.5 md:h-4 bg-slate-200 rounded w-2/3 sm:w-1/2" />
+                  <div className="h-4 sm:h-4.5 bg-slate-200 rounded-full w-12 sm:w-14 flex-shrink-0" />
+                </div>
+                <div className="h-2 sm:h-2.5 md:h-3 bg-slate-200 rounded w-1/3 sm:w-1/4" />
+              </div>
+            </div>
+            <div className="flex items-center gap-1 sm:gap-1 md:gap-1.5 flex-shrink-0 w-full sm:w-auto justify-end sm:justify-start">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-slate-200 rounded-md sm:rounded-lg" />
+              <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-slate-200 rounded-md sm:rounded-lg" />
+              <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-slate-200 rounded-md sm:rounded-lg" />
             </div>
           </div>
         </div>
@@ -1330,7 +1356,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
               {/* Header - Name with Active Badge */}
               <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
                 <div className="flex items-start gap-1.5 sm:gap-2 flex-1 min-w-0">
-                  <h3 className="text-xs sm:text-sm md:text-base font-semibold text-slate-800 truncate group-hover:text-blue-600 transition-colors leading-tight">
+                  <h3 className="text-[10px] sm:text-xs md:text-sm font-semibold text-slate-800 break-words group-hover:text-blue-600 transition-colors leading-tight">
                     {version.name || 'Unnamed'}
                   </h3>
                   {version.isActive && isFormActive && (
@@ -1428,7 +1454,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
           )}
           
           <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 sm:gap-3 md:gap-4 lg:gap-6">
-            <div className="flex items-center gap-2 sm:gap-3 md:gap-4 lg:gap-5 flex-1 min-w-0 w-full sm:w-auto">
+            <div className="flex items-center gap-3 sm:gap-4 md:gap-5 lg:gap-6 flex-1 min-w-0 w-full sm:w-auto">
               {/* Form Preview Thumbnail - Enhanced responsive sizing */}
               {version.form && (
                 <div className="relative border border-slate-200 rounded-md sm:rounded-lg md:rounded-xl overflow-hidden flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow bg-white w-[120px] h-[120px] min-w-[120px] min-h-[120px] sm:w-[150px] sm:h-[140px] sm:min-w-[150px] sm:min-h-[140px] md:w-[180px] md:h-[160px] md:min-w-[180px] md:min-h-[160px] lg:w-[220px] lg:h-[200px] lg:min-w-[220px] lg:min-h-[200px]"
@@ -1447,7 +1473,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
               
               <div className="flex-1 min-w-0">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 md:gap-3 mb-1 sm:mb-0">
-                  <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors leading-tight">
+                  <h3 className="text-xs sm:text-sm md:text-base font-semibold text-slate-900 break-words group-hover:text-blue-600 transition-colors leading-tight">
                     {version.name || 'Unnamed'}
                   </h3>
                   {version.isActive && isFormActive && (
@@ -1522,10 +1548,44 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
     </div>
   );
 
+  // Skeleton for header section
+  const renderHeaderSkeleton = () => (
+    <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-4 md:p-6 lg:p-8 shadow-xl shadow-slate-900/20 animate-pulse">
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-500/15 rounded-full blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-indigo-500/15 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
+      </div>
+      
+      <div className="relative z-10">
+        {/* Title Row Skeleton */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 lg:gap-6 mb-3 sm:mb-4 lg:mb-6">
+          <div className="space-y-2">
+            <div className="h-6 sm:h-7 md:h-8 lg:h-9 xl:h-10 bg-white/10 rounded-lg w-32 sm:w-40 md:w-48 lg:w-56" />
+            <div className="h-4 sm:h-5 bg-white/5 rounded w-48 sm:w-64 md:w-80" />
+          </div>
+        </div>
+        
+        {/* Search Bar and View Toggle Skeleton */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex-1 w-full">
+            <div className="h-10 sm:h-11 md:h-12 bg-white/10 rounded-lg sm:rounded-xl md:rounded-2xl" />
+          </div>
+          <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 bg-white/10 backdrop-blur-sm p-0.5 sm:p-1 rounded-lg sm:rounded-xl md:rounded-2xl w-full sm:w-auto justify-center sm:justify-start">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 bg-white/10 rounded-md sm:rounded-lg" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 bg-white/10 rounded-md sm:rounded-lg" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <style>{cardAnimationStyles}</style>
       {/* Header Section - Enhanced with better responsive design */}
+      {isLoading ? renderHeaderSkeleton() : (
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-xl sm:rounded-2xl md:rounded-3xl p-3 sm:p-4 md:p-6 lg:p-8 shadow-xl shadow-slate-900/20">
         {/* Background Elements - Enhanced */}
         <div className="absolute inset-0 overflow-hidden">
@@ -1611,6 +1671,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
           )}
         </div>
       </div>
+      )}
 
       {/* Content */}
       {isLoading ? (
@@ -1657,11 +1718,11 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
                 Showing <span className="text-slate-900 font-semibold">{displayedVersions.length}</span> out of{' '}
                 <span className="text-slate-900 font-semibold">{filteredVersions.length}</span> forms
               </span>
-              {viewMode === 'grid' && (
+              {/* {viewMode === 'grid' && (
                 <span className="text-slate-400 text-[10px] sm:text-xs hidden sm:inline">
                   {filteredVersions.length === 1 ? 'form' : 'forms'}
                 </span>
-              )}
+              )} */}
             </div>
           )}
 

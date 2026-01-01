@@ -119,26 +119,26 @@ const formatRelativeTime = (ts?: { seconds?: number; nanoseconds?: number } | st
 
 const SkeletonRow = () => (
   <tr className="border-b border-slate-100 last:border-b-0">
-    <td className="px-6 py-4">
-      <div className="flex items-center gap-4">
-        <div className="w-11 h-11 rounded-full bg-slate-200 animate-pulse" />
-        <div className="h-5 w-32 bg-slate-200 rounded animate-pulse" />
+    <td className="px-4 lg:px-6 py-3 lg:py-4">
+      <div className="flex items-center gap-3 lg:gap-4">
+        <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-full bg-slate-200 animate-pulse shrink-0" />
+        <div className="h-4 lg:h-5 w-28 lg:w-32 bg-slate-200 rounded animate-pulse" />
       </div>
     </td>
-    <td className="px-6 py-4">
-      <div className="h-4 w-40 bg-slate-200 rounded animate-pulse" />
+    <td className="px-4 lg:px-6 py-3 lg:py-4">
+      <div className="h-3.5 lg:h-4 w-36 lg:w-40 bg-slate-200 rounded animate-pulse" />
     </td>
-    <td className="px-6 py-4">
-      <div className="flex items-center gap-2">
-        <div className="w-4 h-4 bg-slate-200 rounded animate-pulse" />
-        <div className="h-4 w-24 bg-slate-200 rounded animate-pulse" />
+    <td className="px-4 lg:px-6 py-3 lg:py-4">
+      <div className="flex items-center gap-1.5 lg:gap-2">
+        <div className="w-3.5 h-3.5 lg:w-4 lg:h-4 bg-slate-200 rounded animate-pulse shrink-0" />
+        <div className="h-3.5 lg:h-4 w-20 lg:w-24 bg-slate-200 rounded animate-pulse" />
       </div>
     </td>
-    <td className="px-6 py-4">
-      <div className="h-7 w-20 bg-slate-200 rounded-lg animate-pulse" />
+    <td className="px-4 lg:px-6 py-3 lg:py-4">
+      <div className="h-6 lg:h-7 w-18 lg:w-20 bg-slate-200 rounded-lg animate-pulse" />
     </td>
-    <td className="px-6 py-4 text-right">
-      <div className="h-10 w-24 bg-slate-200 rounded-xl animate-pulse ml-auto" />
+    <td className="px-4 lg:px-6 py-3 lg:py-4 text-right">
+      <div className="h-9 lg:h-10 w-20 lg:w-24 bg-slate-200 rounded-lg lg:rounded-xl animate-pulse ml-auto" />
     </td>
   </tr>
 );
@@ -154,16 +154,16 @@ const SkeletonLoader = ({ count = 5 }: { count?: number }) => (
 const MobileSkeletonRow = () => (
   <div className="bg-white border border-slate-200/60 rounded-lg sm:rounded-xl p-3 sm:p-4">
     <div className="flex items-start gap-2.5 sm:gap-3 mb-2.5 sm:mb-3">
-      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-slate-200 animate-pulse" />
+      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-200 animate-pulse shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="h-4 w-32 bg-slate-200 rounded animate-pulse mb-2" />
-        <div className="h-3 w-40 bg-slate-200 rounded animate-pulse mb-2" />
-        <div className="h-6 w-20 bg-slate-200 rounded-lg animate-pulse" />
+        <div className="h-[14px] sm:h-4 w-28 sm:w-32 bg-slate-200 rounded animate-pulse mb-1 sm:mb-1.5" />
+        <div className="h-3 w-36 sm:w-40 bg-slate-200 rounded animate-pulse mb-1.5 sm:mb-2" />
+        <div className="h-[22px] sm:h-6 w-16 sm:w-20 bg-slate-200 rounded-md sm:rounded-lg animate-pulse" />
       </div>
     </div>
     <div className="flex items-center justify-between pt-2.5 sm:pt-3 border-t border-slate-100">
-      <div className="h-3 w-24 bg-slate-200 rounded animate-pulse" />
-      <div className="h-8 w-20 bg-slate-200 rounded-lg animate-pulse" />
+      <div className="h-3 w-20 sm:w-24 bg-slate-200 rounded animate-pulse" />
+      <div className="h-7 sm:h-8 w-16 sm:w-20 bg-slate-200 rounded-md sm:rounded-lg animate-pulse" />
     </div>
   </div>
 );
@@ -200,7 +200,7 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                 <Activity className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 text-white" />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-800 tracking-tight truncate">{headerTitle}</h2>
+                <h2 className="text-[13px] min-[390px]:text-base sm:text-lg md:text-xl font-bold text-slate-800 tracking-tight break-words leading-tight">{headerTitle}</h2>
                 <p className="text-xs sm:text-sm text-slate-500 line-clamp-1 sm:line-clamp-none">{headerSubtitle}</p>
               </div>
             </div>
@@ -247,9 +247,9 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                   }}
                 >
                   <div className="flex items-start gap-2.5 sm:gap-3 mb-2.5 sm:mb-3">
-                    <div className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white font-semibold text-xs sm:text-sm shadow-lg shrink-0`}>
+                    <div className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center text-white font-semibold text-xs sm:text-sm shadow-lg shrink-0`}>
                       {initials}
-                      <div className="absolute inset-0 rounded-lg sm:rounded-xl ring-2 ring-white/50" />
+                      <div className="absolute inset-0 rounded-full ring-2 ring-white/50" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-sm sm:text-base text-slate-800 group-hover:text-blue-600 transition-colors mb-1 truncate">

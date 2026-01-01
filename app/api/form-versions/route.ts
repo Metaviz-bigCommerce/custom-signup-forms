@@ -94,11 +94,69 @@ export async function DELETE(req: NextRequest) {
       return errorResponse('Missing versionId', 400, 'MISSING_REQUIRED_FIELD' as any, requestId);
     }
     
+    // Get the form version to check if it's active
+    const version = await db.getFormVersion(storeHash, versionId);
+    if (!version) {
+      return errorResponse('Form version not found', 404, 'NOT_FOUND' as any, requestId);
+    }
+    
+    // If the form being deleted is active, we need to deactivate it properly
+    const isActive = version.isActive === true;
+    
+    if (isActive) {
+      // Get store settings to check script UUID and active status
+      const storeSettings = await db.getStoreSettings(storeHash);
+      const scriptUuid = storeSettings?.signupScriptUuid || '';
+      const isFormActive = storeSettings?.signupFormActive || false;
+      
+      // Only proceed with script deletion if form is actually active
+      if (isFormActive && scriptUuid && session.accessToken) {
+        try {
+          // Import BigCommerce client to delete script
+          const { bigcommerceClient } = await import('@/lib/auth');
+          const bigcommerce = bigcommerceClient(session.accessToken, storeHash);
+          
+          // Delete the script from BigCommerce
+          try {
+            await bigcommerce.delete(`/content/scripts/${scriptUuid}`);
+            logger.info('Script deleted from BigCommerce', { ...logContext, storeHash, scriptUuid });
+          } catch (scriptError: any) {
+            // Log but don't fail - script might already be deleted
+            const is404 = scriptError?.response?.status === 404 || scriptError?.message?.includes('404');
+            if (!is404) {
+              logger.warn('Failed to delete script from BigCommerce (non-404 error)', { ...logContext, storeHash, scriptUuid, error: scriptError?.message });
+            } else {
+              logger.info('Script already deleted from BigCommerce (404)', { ...logContext, storeHash, scriptUuid });
+            }
+          }
+        } catch (authError) {
+          logger.warn('Failed to delete script (auth error)', { ...logContext, storeHash, scriptUuid, error: authError });
+          // Continue with deletion even if script deletion fails
+        }
+      } else if (isFormActive && scriptUuid && !session.accessToken) {
+        logger.warn('Cannot delete script: missing access token', { ...logContext, storeHash, scriptUuid });
+        // Continue with deletion - script will remain in BigCommerce but form will be deactivated
+      }
+      
+      // Deactivate the form (set signupFormActive=false and clear script UUID)
+      await db.setStoreFormActive(storeHash, false);
+      await db.setStoreScriptUuid(storeHash, '');
+      
+      // Deactivate all versions to ensure no version is marked as active
+      await db.deactivateAllVersions(storeHash);
+      
+      logger.info('Active form deactivated before deletion', { ...logContext, storeHash, versionId });
+    }
+    
+    // Delete the form version from database
     await db.deleteFormVersion(storeHash, versionId);
     
-    logger.info('Form version deleted', { ...logContext, storeHash, versionId });
+    // Invalidate cache so GET endpoint returns fresh data
+    revalidateTag(`store-settings-${storeHash}`);
     
-    return successResponse({ deleted: true }, 200, requestId);
+    logger.info('Form version deleted', { ...logContext, storeHash, versionId, wasActive: isActive });
+    
+    return successResponse({ deleted: true, wasActive: isActive }, 200, requestId);
   } catch (error: unknown) {
     logger.error('Failed to delete form version', error, logContext);
     return apiErrors.internalError('Failed to delete form version', error, requestId);

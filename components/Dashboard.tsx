@@ -325,37 +325,37 @@ const Dashboard: React.FC = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 rounded-2xl mb-6 sm:mb-8 p-4 sm:p-6 lg:p-8">
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 rounded-lg sm:rounded-xl md:rounded-2xl mb-5 sm:mb-6 md:mb-8 p-3.5 sm:p-4 md:p-6 lg:p-8">
         {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
+          <div className="absolute -top-32 -right-32 sm:-top-40 sm:-right-40 w-64 h-64 sm:w-80 sm:h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute -bottom-32 -left-32 sm:-bottom-40 sm:-left-40 w-64 h-64 sm:w-80 sm:h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 sm:w-96 sm:h-96 bg-cyan-500/10 rounded-full blur-3xl" />
         </div>
         
         {/* Grid Pattern */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0wIDBoNjB2NjBIMHoiLz48cGF0aCBkPSJNMzAgMzBtLTEgMGExIDEgMCAxIDAgMiAwYTEgMSAwIDEgMCAtMiAwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiLz48L2c+PC9zdmc+')] opacity-40" />
         
         <div className="relative z-10">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
-                  <Sparkles className="w-4 h-4 text-yellow-400" />
-                  <span className="text-sm text-white/90 font-medium">Signup Flow Dashboard</span>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
+            <div className="flex-1 min-w-0 overflow-visible">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
+                  <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 shrink-0" />
+                  <span className="text-xs sm:text-sm text-white/90 font-medium whitespace-nowrap">Signup Flow Dashboard</span>
                 </div>
               </div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold !text-white mb-2 sm:mb-3">
-                Welcome back! 👋
+              <h1 className="text-[12px] min-[360px]:text-[17px] min-[390px]:text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold !text-white mb-2 sm:mb-3 leading-tight overflow-visible">
+                <span className="whitespace-nowrap inline-flex items-center overflow-visible">Welcome back!<span className="inline-block ml-1 overflow-visible">👋</span></span>
               </h1>
-              <p className="text-blue-200 text-sm sm:text-base lg:text-lg max-w-xl">
+              <p className="text-blue-200 text-xs sm:text-sm md:text-base lg:text-lg max-w-xl leading-relaxed">
                 Here&apos;s what&apos;s happening with your signup forms today. You have{' '}
                 <span className="text-white font-semibold">{stats.pending} pending</span> requests awaiting review.
               </p>
             </div>
             <Link 
               href={`/builder?context=${context}&tab=2`}
-              className="group relative overflow-hidden bg-white text-slate-900 px-6 py-4 rounded-xl font-semibold transition-all duration-500 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/30 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4"
+              className="group relative overflow-hidden bg-white text-slate-900 px-4 sm:px-5 lg:px-6 py-3 sm:py-3.5 lg:py-4 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base transition-all duration-500 ease-out hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/30 flex items-center justify-center gap-2 sm:gap-3 animate-in fade-in slide-in-from-bottom-4 shrink-0 w-full lg:w-auto"
             >
               {/* Animated gradient background */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-100 via-purple-100 to-pink-100 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -364,24 +364,24 @@ const Dashboard: React.FC = () => {
               <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
               
               {/* Glow effect */}
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/0 via-blue-400/20 to-purple-400/0 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 -z-10" />
+              <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-gradient-to-r from-blue-400/0 via-blue-400/20 to-purple-400/0 opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500 -z-10" />
               
               {/* Plus icon with rotation animation */}
               <div className="relative z-10">
-                <Plus className="w-5 h-5 transition-all duration-500 group-hover:rotate-90 group-hover:scale-110" />
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5 transition-all duration-500 group-hover:rotate-90 group-hover:scale-110" />
               </div>
               
-              <span className="relative z-10 transition-all duration-300 group-hover:tracking-wide">Create New Form</span>
+              <span className="relative z-10 transition-all duration-300 group-hover:tracking-wide whitespace-nowrap">Create New Form</span>
               
               {/* Arrow with slide animation */}
-              <ArrowRight className="w-4 h-4 relative z-10 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500 ease-out" />
+              <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 relative z-10 opacity-0 lg:opacity-100 -translate-x-4 lg:translate-x-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-500 ease-out" />
             </Link>
           </div>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 lg:gap-6 mb-6 sm:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-5 sm:mb-6 md:mb-8">
         {statCards.map((card) => {
           const Icon = card.icon;
           // Map card id to status filter
@@ -392,79 +392,80 @@ const Dashboard: React.FC = () => {
               onClick={() => handleStatCardClick(statusFilter)}
               onMouseEnter={() => setHoveredCard(card.id)}
               onMouseLeave={() => setHoveredCard(null)}
-              className={`relative overflow-hidden bg-white rounded-xl sm:rounded-2xl border border-gray-100 p-4 sm:p-5 lg:p-6 transition-all duration-500 cursor-pointer
+              className={`relative overflow-hidden bg-white rounded-lg sm:rounded-xl md:rounded-2xl border border-gray-100 p-3.5 sm:p-4 md:p-5 lg:p-6 transition-all duration-500 cursor-pointer
                 ${hoveredCard === card.id ? 'scale-[1.02] shadow-xl shadow-gray-200/50' : 'shadow-sm hover:shadow-md'}`}
             >
               {/* Background Gradient on Hover */}
               <div className={`absolute inset-0 bg-gradient-to-br ${card.bgGradient} opacity-0 transition-opacity duration-500 ${hoveredCard === card.id ? 'opacity-100' : ''}`} />
               
               <div className="relative z-10">
-                <div className="flex items-start justify-between mb-3 sm:mb-4">
-                  <div className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-14 lg:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br ${card.gradient} flex items-center justify-center shadow-lg transition-transform duration-500 ${hoveredCard === card.id ? 'scale-110 rotate-3' : ''}`}>
-                    <Icon className="w-6 h-6 sm:w-7 sm:h-7 lg:w-7 lg:h-7 text-white" />
+                <div className="flex items-start justify-between mb-2.5 sm:mb-3 md:mb-4">
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-lg sm:rounded-xl md:rounded-2xl bg-gradient-to-br ${card.gradient} flex items-center justify-center shadow-lg transition-transform duration-500 ${hoveredCard === card.id ? 'scale-110 rotate-3' : ''}`}>
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-white" />
                   </div>
                   {card.trend && (
-                    <div className={`flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold ${card.trendUp ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                      <TrendingUp className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${!card.trendUp && 'rotate-180'}`} />
-                      {card.trend}
+                    <div className={`flex items-center gap-0.5 sm:gap-1 px-1.5 sm:px-2 md:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] md:text-xs font-semibold shrink-0 ${card.trendUp ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                      <TrendingUp className={`w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 ${!card.trendUp && 'rotate-180'}`} />
+                      <span className="whitespace-nowrap">{card.trend}</span>
                     </div>
                   )}
                 </div>
                 
                 <div className="space-y-0.5 sm:space-y-1">
-                  <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 tabular-nums">
+                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 tabular-nums leading-tight">
                     {card.value.toLocaleString()}
                   </div>
-                  <div className="text-xs sm:text-sm font-medium text-gray-600">{card.label}</div>
+                  <div className="text-[11px] sm:text-xs md:text-sm font-medium text-gray-600 leading-snug">{card.label}</div>
                   {card.subtitle && (
-                    <div className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1">{card.subtitle}</div>
+                    <div className="text-[9px] sm:text-[10px] md:text-xs text-gray-500 mt-0.5 sm:mt-1 leading-snug">{card.subtitle}</div>
                   )}
                 </div>
               </div>
               
               {/* Decorative Element */}
-              <div className={`absolute -bottom-6 -right-6 w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br ${card.gradient} opacity-10 transition-all duration-500 ${hoveredCard === card.id ? 'scale-150 opacity-20' : ''}`} />
+              <div className={`absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-br ${card.gradient} opacity-10 transition-all duration-500 ${hoveredCard === card.id ? 'scale-150 opacity-20' : ''}`} />
             </div>
           );
         })}
       </div>
 
       {/* Quick Actions */}
-      <div className="mb-6 sm:mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Quick Actions</h2>
-            <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">Shortcuts to frequently used features</p>
+      <div className="mb-5 sm:mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 md:gap-4 mb-3 sm:mb-4 md:mb-6">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Quick Actions</h2>
+            <p className="text-[11px] sm:text-xs md:text-sm text-gray-500 mt-0.5 sm:mt-1">Shortcuts to frequently used features</p>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-500">
-            <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-500 shrink-0" />
-            <span className="hidden sm:inline">Pro tip: Use keyboard shortcuts for faster navigation</span>
-            <span className="sm:hidden">Pro tip: Use shortcuts</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs md:text-sm text-gray-500 shrink-0">
+            <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-yellow-500 shrink-0" />
+            <span className="hidden md:inline">Pro tip: Use keyboard shortcuts for faster navigation</span>
+            <span className="hidden sm:inline md:hidden">Pro tip: Use shortcuts</span>
+            <span className="sm:hidden">Pro tip</span>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
               <Link
                 key={action.href}
                 href={action.href}
-                className="group relative overflow-hidden bg-white rounded-xl sm:rounded-2xl border border-gray-100 p-4 sm:p-5 lg:p-6 transition-all duration-300 hover:shadow-xl hover:shadow-gray-200/50 hover:-translate-y-1 active:scale-[0.98]"
+                className="group relative overflow-hidden bg-white rounded-lg sm:rounded-xl md:rounded-2xl border border-gray-100 p-3.5 sm:p-4 md:p-5 lg:p-6 transition-all duration-300 hover:shadow-xl hover:shadow-gray-200/50 hover:-translate-y-1 active:scale-[0.98]"
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
                 
                 <div className="relative z-10">
-                  <div className={`w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br ${action.gradient} ${action.hoverGradient} flex items-center justify-center mb-3 sm:mb-4 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-lg`}>
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-6 lg:h-6 text-white" />
+                  <div className={`w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 lg:w-12 lg:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br ${action.gradient} ${action.hoverGradient} flex items-center justify-center mb-2.5 sm:mb-3 md:mb-4 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 shadow-lg`}>
+                    <Icon className="w-4.5 h-4.5 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-6 lg:h-6 text-white" />
                   </div>
                   
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm sm:text-base text-gray-900 mb-0.5 sm:mb-1 group-hover:text-gray-800 truncate">{action.title}</h3>
-                      <p className="text-xs sm:text-sm text-gray-500 line-clamp-2">{action.description}</p>
+                      <h3 className="font-semibold text-xs sm:text-sm md:text-base text-gray-900 mb-0.5 sm:mb-1 group-hover:text-gray-800 truncate">{action.title}</h3>
+                      <p className="text-[11px] sm:text-xs md:text-sm text-gray-500 line-clamp-2 leading-snug">{action.description}</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-1 transition-all shrink-0 ml-2" />
+                    <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-gray-300 group-hover:text-gray-500 group-hover:translate-x-1 transition-all shrink-0" />
                   </div>
                 </div>
               </Link>
@@ -486,7 +487,7 @@ const Dashboard: React.FC = () => {
         headerAction={
           <Link 
             href={`/requests?context=${context}`}
-            className="group relative overflow-hidden flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium text-[13px] tracking-tight transition-all duration-500 ease-out hover:scale-105 hover:shadow-lg hover:shadow-blue-500/30"
+            className="group relative overflow-hidden flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg sm:rounded-xl font-medium text-xs sm:text-[13px] tracking-tight transition-all duration-500 ease-out hover:scale-105 hover:shadow-lg hover:shadow-blue-500/30 w-full sm:w-auto"
           >
             {/* Animated background gradient */}
             <div className="absolute inset-0 bg-gradient-to-r from-blue-100 via-cyan-100 to-blue-100 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -494,8 +495,8 @@ const Dashboard: React.FC = () => {
             {/* Shimmer effect */}
             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
             
-            <span className="relative z-10 transition-all duration-300 group-hover:font-semibold">View All</span>
-            <ArrowRight className="w-4 h-4 relative z-10 transition-all duration-500 ease-out group-hover:translate-x-2 group-hover:scale-110" />
+            <span className="relative z-10 transition-all duration-300 group-hover:font-semibold whitespace-nowrap">View All</span>
+            <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 relative z-10 transition-all duration-500 ease-out group-hover:translate-x-2 group-hover:scale-110" />
           </Link>
         }
       />

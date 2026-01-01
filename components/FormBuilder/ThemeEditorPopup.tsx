@@ -100,42 +100,43 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
   const hasValidImageUrl = localTheme.layout === 'split' && localTheme.splitImageUrl && localTheme.splitImageUrl.trim().length > 0;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={handleClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-fadeIn" onClick={(e) => e.stopPropagation()}>
-        {/* Header - Enhanced with light gradient */}
-        <div className="sticky top-0 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-slate-200 px-6 py-5 flex items-center justify-between z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
-              <Palette className="w-5 h-5 text-white" />
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-3 md:p-4" onClick={handleClose}>
+      <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-2xl max-w-5xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+        {/* Header - Enhanced with light gradient - Fully responsive */}
+        <div className="sticky top-0 bg-gradient-to-r from-purple-50 to-pink-50 border-b border-slate-200 px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 flex items-center justify-between z-10">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25 flex-shrink-0">
+              <Palette className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5 text-white" />
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800">Edit Theme Settings</h3>
-              <p className="text-xs text-slate-600 font-medium">Customize your form appearance</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-800 truncate">Edit Theme Settings</h3>
+              <p className="text-[10px] sm:text-xs text-slate-600 font-medium truncate">Customize your form appearance</p>
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white/80 rounded-lg transition-all duration-200 hover:scale-110 cursor-pointer"
+            className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-600 hover:bg-white/80 rounded-lg transition-all duration-200 hover:scale-110 cursor-pointer flex-shrink-0 touch-manipulation"
+            aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-            {/* Left Panel - Settings */}
-            <div className="p-6 space-y-4 border-r border-slate-200">
+            {/* Left Panel - Settings - Fully responsive */}
+            <div className="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 border-r-0 lg:border-r border-slate-200">
               {/* Branding Presets */}
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <button
                   onClick={() => toggleSection('branding')}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200 cursor-pointer"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200 cursor-pointer touch-manipulation"
                 >
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm font-semibold text-slate-700">Branding Presets</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold text-slate-700 truncate">Branding Presets</span>
                   </div>
-                  {openSection === 'branding' ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                  {openSection === 'branding' ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" />}
                 </button>
                 {openSection === 'branding' && (
                   <div key="branding-section" className="p-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
@@ -169,13 +170,13 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <button
                   onClick={() => toggleSection('content')}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200 cursor-pointer"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200 cursor-pointer touch-manipulation"
                 >
-                  <div className="flex items-center gap-2">
-                    <Type className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm font-semibold text-slate-700">Content</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Type className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold text-slate-700 truncate">Content</span>
                   </div>
-                  {openSection === 'content' ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                  {openSection === 'content' ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" />}
                 </button>
                 {openSection === 'content' && (
                   <div key="content-section" className="p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
@@ -215,13 +216,13 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <button
                   onClick={() => toggleSection('typography')}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200 cursor-pointer"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200 cursor-pointer touch-manipulation"
                 >
-                  <div className="flex items-center gap-2">
-                    <Heading className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm font-semibold text-slate-700">Typography</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Heading className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold text-slate-700 truncate">Typography</span>
                   </div>
-                  {openSection === 'typography' ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                  {openSection === 'typography' ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" />}
                 </button>
                 {openSection === 'typography' && (
                   <div key="typography-section" className="p-4 space-y-5 animate-in slide-in-from-top-2 duration-200">
@@ -305,13 +306,13 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <button
                   onClick={() => toggleSection('layout')}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200 cursor-pointer"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200 cursor-pointer touch-manipulation"
                 >
-                  <div className="flex items-center gap-2">
-                    <Layout className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm font-semibold text-slate-700">Layout</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Layout className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold text-slate-700 truncate">Layout</span>
                   </div>
-                  {openSection === 'layout' ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                  {openSection === 'layout' ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" />}
                 </button>
                 {openSection === 'layout' && (
                   <div key="layout-section" className="p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
@@ -370,13 +371,13 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
               <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <button
                   onClick={() => toggleSection('button')}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200 cursor-pointer"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-slate-50 to-white hover:from-purple-50 hover:to-pink-50 flex items-center justify-between transition-all duration-200 cursor-pointer touch-manipulation"
                 >
-                  <div className="flex items-center gap-2">
-                    <MousePointerClick className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm font-semibold text-slate-700">Submit Button</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <MousePointerClick className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold text-slate-700 truncate">Submit Button</span>
                   </div>
-                  {openSection === 'button' ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                  {openSection === 'button' ? <ChevronUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" />}
                 </button>
                 {openSection === 'button' && (
                   <div key="button-section" className="p-4 space-y-5 animate-in slide-in-from-top-2 duration-200">
@@ -496,25 +497,25 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-gradient-to-r from-white to-slate-50 border-t border-slate-200 px-6 py-4 flex items-center justify-between">
+        {/* Footer - Fully responsive */}
+        <div className="sticky bottom-0 bg-gradient-to-r from-white to-slate-50 border-t border-slate-200 px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
           {hasChanges && (
-            <div className="flex items-center gap-2 text-sm text-amber-600 font-medium">
-              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-              <span>You have unsaved changes</span>
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-amber-600 font-medium">
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse flex-shrink-0"></div>
+              <span className="truncate">You have unsaved changes</span>
             </div>
           )}
-          <div className="flex gap-3 ml-auto">
+          <div className="flex gap-2 sm:gap-3 ml-auto w-full sm:w-auto">
             <button
               onClick={handleClose}
-              className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-700 bg-white border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 cursor-pointer"
+              className="flex-1 sm:flex-none px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium text-slate-700 bg-white border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 cursor-pointer touch-manipulation"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={!hasChanges}
-              className={`px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 ${
+              className={`flex-1 sm:flex-none px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold text-white transition-all duration-200 touch-manipulation ${
                 hasChanges 
                   ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transform hover:scale-105 cursor-pointer' 
                   : 'bg-slate-300 cursor-not-allowed'

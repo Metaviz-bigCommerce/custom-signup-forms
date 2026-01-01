@@ -106,17 +106,17 @@ const TestEmailModal: React.FC<TestEmailModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100">
-          <div className="text-lg font-bold text-gray-900">Send Test Email</div>
-          <div className="text-sm text-gray-600 mt-1">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <div className="text-base sm:text-lg font-bold text-gray-900">Send Test Email</div>
+          <div className="text-xs sm:text-sm text-gray-600 mt-1">
             Enter an email address to send a test email with the current template.
           </div>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5">
+        <div className="px-4 sm:px-6 py-5 flex-shrink-0 overflow-y-auto">
           <label className="block text-sm font-medium text-gray-800 mb-2">
             Email Address
           </label>
@@ -141,10 +141,10 @@ const TestEmailModal: React.FC<TestEmailModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex gap-3">
+        <div className="px-4 sm:px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row gap-3 flex-shrink-0">
           <button
             onClick={handleClose}
-            className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+            className="px-4 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer text-sm font-medium w-full sm:w-auto"
             disabled={sending}
           >
             Cancel
@@ -152,17 +152,17 @@ const TestEmailModal: React.FC<TestEmailModalProps> = ({
           <button
             onClick={handleSend}
             disabled={sending || !email.trim() || !!emailError}
-            className="px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+            className="px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
           >
             {sending ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Sending...
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                <span>Sending...</span>
               </>
             ) : (
               <>
-                <Send className="w-4 h-4" />
-                Send Test Email
+                <Send className="w-4 h-4 flex-shrink-0" />
+                <span>Send Test Email</span>
               </>
             )}
           </button>

@@ -148,7 +148,7 @@ const Section = React.memo(({
   <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
     <button
       onClick={() => onToggle(id)}
-      className="w-full flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+      className="w-full flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer touch-manipulation"
     >
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         <SectionIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 flex-shrink-0" />
@@ -677,51 +677,51 @@ const EmailTemplates: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 overflow-x-hidden">
       {/* Header Section */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-2xl p-4 sm:p-6 lg:p-8">
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 lg:p-8">
         {/* Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-20 -right-20 w-60 h-60 bg-purple-500/15 rounded-full blur-3xl" />
-          <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-blue-500/15 rounded-full blur-3xl" />
+          <div className="absolute -top-20 -right-20 w-40 h-40 sm:w-60 sm:h-60 bg-purple-500/15 rounded-full blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-40 h-40 sm:w-60 sm:h-60 bg-blue-500/15 rounded-full blur-3xl" />
         </div>
         
         <div className="relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 sm:gap-3 mb-2">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25 flex-shrink-0">
-                  <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-[26px] sm:text-2xl font-bold !text-white">Email Templates</h1>
-                  <p className="text-slate-400 text-xs sm:text-sm">Design beautiful emails for your customers</p>
-                </div>
+          {/* Title, Icon, and Action Buttons Row - Desktop layout */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+            {/* Title and Icon */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg shadow-purple-500/25 flex-shrink-0">
+                <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-xl md:text-2xl lg:text-[26px] font-bold !text-white break-words leading-tight">Email Templates</h1>
+                <p className="text-slate-400 text-[11px] sm:text-xs md:text-sm break-words mt-0.5 hidden sm:block">Design beautiful emails for your customers</p>
               </div>
             </div>
             
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 md:flex-shrink-0">
               <button
                 onClick={() => setShowTestEmailModal(true)}
-                className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/10 text-white rounded-xl text-xs sm:text-sm font-medium hover:bg-white/20 transition-all cursor-pointer border border-white/10"
+                className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/10 text-white rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium hover:bg-white/20 transition-all cursor-pointer border border-white/10 w-full sm:w-auto"
               >
-                <TestTube className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <TestTube className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                 <span className="whitespace-nowrap">Send Test</span>
               </button>
               <button
                 onClick={save}
                 disabled={saving}
-                className="flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-white text-slate-900 rounded-xl text-xs sm:text-sm font-semibold hover:bg-blue-50 transition-all cursor-pointer shadow-lg shadow-white/25 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 bg-white text-slate-900 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold hover:bg-blue-50 transition-all cursor-pointer shadow-lg shadow-white/25 disabled:opacity-50 w-full sm:w-auto"
               >
                 {saving ? (
                   <>
-                    <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                    <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin flex-shrink-0" />
                     <span className="whitespace-nowrap">Saving...</span>
                   </>
                 ) : (
                   <>
-                    <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                     <span className="whitespace-nowrap">Save All Templates</span>
                   </>
                 )}
@@ -730,7 +730,7 @@ const EmailTemplates: React.FC = () => {
           </div>
 
           {/* Template Selector Pills */}
-          <div className="mt-4 sm:mt-6 flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 sm:gap-2">
             {(Object.keys(templateMeta) as TemplateKey[]).map((key) => {
               const meta = templateMeta[key];
               const Icon = meta.icon;
@@ -739,14 +739,14 @@ const EmailTemplates: React.FC = () => {
                 <button
                   key={key}
                   onClick={() => setSelectedTemplate(key)}
-                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 cursor-pointer ${
+                  className={`flex items-center gap-1 sm:gap-1.5 md:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs md:text-sm font-medium transition-all duration-300 cursor-pointer flex-shrink-0 ${
                     isSelected
                       ? 'bg-white text-slate-900 shadow-lg shadow-white/25'
                       : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white border border-white/10'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="whitespace-nowrap">{meta.label}</span>
+                  <Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+                  <span className="whitespace-nowrap truncate max-w-[120px] sm:max-w-none">{meta.label}</span>
                 </button>
               );
             })}
@@ -757,7 +757,7 @@ const EmailTemplates: React.FC = () => {
       {/* Main Content */}
       <div className="grid grid-cols-12 gap-4 sm:gap-6">
         {/* Editor Panel */}
-        <div className="col-span-12 lg:col-span-4 space-y-3 sm:space-y-4">
+        <div className="col-span-12 md:col-span-5 lg:col-span-4 space-y-3 sm:space-y-4">
           {/* Current Template Info - Uses user's primary color with adaptive text */}
           {(() => {
             const primaryColor = emailTemplates[selectedTemplate].design?.primaryColor || '#2563eb';
@@ -778,8 +778,8 @@ const EmailTemplates: React.FC = () => {
                     <CurrentIcon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: textColor }} />
               </div>
               <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-sm sm:text-base" style={{ color: textColor }}>{currentMeta.label}</h3>
-                    <p className="text-xs sm:text-sm" style={{ color: textColorMuted }}>{currentMeta.description}</p>
+                    <h3 className="font-semibold text-sm sm:text-base break-words" style={{ color: textColor }}>{currentMeta.label}</h3>
+                    <p className="text-xs sm:text-sm break-words" style={{ color: textColorMuted }}>{currentMeta.description}</p>
               </div>
             </div>
           </div>
@@ -795,7 +795,7 @@ const EmailTemplates: React.FC = () => {
                 type="text"
                 value={emailTemplates[selectedTemplate].subject}
                 onChange={(e) => handleSubjectChange(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder="Enter email subject"
               />
             </div>
@@ -807,7 +807,7 @@ const EmailTemplates: React.FC = () => {
                 type="text"
                 value={emailTemplates[selectedTemplate].design?.title ?? ''}
                 onChange={(e) => handleTitleChange(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder={defaultTitles[selectedTemplate]}
               />
             </div>
@@ -818,7 +818,7 @@ const EmailTemplates: React.FC = () => {
                 type="text"
                 value={emailTemplates[selectedTemplate].design?.greeting || 'Hello {{name}}'}
                 onChange={(e) => handleGreetingChange(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder="Hello {{name}}"
               />
             </div>
@@ -829,20 +829,20 @@ const EmailTemplates: React.FC = () => {
                 value={emailTemplates[selectedTemplate].body}
                 onChange={(e) => handleBodyChange(e.target.value)}
                 rows={8}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all resize-none"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all resize-none"
                 placeholder="Enter email content"
               />
             </div>
 
             {/* Variables */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-2 sm:p-3">
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-2.5 sm:p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 flex-shrink-0" />
                 <span className="text-xs font-semibold text-blue-800">Available Variables</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {['{{name}}', '{{email}}', '{{date}}', '{{store_name}}', '{{platform_name}}', '{{required_information}}'].map(v => (
-                  <code key={v} className="px-2 py-1 bg-white border border-blue-200 rounded text-[10px] sm:text-[11px] text-blue-700 font-mono">
+                  <code key={v} className="px-2 py-1 bg-white border border-blue-200 rounded text-[10px] sm:text-[11px] text-blue-700 font-mono whitespace-nowrap">
                     {v}
                   </code>
                 ))}
@@ -860,7 +860,7 @@ const EmailTemplates: React.FC = () => {
                     type="color"
                     value={emailTemplates[selectedTemplate].design?.primaryColor || '#2563eb'}
                     onChange={(e) => handlePrimaryColorChange(e.target.value)}
-                    className="w-10 h-9 sm:w-12 sm:h-10 p-1 border border-slate-200 rounded-lg cursor-pointer flex-shrink-0"
+                    className="w-11 h-9 sm:w-12 sm:h-10 p-1 border border-slate-200 rounded-lg cursor-pointer flex-shrink-0"
                   />
                   <input
                     type="text"
@@ -877,7 +877,7 @@ const EmailTemplates: React.FC = () => {
                     type="color"
                     value={emailTemplates[selectedTemplate].design?.background || '#f7fafc'}
                     onChange={(e) => handleBackgroundChange(e.target.value)}
-                    className="w-10 h-9 sm:w-12 sm:h-10 p-1 border border-slate-200 rounded-lg cursor-pointer flex-shrink-0"
+                    className="w-11 h-9 sm:w-12 sm:h-10 p-1 border border-slate-200 rounded-lg cursor-pointer flex-shrink-0"
                   />
                   <input
                     type="text"
@@ -913,10 +913,10 @@ const EmailTemplates: React.FC = () => {
                         }
                       }
                     })}
-                    className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs sm:text-sm transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs sm:text-sm transition-colors cursor-pointer flex-shrink-0"
                   >
                     <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex-shrink-0" style={{ backgroundColor: t.primaryColor }} />
-                    {t.name}
+                    <span className="whitespace-nowrap">{t.name}</span>
                   </button>
                 ))}
               </div>
@@ -928,7 +928,7 @@ const EmailTemplates: React.FC = () => {
                 type="url"
                 value={emailTemplates[selectedTemplate].design?.logoUrl || ''}
                 onChange={(e) => handleLogoUrlChange(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder="https://your-domain.com/logo.png"
               />
             </div>
@@ -939,7 +939,7 @@ const EmailTemplates: React.FC = () => {
                 type="url"
                 value={emailTemplates[selectedTemplate].design?.bannerUrl || ''}
                 onChange={(e) => handleBannerUrlChange(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder="https://your-domain.com/banner.jpg"
               />
             </div>
@@ -950,30 +950,30 @@ const EmailTemplates: React.FC = () => {
             <div className="space-y-3">
               {(emailTemplates[selectedTemplate].design?.ctas || []).map((cta, index) => (
                 <div key={cta.id} className="flex items-start gap-2 p-2 sm:p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="pt-2 flex-shrink-0">
+                  <div className="pt-2 flex-shrink-0 hidden sm:block">
                     <GripVertical className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400" />
                   </div>
                   <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 min-w-0">
-              <div>
+                    <div>
                       <label className="block text-xs font-medium text-slate-500 mb-1">Button Text</label>
-                <input
-                  type="text"
+                      <input
+                        type="text"
                         value={cta.text}
                         onChange={(e) => handleCtaTextChange(index, e.target.value)}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         placeholder="Button text"
-                />
-              </div>
-              <div>
+                      />
+                    </div>
+                    <div>
                       <label className="block text-xs font-medium text-slate-500 mb-1">Button URL</label>
-                <input
-                  type="text"
+                      <input
+                        type="text"
                         value={cta.url}
                         onChange={(e) => handleCtaUrlChange(index, e.target.value)}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         placeholder="https://... or {{action_url}}"
-                />
-              </div>
+                      />
+                    </div>
                   </div>
                   <button
                     onClick={() => {
@@ -983,7 +983,7 @@ const EmailTemplates: React.FC = () => {
                         [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), ctas: newCtas } }
                       });
                     }}
-                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer flex-shrink-0"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -991,7 +991,7 @@ const EmailTemplates: React.FC = () => {
               ))}
               
               {(emailTemplates[selectedTemplate].design?.ctas || []).length === 0 && (
-                <div className="text-center py-6 text-slate-400 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <div className="text-center py-6 text-slate-400 text-xs sm:text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200 px-3">
                   No buttons added. Buttons are optional.
                 </div>
               )}
@@ -1005,10 +1005,10 @@ const EmailTemplates: React.FC = () => {
                     [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), ctas: [...currentCtas, newCta] } }
                   });
                 }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 text-slate-600 rounded-xl hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 text-slate-600 rounded-xl hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer text-sm"
               >
-                <Plus className="w-4 h-4" />
-                Add Button
+                <Plus className="w-4 h-4 flex-shrink-0" />
+                <span>Add Button</span>
               </button>
             </div>
           </Section>
@@ -1021,7 +1021,7 @@ const EmailTemplates: React.FC = () => {
                 type="text"
                 value={emailTemplates[selectedTemplate].design?.footerNote || 'This email was sent to {{email}}'}
                 onChange={(e) => handleFooterNoteChange(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
               />
             </div>
             
@@ -1029,32 +1029,32 @@ const EmailTemplates: React.FC = () => {
               <label className="block text-xs sm:text-sm font-medium text-slate-600 mb-2 sm:mb-3">Footer Links</label>
               <div className="space-y-2">
                 {(emailTemplates[selectedTemplate].design?.footerLinks || []).map((link, index) => (
-                  <div key={link.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                  <div key={link.id} className="flex items-start gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2 min-w-0">
-                <input
-                  type="text"
+                      <input
+                        type="text"
                         value={link.text}
                         onChange={(e) => handleFooterLinkTextChange(index, e.target.value)}
                         className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         placeholder="Link text"
-                />
-                <input
-                  type="text"
+                      />
+                      <input
+                        type="text"
                         value={link.url}
                         onChange={(e) => handleFooterLinkUrlChange(index, e.target.value)}
                         className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  placeholder="https://..."
-                />
-              </div>
+                        placeholder="https://..."
+                      />
+                    </div>
                     <button
                       onClick={() => {
                         const newLinks = (emailTemplates[selectedTemplate].design?.footerLinks || []).filter((_, i) => i !== index);
                         setEmailTemplates({
-                    ...emailTemplates,
+                          ...emailTemplates,
                           [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), footerLinks: newLinks } }
                         });
                       }}
-                      className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer flex-shrink-0"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1062,7 +1062,7 @@ const EmailTemplates: React.FC = () => {
                 ))}
                 
                 {(emailTemplates[selectedTemplate].design?.footerLinks || []).length === 0 && (
-                  <div className="text-center py-4 text-slate-400 text-sm bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                  <div className="text-center py-4 text-slate-400 text-xs sm:text-sm bg-slate-50 rounded-lg border border-dashed border-slate-200 px-3">
                     No footer links. Links are optional.
                   </div>
                 )}
@@ -1072,14 +1072,14 @@ const EmailTemplates: React.FC = () => {
                     const newLink: FooterLink = { id: `link-${Date.now()}`, text: 'New Link', url: '#' };
                     const currentLinks = emailTemplates[selectedTemplate].design?.footerLinks || [];
                     setEmailTemplates({
-                    ...emailTemplates,
+                      ...emailTemplates,
                       [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), footerLinks: [...currentLinks, newLink] } }
                     });
                   }}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed border-slate-300 text-slate-600 rounded-lg hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer text-sm"
                 >
-                  <Plus className="w-4 h-4" />
-                  Add Footer Link
+                  <Plus className="w-4 h-4 flex-shrink-0" />
+                  <span>Add Footer Link</span>
                 </button>
               </div>
             </div>
@@ -1098,7 +1098,7 @@ const EmailTemplates: React.FC = () => {
                       ) : (
                         <span className="text-xs font-bold text-slate-400">?</span>
                       )}
-                  </div>
+                    </div>
                     
                     <div className="flex-1 space-y-2 min-w-0">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1109,8 +1109,8 @@ const EmailTemplates: React.FC = () => {
                           className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                           placeholder="Platform name"
                         />
-                  <input
-                    type="url"
+                        <input
+                          type="url"
                           value={social.url}
                           onChange={(e) => handleSocialUrlChange(index, e.target.value)}
                           className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -1134,7 +1134,7 @@ const EmailTemplates: React.FC = () => {
                           [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), socialLinks: newSocials } }
                         });
                       }}
-                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer flex-shrink-0"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1143,7 +1143,7 @@ const EmailTemplates: React.FC = () => {
               ))}
               
               {(emailTemplates[selectedTemplate].design?.socialLinks || []).length === 0 && (
-                <div className="text-center py-6 text-slate-400 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <div className="text-center py-6 text-slate-400 text-xs sm:text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200 px-3">
                   No social links added. Add your social media profiles.
                 </div>
               )}
@@ -1173,15 +1173,15 @@ const EmailTemplates: React.FC = () => {
                             [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), socialLinks: [...currentSocials, newSocial] } }
                           });
                         }}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all cursor-pointer ${
+                        className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2 rounded-lg border text-xs sm:text-sm transition-all cursor-pointer flex-shrink-0 ${
                           alreadyAdded 
                             ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-50' 
                             : 'bg-white border-slate-200 text-slate-700 hover:border-blue-400 hover:bg-blue-50'
                         }`}
                       >
-                        <img src={preset.iconUrl} alt={preset.name} className="w-4 h-4" />
-                        {preset.name}
-                        {alreadyAdded && <Check className="w-3 h-3 text-emerald-500" />}
+                        <img src={preset.iconUrl} alt={preset.name} className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                        <span className="whitespace-nowrap">{preset.name}</span>
+                        {alreadyAdded && <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" />}
                       </button>
                     );
                   })}
@@ -1198,20 +1198,20 @@ const EmailTemplates: React.FC = () => {
                       [selectedTemplate]: { ...emailTemplates[selectedTemplate], design: { ...(emailTemplates[selectedTemplate].design||{}), socialLinks: [...currentSocials, newSocial] } }
                     });
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 text-slate-600 rounded-xl hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 text-slate-600 rounded-xl hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all cursor-pointer text-sm"
                 >
-                  <Plus className="w-4 h-4" />
-                  Add Custom Social Link
+                  <Plus className="w-4 h-4 flex-shrink-0" />
+                  <span>Add Custom Social Link</span>
                 </button>
               </div>
               
               {/* Helper tip */}
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-2.5 sm:p-3">
                 <div className="flex items-start gap-2">
-                  <Sparkles className="w-4 h-4 text-blue-600 mt-0.5" />
-                  <div className="text-xs text-blue-700">
-                    <span className="font-semibold">Tip:</span> For custom platforms, use square icons (24x24px recommended). You can use URLs from your CDN or
-                    <span className="font-mono mx-1">simpleicons.org</span> for brand icons.
+                  <Sparkles className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-blue-700 leading-relaxed">
+                    <span className="font-semibold">Tip:</span> For custom platforms, use square icons (24x24px recommended). You can use URLs from your CDN or{' '}
+                    <span className="font-mono">simpleicons.org</span> for brand icons.
                   </div>
                 </div>
               </div>
@@ -1220,36 +1220,31 @@ const EmailTemplates: React.FC = () => {
         </div>
 
         {/* Preview Panel */}
-        <div className="col-span-12 lg:col-span-8">
+        <div className="col-span-12 md:col-span-7 lg:col-span-8">
           <div className="lg:sticky lg:top-6">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden">
               {/* Preview Header */}
-              <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
-                <div className="flex items-center justify-between">
+              <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center flex-shrink-0">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center flex-shrink-0">
                       <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-sm sm:text-base text-slate-800">Live Preview</h3>
-                      <p className="text-xs text-slate-500">Changes update in real-time</p>
+                      <h3 className="font-semibold text-xs sm:text-sm md:text-base text-slate-800 truncate">Live Preview</h3>
+                      <p className="text-xs text-slate-500 hidden sm:block">Changes update in real-time</p>
                     </div>
                   </div>
-                  {/* <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-400" />
-                    <div className="w-3 h-3 rounded-full bg-amber-400" />
-                    <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                  </div> */}
                 </div>
               </div>
 
               {/* Preview Content */}
-              <div className="bg-slate-100 p-2 sm:p-4">
+              <div className="bg-slate-100 p-2 sm:p-3 md:p-4">
                 <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
                   <iframe
                     title="email-preview"
                     sandbox=""
-                    className="w-full h-[400px] sm:h-[500px] lg:h-[650px]"
+                    className="w-full h-[400px] sm:h-[450px] md:h-[500px] lg:h-[600px] xl:h-[650px]"
                     srcDoc={generateHtml(emailTemplates[selectedTemplate])}
                   />
                 </div>

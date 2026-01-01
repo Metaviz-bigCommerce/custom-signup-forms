@@ -41,4 +41,5 @@ export interface Db {
     deleteFormVersion(storeHash: string, versionId: string): Promise<{ ok: boolean }>;
     setActiveFormVersion(storeHash: string, versionId: string): Promise<{ ok: boolean }>;
     updateFormVersion(storeHash: string, versionId: string, updates: { name?: string; form?: any }): Promise<{ ok: boolean }>;
+    deactivateAllVersions(storeHash: string): Promise<{ ok: boolean }>;
 }

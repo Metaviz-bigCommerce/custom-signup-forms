@@ -29,7 +29,7 @@ export function Tabs({ tabs, defaultTab, className, onTabChange }: TabsProps) {
   return (
     <div className={`w-full flex flex-col ${className || ""}`}>
       {/* Modern Tab Headers */}
-      <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-6 p-1 bg-slate-100 rounded-2xl w-full sm:w-fit">
+      <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-6 p-1 bg-slate-100 rounded-2xl w-fit">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
