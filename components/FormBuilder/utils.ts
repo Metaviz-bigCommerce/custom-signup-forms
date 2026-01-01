@@ -33,7 +33,7 @@ export const brandingPresets: Array<{ name: string; primaryColor: string; pageBa
 ];
 
 // Helper function to normalize theme layout - if split layout but no valid image URL, use center
-// Also removes formBackgroundColor if it matches the default value (to avoid saving default values)
+// Note: We no longer remove formBackgroundColor when it matches the default, as users may explicitly set it to white
 export const normalizeThemeLayout = (themeToNormalize: any): any => {
   const normalizedTheme = { ...themeToNormalize };
   if (normalizedTheme.layout === 'split') {
@@ -42,10 +42,8 @@ export const normalizeThemeLayout = (themeToNormalize: any): any => {
       normalizedTheme.layout = 'center';
     }
   }
-  // Remove formBackgroundColor if it matches the default (user didn't explicitly set it)
-  if (normalizedTheme.formBackgroundColor === defaultTheme.formBackgroundColor) {
-    delete normalizedTheme.formBackgroundColor;
-  }
+  // Keep all theme properties including formBackgroundColor, even if it matches the default
+  // This ensures user's explicit choices are preserved
   return normalizedTheme;
 };
 

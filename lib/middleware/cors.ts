@@ -28,14 +28,26 @@ export function isOriginAllowed(origin: string | null): boolean {
 
 /**
  * Apply CORS headers to response
+ * For public endpoints, allows all origins if allowAllOrigins is true
  */
 export function applyCorsHeaders(
   req: NextRequest,
-  res: NextResponse
+  res: NextResponse,
+  allowAllOrigins: boolean = false
 ): NextResponse {
   const origin = req.headers.get('origin');
   
-  if (origin && isOriginAllowed(origin)) {
+  // For public endpoints, allow all origins
+  if (allowAllOrigins) {
+    if (origin) {
+      res.headers.set('Access-Control-Allow-Origin', origin);
+      res.headers.set('Access-Control-Allow-Credentials', 'true');
+    } else {
+      // If no origin header, allow all (wildcard)
+      res.headers.set('Access-Control-Allow-Origin', '*');
+    }
+  } else if (origin && isOriginAllowed(origin)) {
+    // Standard CORS check for non-public endpoints
     res.headers.set('Access-Control-Allow-Origin', origin);
     res.headers.set('Access-Control-Allow-Credentials', 'true');
   } else {
@@ -45,7 +57,7 @@ export function applyCorsHeaders(
   }
   
   res.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS, GET');
-  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Idempotency-Key');
+  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Idempotency-Key, ngrok-skip-browser-warning, Accept');
   res.headers.set('Access-Control-Max-Age', '86400'); // 24 hours
   
   return res;
@@ -53,9 +65,10 @@ export function applyCorsHeaders(
 
 /**
  * Handle OPTIONS preflight request
+ * For public endpoints, allows all origins if configured
  */
-export function handleCorsPreflight(req: NextRequest): NextResponse {
+export function handleCorsPreflight(req: NextRequest, allowAllOrigins: boolean = false): NextResponse {
   const res = new NextResponse(null, { status: 204 });
-  return applyCorsHeaders(req, res);
+  return applyCorsHeaders(req, res, allowAllOrigins);
 }
 

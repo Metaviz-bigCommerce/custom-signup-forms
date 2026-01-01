@@ -319,7 +319,6 @@ const Dashboard: React.FC = () => {
       description: 'See how it looks live',
       gradient: 'from-teal-500 to-emerald-500',
       hoverGradient: 'group-hover:from-teal-600 group-hover:to-emerald-600',
-      hidden: true, // Hidden from dashboard - can be re-enabled if needed
     },
   ];
 
@@ -445,7 +444,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 md:gap-4">
           {quickActions.filter(action => !action.hidden).map((action) => {
             const Icon = action.icon;
             return (

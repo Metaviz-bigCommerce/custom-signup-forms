@@ -113,18 +113,29 @@ export const formFieldSchema = z.object({
 export const formThemeSchema = z.object({
   title: z.string().max(200),
   subtitle: z.string().max(500).optional(),
+  // Typography properties
+  titleColor: z.string().max(20).optional(),
+  titleFontSize: z.number().min(10).max(100).optional(),
+  titleFontWeight: z.string().max(10).optional(),
+  subtitleColor: z.string().max(20).optional(),
+  subtitleFontSize: z.number().min(8).max(50).optional(),
+  subtitleFontWeight: z.string().max(10).optional(),
+  // Branding properties
   primaryColor: z.string().max(20),
   layout: z.enum(['split', 'center']),
   splitImageUrl: z.string().max(2000).refine(
     (val) => val === '' || z.string().url().safeParse(val).success,
     { message: 'Invalid URL' }
   ).optional(),
+  // Button properties
   buttonText: z.string().max(100),
   buttonBg: z.string().max(20),
   buttonColor: z.string().max(20),
   buttonRadius: z.number().min(0).max(50),
+  // Background properties
   formBackgroundColor: z.string().max(20).optional(),
-});
+  pageBackgroundColor: z.string().max(20).optional(),
+}).passthrough(); // Allow additional properties to pass through
 
 export const storeFormSchema = z.object({
   fields: z.array(formFieldSchema).max(100),
