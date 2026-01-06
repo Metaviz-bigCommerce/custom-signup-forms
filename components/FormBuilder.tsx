@@ -1032,14 +1032,30 @@ const FormBuilder: React.FC = () => {
       return;
     }
     
+    // When switching FROM Builder tab (tab 2) TO Forms tab (tab 1), always clear builder state
+    if (activeTab === 2 && newTab === 1) {
+      // Only show unsaved changes modal if form has been initialized and has changes
+      if (isDirty && hasInitializedForm && formFields.length > 0) {
+        setPendingTabSwitch(newTab);
+        setShowUnsavedChangesModal(true);
+      } else {
+        // No unsaved changes, clear builder state immediately and switch
+        // Use forceClear=true because activeTab is still 2 at this point
+        clearBuilderState(true);
+        updateTabAndUrl(newTab);
+      }
+      return;
+    }
+    
     // Only show unsaved changes modal if form has been initialized and has changes
     if (isDirty && hasInitializedForm && formFields.length > 0 && activeTab !== newTab) {
       setPendingTabSwitch(newTab);
       setShowUnsavedChangesModal(true);
     } else {
       // When switching to Forms tab (tab 1), always clear builder state
+      // Use forceClear=true because activeTab might still be 2 at this point
       if (newTab === 1) {
-        clearBuilderState();
+        clearBuilderState(true);
       }
       
       updateTabAndUrl(newTab);
@@ -1148,8 +1164,9 @@ const FormBuilder: React.FC = () => {
       
       // If switching to Forms tab (tab 1), clear builder state immediately
       // This ensures clean state when user navigates back to Builder
+      // Use forceClear=true because activeTab might still be 2 at this point
       if (targetTab === 1) {
-        clearBuilderState();
+        clearBuilderState(true);
       }
       
       updateTabAndUrl(targetTab);
@@ -1200,8 +1217,9 @@ const FormBuilder: React.FC = () => {
       
       // If switching to Forms tab (tab 1), clear builder state immediately
       // This ensures clean state when user navigates back to Builder
+      // Use forceClear=true because activeTab might still be 2 at this point
       if (targetTab === 1) {
-        clearBuilderState();
+        clearBuilderState(true);
       }
       
       updateTabAndUrl(targetTab);
@@ -1221,8 +1239,9 @@ const FormBuilder: React.FC = () => {
     setShowUnsavedChangesModal(false);
     
     // If switching to Forms tab (tab 1), always clear builder state
+    // Use forceClear=true because activeTab might still be 2 at this point
     if (targetTab === 1) {
-      clearBuilderState();
+      clearBuilderState(true);
     } else {
       // Fully discard all unsaved changes and reset to clean state
       if (!lastSavedState) {
