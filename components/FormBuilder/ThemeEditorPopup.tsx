@@ -472,7 +472,7 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
                     </div>
                     <button
                       type="button"
-                      className="cursor-pointer"
+                      className="cursor-pointer hover:opacity-90 transition-opacity"
                       style={{
                         backgroundColor: localTheme.buttonBg || localTheme.primaryColor || '#2563eb',
                         color: localTheme.buttonColor || '#ffffff',
@@ -485,7 +485,6 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
                         border: 'none',
                         cursor: 'pointer',
                       }}
-                      className="hover:opacity-90 transition-opacity"
                     >
                       {localTheme.buttonText || 'Create account'}
                     </button>

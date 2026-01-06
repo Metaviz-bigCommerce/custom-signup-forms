@@ -326,7 +326,7 @@ const EmailConfigForm: React.FC = () => {
 										className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-slate-200 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-slate-900 transition-all"
 									/>
 									<p className="text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-1.5 break-words">
-										Display name shown in recipient's inbox
+										Display name shown in recipient&apos;s inbox
 									</p>
 								</div>
 								<div className="space-y-1.5 sm:space-y-2 md:col-span-2 min-w-0">

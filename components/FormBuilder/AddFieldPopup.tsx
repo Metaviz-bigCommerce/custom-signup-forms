@@ -352,12 +352,11 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                               <button
                                 type="button"
                                 onClick={() => removeOption(index)}
-                                className="cursor-pointer"
+                                className="cursor-pointer p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={
                                   (localField.type === 'radio' && (localField.options?.length || 0) <= 2) ||
                                   (localField.type === 'checkbox' && !localField.label?.trim() && (localField.options?.length || 0) <= 1)
                                 }
-                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Remove option"
                               >
                                 <Trash2 className="w-4 h-4" />
