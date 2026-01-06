@@ -21,7 +21,7 @@ import { NextRequest, NextResponse } from "next/server";
 //   return NextResponse.json(data, { status: res.status });
 // }
 
-export async function POST (req: NextRequest, res: NextResponse) {
+export async function POST (req: NextRequest) {
   try {
       // First, retrieve the session by calling:
       const session = await getSession(req);
@@ -84,7 +84,7 @@ export async function POST (req: NextRequest, res: NextResponse) {
   }
 }
 
-export async function PUT (req: NextRequest, res: NextResponse) {
+export async function PUT (req: NextRequest) {
   try {
     const session = await getSession(req);
     if (!session) {
@@ -120,7 +120,7 @@ export async function PUT (req: NextRequest, res: NextResponse) {
   }
 }
 
-export async function DELETE (req: NextRequest, res: NextResponse) {
+export async function DELETE (req: NextRequest) {
   // #region agent log
   const logEntry = {location:'bc-scripts/route.ts:123',message:'DELETE endpoint entry',data:{url:req.url},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D,F'};
   await fetch('http://127.0.0.1:7242/ingest/b3c94d70-e835-4b4f-8871-5704bb869a70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logEntry)}).catch(()=>{});

@@ -2,7 +2,7 @@ import { bigcommerceClient, getSession } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 
-export async function GET (req: NextRequest, res: NextResponse) {
+export async function GET (req: NextRequest) {
     try {
         // First, retrieve the session by calling:
         const session = await getSession(req);
@@ -27,9 +27,9 @@ export async function GET (req: NextRequest, res: NextResponse) {
         // console.log('data:', data);
 
         return NextResponse.json({data: data}, {status: 200});
-    } catch (error: any) {
+    } catch (error: unknown) {
          // Finally, handle errors
-        const { message, response } = error;
+        const { message, response } = error as { message?: string; response?: { status?: number } };
         return NextResponse.json(
             { message: message || 'Something went wrong' }, 
             { status: response?.status || 500 }

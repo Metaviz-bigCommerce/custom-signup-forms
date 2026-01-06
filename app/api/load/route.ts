@@ -3,7 +3,7 @@ import { encodePayload, getBCVerify, setSession } from '../../../lib/auth';
 import { env } from '../../../lib/env';
 import { logger } from '../../../lib/logger';
  
-export async function GET (req: NextRequest, res: NextResponse) {
+export async function GET (req: NextRequest) {
     try {
         logger.info('Verifying app on load');
         // Verify when app loaded (launch)

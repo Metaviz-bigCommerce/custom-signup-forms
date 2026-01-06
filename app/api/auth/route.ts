@@ -3,7 +3,7 @@ import { encodePayload, getBCAuth, setSession } from '../../../lib/auth';
 import { env } from '../../../lib/env';
 import { logger } from '../../../lib/logger';
 
-export async function GET (req: NextRequest, res: NextResponse) {
+export async function GET (req: NextRequest) {
     try {
         logger.info('Authenticating app on install');
         // Authenticate the app on install
