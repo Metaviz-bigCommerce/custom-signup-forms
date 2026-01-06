@@ -30,6 +30,15 @@ type SignupRequestItem = {
   files?: Array<{ name: string; url: string; contentType?: string; size?: number }>;
 };
 
+type QuickAction = {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  gradient: string;
+  hoverGradient: string;
+  hidden?: boolean;
+};
 
 const Dashboard: React.FC = () => {
   const { context } = useSession();
@@ -287,7 +296,7 @@ const Dashboard: React.FC = () => {
     },
   ];
 
-  const quickActions = [
+  const quickActions: QuickAction[] = [
     {
       href: `/builder?context=${context}&tab=2`,
       icon: Settings,
