@@ -1,16 +1,42 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Home, Users, Mail, Sparkles, Wrench, Menu, X, HelpCircle, BookOpen } from 'lucide-react';
+import { Home, Users, Mail, Wrench, Menu, X, HelpCircle, ChevronDown } from 'lucide-react';
 import { useSession } from '@/context/session';
+import { env } from '@/lib/env';
 
 const NavBar: React.FC = () => {
   const pathname = usePathname();
   const { context } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [helpDropdownOpen, setHelpDropdownOpen] = useState(false);
+  const [mobileHelpDropdownOpen, setMobileHelpDropdownOpen] = useState(false);
+  const helpDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileHelpDropdownRef = useRef<HTMLDivElement>(null);
   const isActive = (href: string) => pathname === href;
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (helpDropdownRef.current && !helpDropdownRef.current.contains(event.target as Node)) {
+        setHelpDropdownOpen(false);
+      }
+      if (mobileHelpDropdownRef.current && !mobileHelpDropdownRef.current.contains(event.target as Node)) {
+        setMobileHelpDropdownOpen(false);
+      }
+    };
+
+    if (helpDropdownOpen || mobileHelpDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [helpDropdownOpen, mobileHelpDropdownOpen]);
 
   const navItems = [
     { href: `/dashboard?context=${context}`, label: 'Dashboard', icon: Home },
@@ -54,6 +80,13 @@ const NavBar: React.FC = () => {
         .nav-gradient-bg {
           background: #1e40af;
         }
+        @media (min-width: 768px) {
+          .nav-gradient-bg {
+            background: #1e40af;
+            background-image: linear-gradient(to bottom, #1e40af 0%, #1e3a8a 100%);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15), 0 0 20px rgba(30, 64, 175, 0.2);
+          }
+        }
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
@@ -77,9 +110,18 @@ const NavBar: React.FC = () => {
             max-height: calc(100vh - 4rem);
           }
         }
+        @media (min-width: 1278px) {
+          .logo-large-screen img {
+            height: 72px !important;
+          }
+          .logo-large-screen {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+          }
+        }
       `}} />
       <nav 
-        className="sticky top-0 z-50 nav-gradient-bg backdrop-blur-sm border-b border-white/20 relative"
+        className="sticky top-0 z-50 nav-gradient-bg backdrop-blur-sm md:backdrop-blur-none border-b border-white/20 relative"
       >
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -94,55 +136,25 @@ const NavBar: React.FC = () => {
         
         <div className="relative max-w-7xl mx-auto px-2 sm:px-3 md:px-4 lg:px-6 xl:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16 md:h-18 lg:h-20 min-h-[3.5rem]">
-            {/* Left: Enhanced Logo Section */}
+            {/* Left: Logo Section */}
           <Link 
             href={`/dashboard?context=${context}`}
-              className="flex items-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-3 group relative flex-shrink-0 min-w-0"
+              className="flex items-center group relative flex-shrink-0 min-w-0 transition-all duration-300 group-hover:opacity-90"
           >
-              {/* Animated logo container */}
-              <div className="relative flex-shrink-0">
-            <div 
-                  className="relative w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-lg xs:rounded-xl sm:rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6 logo-float logo-glow"
-              style={{
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 30%, #3b82f6 60%, #6366f1 100%)',
-                    boxShadow: '0 0 20px rgba(37, 99, 235, 0.5), 0 0 40px rgba(59, 130, 246, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.2)',
+              {/* Logo Image */}
+              <div className="relative flex-shrink-0 py-1 logo-large-screen">
+                <Image
+                  src="/Primary Logo 350 x 130.png"
+                  alt="Logo"
+                  width={350}
+                  height={130}
+                  className="h-12 w-auto sm:h-14 md:h-16 lg:h-20 xl:h-20 object-contain transition-all duration-300 group-hover:scale-105"
+                  priority
+                  style={{
+                    filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2))',
                   }}
-                >
-                  {/* Inner glow effect */}
-                  <div className="absolute inset-0 rounded-lg xs:rounded-xl sm:rounded-xl md:rounded-2xl bg-gradient-to-br from-white/30 via-transparent to-transparent transition-opacity duration-300 opacity-40 group-hover:opacity-100" />
-                  
-                  {/* Icon with enhanced styling */}
-                  <Sparkles 
-                    className="w-4 h-4 xs:w-5 xs:h-5 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7 transition-all duration-300 group-hover:rotate-90 group-hover:scale-110 text-white"
-                    style={{
-                      filter: 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.5))',
-                    }}
-                  />
-                  
-                  {/* Animated particles */}
-                  <div className="absolute -top-1 -right-1 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rounded-full opacity-70 group-hover:opacity-100 transition-all duration-300 group-hover:scale-150 shadow-lg shadow-yellow-400/50" />
-                  <div className="absolute -bottom-1 -left-1 w-1 h-1 sm:w-1.5 sm:h-1.5 bg-cyan-400 rounded-full opacity-70 group-hover:opacity-100 transition-all duration-500 group-hover:scale-150 shadow-lg shadow-cyan-400/50" style={{ animationDelay: '0.2s' }} />
-                  <div className="absolute top-1/2 -left-2 w-0.5 h-0.5 sm:w-1 sm:h-1 bg-pink-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700 group-hover:scale-150" style={{ animationDelay: '0.4s' }} />
-                </div>
-                
-                {/* Enhanced ripple effect on hover */}
-                <div className="absolute inset-0 rounded-lg xs:rounded-xl sm:rounded-xl md:rounded-2xl scale-0 group-hover:scale-150 opacity-0 group-hover:opacity-100 transition-all duration-700 -z-10 bg-blue-500/20" />
-            </div>
-              
-              {/* Enhanced text with gradient */}
-            <div className="flex flex-col min-w-0">
-                <div className="relative">
-              <span 
-                    className="text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl font-extrabold tracking-tight relative z-10 transition-all duration-200 group-hover:scale-[1.05] text-white drop-shadow-lg whitespace-nowrap truncate"
-                    style={{
-                      textShadow: '0 0 20px rgba(255, 255, 255, 0.3)',
-                    }}
-              >
-                    <span className="xs:inline">Signup Flow</span>
-                    {/* <span className="xs:hidden">SF</span> */}
-              </span>
-                </div>
-            </div>
+                />
+              </div>
           </Link>
 
             {/* Center: Enhanced Navigation Links */}
@@ -208,20 +220,10 @@ const NavBar: React.FC = () => {
               })}
           </div>
 
-            {/* Right: Help/Documentation Section */}
-            <div className="hidden md:flex items-center gap-1 sm:gap-1.5 lg:gap-2 flex-shrink-0">
-              <a
-                href="#"
-                className="group/help flex items-center gap-1 sm:gap-1.5 lg:gap-2 px-2 sm:px-2.5 md:px-3 lg:px-4 py-1.5 sm:py-2 md:py-2.5 text-xs lg:text-sm font-semibold rounded-lg sm:rounded-xl transition-all duration-300 text-white hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm"
-                title="Documentation"
-                style={{
-                  textShadow: '0 1px 2px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 255, 255, 0.2)',
-                }}
-              >
-                <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-4 lg:h-4 transition-all duration-300 group-hover/help:scale-110 group-hover/help:rotate-12 text-white flex-shrink-0" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))' }} />
-                <span className="hidden lg:inline text-white whitespace-nowrap">Docs</span>
-              </a>
-            <button 
+            {/* Right: Help Dropdown Section */}
+            <div className="hidden md:flex items-center gap-1 sm:gap-1.5 lg:gap-2 flex-shrink-0 relative" ref={helpDropdownRef}>
+              <button 
+                onClick={() => setHelpDropdownOpen(!helpDropdownOpen)}
                 className="group/help flex items-center gap-1 sm:gap-1.5 lg:gap-2 px-2 sm:px-2.5 md:px-3 lg:px-4 py-1.5 sm:py-2 md:py-2.5 text-xs lg:text-sm font-semibold rounded-lg sm:rounded-xl transition-all duration-300 text-white hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm"
                 title="Help & Support"
                 style={{
@@ -230,7 +232,36 @@ const NavBar: React.FC = () => {
               >
                 <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-4 lg:h-4 transition-all duration-300 group-hover/help:scale-110 group-hover/help:rotate-12 text-white flex-shrink-0" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))' }} />
                 <span className="hidden lg:inline text-white whitespace-nowrap">Help</span>
-            </button>
+                <ChevronDown className={`w-3 h-3 text-white transition-transform duration-200 ${helpDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Help Dropdown Menu */}
+              {helpDropdownOpen && (
+                <div className="absolute top-full right-0 mt-2 w-56 sm:w-64 lg:w-72 bg-white rounded-lg sm:rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
+                  <div className="px-3 sm:px-4 py-3 sm:py-4 space-y-2 sm:space-y-3">
+                    <div>
+                      <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">App Name</p>
+                      <p className="text-xs sm:text-sm font-semibold text-gray-900">Custom Signup Forms</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Version</p>
+                      <p className="text-xs sm:text-sm text-gray-900">0.1.0</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Contact Email</p>
+                      <a 
+                        href={`mailto:${env.EMAIL_FROM || 'support@example.com'}`}
+                        className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline break-all transition-colors duration-200"
+                        onClick={() => setHelpDropdownOpen(false)}
+                      >
+                        {env.EMAIL_FROM || 'support@example.com'}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -293,27 +324,50 @@ const NavBar: React.FC = () => {
                   </Link>
                 );
               })}
-              {/* Help & Docs in mobile menu */}
-              <div className="pt-4 sm:pt-6 mt-4 sm:mt-6 border-t border-white/20">
-                <a
-                  href="#"
-                  className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4 text-base sm:text-lg font-semibold rounded-xl transition-all duration-200 text-white hover:bg-white/10"
-                  style={{
-                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 255, 255, 0.2)',
-                  }}
-                >
-                  <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-white flex-shrink-0" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))' }} />
-                  <span className="text-white">Documentation</span>
-                </a>
+              {/* Help in mobile menu */}
+              <div className="pt-4 sm:pt-6 mt-4 sm:mt-6 border-t border-white/20 relative" ref={mobileHelpDropdownRef}>
                 <button 
-                  className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4 text-base sm:text-lg font-semibold rounded-xl transition-all duration-200 text-white hover:bg-white/10 w-full text-left"
+                  onClick={() => setMobileHelpDropdownOpen(!mobileHelpDropdownOpen)}
+                  className="flex items-center justify-between gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4 text-base sm:text-lg font-semibold rounded-xl transition-all duration-200 text-white hover:bg-white/10 w-full text-left"
                   style={{
                     textShadow: '0 1px 2px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 255, 255, 0.2)',
                   }}
                 >
-                  <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white flex-shrink-0" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))' }} />
-                  <span className="text-white">Help & Support</span>
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white flex-shrink-0" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))' }} />
+                    <span className="text-white">Help & Support</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 text-white transition-transform duration-200 flex-shrink-0 ${mobileHelpDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
+
+                {/* Mobile Help Dropdown Menu */}
+                {mobileHelpDropdownOpen && (
+                  <div className="mt-2 w-full bg-white/10 backdrop-blur-sm rounded-xl shadow-xl border border-white/20 overflow-hidden">
+                    <div className="px-4 sm:px-5 py-3.5 sm:py-4 space-y-2 sm:space-y-3">
+                      <div>
+                        <p className="text-xs sm:text-sm text-white/70 mb-0.5 sm:mb-1" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>App Name</p>
+                        <p className="text-sm sm:text-base font-semibold text-white" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>Custom Signup Forms</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs sm:text-sm text-white/70 mb-0.5 sm:mb-1" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>Version</p>
+                        <p className="text-sm sm:text-base text-white" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>0.1.0</p>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs sm:text-sm text-white/70 mb-0.5 sm:mb-1" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>Contact Email</p>
+                        <a 
+                          href={`mailto:${env.EMAIL_FROM || 'support@example.com'}`}
+                          className="text-sm sm:text-base text-white hover:text-blue-200 hover:underline break-all transition-colors duration-200"
+                          style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}
+                          onClick={() => setMobileHelpDropdownOpen(false)}
+                        >
+                          {env.EMAIL_FROM || 'support@example.com'}
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

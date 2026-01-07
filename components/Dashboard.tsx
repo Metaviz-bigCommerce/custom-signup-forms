@@ -351,7 +351,7 @@ const Dashboard: React.FC = () => {
               <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                 <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
                   <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 shrink-0" />
-                  <span className="text-xs sm:text-sm text-white/90 font-medium whitespace-nowrap">Signup Flow Dashboard</span>
+                  <span className="text-xs sm:text-sm text-white/90 font-medium whitespace-nowrap">Custom Signup Forms Dashboard</span>
                 </div>
               </div>
               <h1 className="text-[12px] min-[360px]:text-[17px] min-[390px]:text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold !text-white mb-2 sm:mb-3 leading-tight overflow-visible">

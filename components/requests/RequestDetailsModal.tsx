@@ -155,7 +155,105 @@ const findOptionLabel = (formFields: FormField[], fieldKey: string, value: unkno
   
   // Try to find a field that matches the key (by label or by a normalized key)
   const normalizedKey = String(fieldKey).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const lowerKey = String(fieldKey).toLowerCase();
   
+  // First, try to match by role (country/state) - this is more reliable
+  // Check if the key suggests it's a country or state field
+  const isCountryKey = /country/i.test(fieldKey);
+  const isStateKey = /state|province|region/i.test(fieldKey);
+  
+  // Try to find country field by role or key match
+  if (isCountryKey && typeof value === 'string' && countryData && countryData.length > 0) {
+    // First try to find field by role
+    let countryField = formFields.find(f => f.role === 'country');
+    
+    // If not found by role, try to find by label matching
+    if (!countryField) {
+      for (const field of formFields) {
+        const normalizedLabel = field.label.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (
+          field.label.toLowerCase() === fieldKey.toLowerCase() ||
+          normalizedLabel === normalizedKey ||
+          fieldKey.toLowerCase().includes(normalizedLabel) ||
+          normalizedLabel.includes(normalizedKey) ||
+          /country/i.test(field.label)
+        ) {
+          countryField = field;
+          break;
+        }
+      }
+    }
+    
+    // If we found a country field (by role or label), try to resolve the country name
+    if (countryField || isCountryKey) {
+      const country = countryData.find(c => c.countryShortCode === value || c.countryShortCode === value.toUpperCase());
+      if (country) return country.countryName;
+    }
+  }
+  
+  // Try to find state field by role or key match
+  if (isStateKey && typeof value === 'string' && countryData && countryData.length > 0 && requestData) {
+    // First try to find field by role
+    let stateField = formFields.find(f => f.role === 'state');
+    
+    // If not found by role, try to find by label matching
+    if (!stateField) {
+      for (const field of formFields) {
+        const normalizedLabel = field.label.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (
+          field.label.toLowerCase() === fieldKey.toLowerCase() ||
+          normalizedLabel === normalizedKey ||
+          fieldKey.toLowerCase().includes(normalizedLabel) ||
+          normalizedLabel.includes(normalizedKey) ||
+          /state|province|region/i.test(field.label)
+        ) {
+          stateField = field;
+          break;
+        }
+      }
+    }
+    
+    // If we found a state field (by role or label), try to resolve the state name
+    if (stateField || isStateKey) {
+      // Find the country code from request data
+      const countryField = formFields.find(f => f.role === 'country');
+      if (countryField) {
+        const countryKey = Object.keys(requestData).find(k => {
+          const normalizedK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const normalizedCountryLabel = countryField.label.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return normalizedK === normalizedCountryLabel || /country/i.test(k);
+        });
+        if (countryKey && requestData[countryKey]) {
+          const countryCode = String(requestData[countryKey]);
+          const country = countryData.find(c => c.countryShortCode === countryCode || c.countryShortCode === countryCode.toUpperCase());
+          if (country && country.regions) {
+            const region = country.regions.find((r: { name: string; shortCode?: string }) => 
+              (r.shortCode && r.shortCode === value) || 
+              (r.shortCode && r.shortCode === value.toUpperCase()) ||
+              r.name === value ||
+              r.name.toLowerCase() === String(value).toLowerCase()
+            );
+            if (region) return region.name;
+          }
+        }
+      }
+      
+      // Fallback: try to find state in any country
+      for (const country of countryData) {
+        if (country.regions) {
+          const region = country.regions.find((r: { name: string; shortCode?: string }) => 
+            (r.shortCode && r.shortCode === value) || 
+            (r.shortCode && r.shortCode === value.toUpperCase()) ||
+            r.name === value ||
+            r.name.toLowerCase() === String(value).toLowerCase()
+          );
+          if (region) return region.name;
+        }
+      }
+    }
+  }
+  
+  // Now try to match by field label for other field types
   for (const field of formFields) {
     const normalizedLabel = field.label.toLowerCase().replace(/[^a-z0-9]/g, '');
     
@@ -166,9 +264,9 @@ const findOptionLabel = (formFields: FormField[], fieldKey: string, value: unkno
       fieldKey.toLowerCase().includes(normalizedLabel) ||
       normalizedLabel.includes(normalizedKey)
     ) {
-      // Handle country/state fields with codes
+      // Handle country/state fields with codes (if not already handled above)
       if (field.role === 'country' && typeof value === 'string' && countryData && countryData.length > 0) {
-        const country = countryData.find(c => c.countryShortCode === value);
+        const country = countryData.find(c => c.countryShortCode === value || c.countryShortCode === value.toUpperCase());
         if (country) return country.countryName;
       } else if (field.role === 'state' && typeof value === 'string' && countryData && countryData.length > 0 && requestData) {
         // Find the country code from request data
@@ -177,13 +275,18 @@ const findOptionLabel = (formFields: FormField[], fieldKey: string, value: unkno
           const countryKey = Object.keys(requestData).find(k => {
             const normalizedK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
             const normalizedCountryLabel = countryField.label.toLowerCase().replace(/[^a-z0-9]/g, '');
-            return normalizedK === normalizedCountryLabel || k.toLowerCase().includes('country');
+            return normalizedK === normalizedCountryLabel || /country/i.test(k);
           });
           if (countryKey && requestData[countryKey]) {
             const countryCode = String(requestData[countryKey]);
-            const country = countryData.find(c => c.countryShortCode === countryCode);
+            const country = countryData.find(c => c.countryShortCode === countryCode || c.countryShortCode === countryCode.toUpperCase());
             if (country && country.regions) {
-              const region = country.regions.find((r: { name: string; shortCode?: string }) => (r.shortCode || r.name) === value);
+              const region = country.regions.find((r: { name: string; shortCode?: string }) => 
+                (r.shortCode && r.shortCode === value) || 
+                (r.shortCode && r.shortCode === value.toUpperCase()) ||
+                r.name === value ||
+                r.name.toLowerCase() === String(value).toLowerCase()
+              );
               if (region) return region.name;
             }
           }
@@ -191,7 +294,12 @@ const findOptionLabel = (formFields: FormField[], fieldKey: string, value: unkno
         // Fallback: try to find state in any country
         for (const country of countryData) {
           if (country.regions) {
-            const region = country.regions.find((r: { name: string; shortCode?: string }) => (r.shortCode || r.name) === value);
+            const region = country.regions.find((r: { name: string; shortCode?: string }) => 
+              (r.shortCode && r.shortCode === value) || 
+              (r.shortCode && r.shortCode === value.toUpperCase()) ||
+              r.name === value ||
+              r.name.toLowerCase() === String(value).toLowerCase()
+            );
             if (region) return region.name;
           }
         }
