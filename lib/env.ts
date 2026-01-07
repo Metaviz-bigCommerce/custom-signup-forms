@@ -54,6 +54,9 @@ interface EnvConfig {
   NODE_ENV?: string;
 }
 
+// Check if we're running on the client side
+const isClient = typeof window !== 'undefined';
+
 let cachedEnv: EnvConfig | null = null;
 let validationAttempted = false;
 
@@ -63,6 +66,36 @@ function validateEnv(): EnvConfig {
     return cachedEnv;
   }
 
+  // On client side, only return client-safe values without validation
+  if (isClient) {
+    cachedEnv = {
+      FIRE_API_KEY: '', // Not available on client
+      FIRE_PROJECT_ID: '', // Not available on client
+      CLIENT_ID: '', // Not available on client
+      CLIENT_SECRET: '', // Not available on client
+      JWT_KEY: '', // Not available on client
+      FIRE_DOMAIN: undefined,
+      AUTH_CALLBACK: undefined,
+      BASE_URL: undefined,
+      API_URL: undefined,
+      LOGIN_URL: undefined,
+      PLATFORM_NAME: undefined,
+      ALLOWED_ORIGINS: undefined,
+      // Only expose client-safe variables via NEXT_PUBLIC_ prefix
+      // Note: For client access, use NEXT_PUBLIC_EMAIL_FROM in environment variables
+      EMAIL_FROM: process.env.NEXT_PUBLIC_EMAIL_FROM || 'support@example.com',
+      BREVO_SMTP_HOST: undefined,
+      BREVO_SMTP_PORT: undefined,
+      BREVO_SMTP_USER: undefined,
+      BREVO_SMTP_KEY: undefined,
+      BREVO_SMTP_PASS: undefined,
+      NODE_ENV: process.env.NODE_ENV,
+    };
+    validationAttempted = true;
+    return cachedEnv;
+  }
+
+  // Server-side validation
   const missing: string[] = [];
   
   for (const key of requiredEnvVars) {
@@ -164,8 +197,15 @@ export const env = new Proxy({} as EnvConfig, {
   }
 });
 
-// Helper to check if in development
-export const isDev = env.NODE_ENV === 'development';
+// Helper to check if in development (lazy evaluation)
+export const isDev: boolean = (() => {
+  try {
+    return getEnv().NODE_ENV === 'development';
+  } catch {
+    // Fallback to process.env if validation hasn't run yet
+    return process.env.NODE_ENV === 'development';
+  }
+})();
 
 // Helper to get allowed origins
 export function getAllowedOrigins(): string[] {
