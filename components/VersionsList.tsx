@@ -877,7 +877,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
       if (onVersionLoaded) onVersionLoaded();
       
       console.log('[Activation] Activation completed successfully', { versionId, scriptUuid: finalScriptUuid });
-      toast.showSuccess('Form activated' + (finalScriptUuid ? `: ${finalScriptUuid}` : '.'));
+      toast.showSuccess('Form activated' + (version.name ? `: ${version.name}` : '.'));
       
       // Auto-close modal after showing success for 1.5 seconds
       setTimeout(() => {
