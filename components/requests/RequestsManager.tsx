@@ -9,13 +9,13 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { getUserFriendlyError } from '@/lib/utils';
 import RequestDetailsModal, { RequestItem as ModalRequestItem } from '@/components/requests/RequestDetailsModal';
 import ApprovalDialog from '@/components/requests/ApprovalDialog';
-import RequestInfoModal from '@/components/requests/RequestInfoModal';
+import RequestResubmissionModal from '@/components/requests/RequestResubmissionModal';
 import RequestsTable, { RequestTableItem } from '@/components/requests/RequestsTable';
 
 type RequestItem = {
   id: string;
   submittedAt?: { seconds?: number; nanoseconds?: number } | string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'resubmission_requested';
   data: Record<string, any>;
   email?: string | null;
   files?: Array<{ name: string; url: string; contentType?: string; size?: number }>;
@@ -40,7 +40,8 @@ const RequestsManager: React.FC = () => {
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const [showRequestInfoModal, setShowRequestInfoModal] = useState(false);
   const [requestInfoTargetId, setRequestInfoTargetId] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<'approve' | 'reject' | 'info' | 'delete' | null>(null);
+  const [requestInfoData, setRequestInfoData] = useState<Record<string, unknown> | undefined>(undefined);
+  const [actionLoading, setActionLoading] = useState<'approve' | 'reject' | 'info' | 'delete' | 'resetCooldown' | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
@@ -156,8 +157,41 @@ const RequestsManager: React.FC = () => {
     });
   };
 
+  const resetCooldown = async (email: string) => {
+    if (!context || actionLoading) return;
+    setActionLoading('resetCooldown');
+    try {
+      const res = await fetch(`/api/signup-requests/reset-cooldown?context=${encodeURIComponent(context)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.error === false) {
+          toast.showSuccess('Cooldown period reset successfully. User can now resubmit.');
+          setSelected(null);
+          // Reload requests to reflect any changes
+          load(null, true);
+        } else {
+          toast.showError(data.message || 'Failed to reset cooldown');
+        }
+      } else {
+        const errorText = await res.text();
+        toast.showError(getUserFriendlyError(errorText, 'Failed to reset cooldown'));
+      }
+    } catch (error: unknown) {
+      toast.showError(getUserFriendlyError(error, 'Failed to reset cooldown'));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const openRequestInfoModal = (id: string) => {
+    // Find the request data from selected or allItems
+    const request = selected || allItems.find(item => item.id === id);
     setRequestInfoTargetId(id);
+    setRequestInfoData(request?.data);
     setShowRequestInfoModal(true);
   };
 
@@ -393,6 +427,7 @@ const RequestsManager: React.FC = () => {
           onReject={(id) => reject(id)}
           onRequestInfo={(id) => openRequestInfoModal(id)}
           onDelete={(id) => remove(id)}
+          onResetCooldown={(email) => resetCooldown(email)}
           actionLoading={actionLoading}
           showToast={(msg) => toast.showSuccess(msg)}
         />
@@ -424,19 +459,32 @@ const RequestsManager: React.FC = () => {
         onCancel={() => setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: () => {} })}
       />
 
-      {/* Request Info Modal */}
-      <RequestInfoModal
+      {/* Request Resubmission Modal */}
+      <RequestResubmissionModal
         isOpen={showRequestInfoModal}
         requestId={requestInfoTargetId}
+        requestData={requestInfoData}
         context={context || ''}
         onClose={() => {
           setShowRequestInfoModal(false);
           setRequestInfoTargetId(null);
+          setRequestInfoData(undefined);
         }}
         onSent={(id) => {
-          // Close RequestDetailsModal first when info request is successfully sent
-          // The toast is already shown by RequestInfoModal
+          // Update the request status in local state to 'resubmission_requested'
+          setAllItems(prevItems => 
+            prevItems.map(item => 
+              item.id === id ? { ...item, status: 'resubmission_requested' as const } : item
+            )
+          );
+          // Update selected request if it's the same one
+          if (selected && selected.id === id) {
+            setSelected({ ...selected, status: 'resubmission_requested' as const });
+          }
+          // Close RequestDetailsModal
           setSelected(null);
+          // Reload data to ensure consistency with server
+          load(null, true);
         }}
         showToast={{
           success: (msg) => toast.showSuccess(msg),

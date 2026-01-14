@@ -161,7 +161,7 @@ export async function getStoreSettings(storeHash: string) {
   };
 }
 
-type SignupRequestStatus = 'pending' | 'approved' | 'rejected';
+type SignupRequestStatus = 'pending' | 'approved' | 'rejected' | 'resubmission_requested';
 
 export async function getPublicStoreId(storeHash: string) {
   if (!storeHash) throw new Error('Missing storeHash');
@@ -212,11 +212,13 @@ export async function createSignupRequest(storeHash: string, payload: Record<str
     }
     
     // Check for existing pending/approved requests (duplicate check)
+    // Note: 'resubmission_requested' is handled separately in public API (deleted before creating new)
     const dupQ = query(colRef, where('email', '==', email), fsLimit(1));
     const dupSnap = await getDocs(dupQ);
     if (!dupSnap.empty) {
       const existing = dupSnap.docs[0].data();
       // Only block if it's pending or approved, not rejected (rejected is handled by cooldown)
+      // Also allow 'resubmission_requested' (will be deleted by public API before creating new)
       if (existing.status === 'pending' || existing.status === 'approved') {
         const err: any = new Error('duplicate_signup');
         err.code = 'DUPLICATE';
@@ -302,6 +304,33 @@ export async function updateSignupRequestStatus(storeHash: string, id: string, s
   return { ok: true };
 }
 
+export async function updateSignupRequestForResubmission(
+  storeHash: string,
+  id: string,
+  problematicFields: string[],
+  resubmissionMessage?: string
+) {
+  if (!storeHash || !id) throw new Error('Missing storeHash or id');
+  const ref = doc(db, 'stores', storeHash, 'signupRequests', id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    throw new Error('Request not found');
+  }
+  
+  const existingMeta = (snap.data() as any)?.meta || {};
+  const updateData: any = {
+    status: 'resubmission_requested' as SignupRequestStatus,
+    meta: {
+      ...existingMeta,
+      problematicFields,
+      resubmissionMessage: resubmissionMessage || null,
+    },
+  };
+  
+  await updateDoc(ref, updateData);
+  return { ok: true };
+}
+
 export async function addSignupRequestFiles(storeHash: string, id: string, files: Array<{ name: string; url: string; contentType?: string; size?: number; path?: string }>) {
   if (!storeHash || !id) throw new Error('Missing storeHash or id');
   const ref = doc(db, 'stores', storeHash, 'signupRequests', id);
@@ -325,6 +354,22 @@ export async function getSignupRequest(storeHash: string, id: string) {
   return { id: snap.id, ...(snap.data() as any) };
 }
 
+export async function findResubmissionRequestedRequest(storeHash: string, email: string) {
+  if (!storeHash || !email) return null;
+  const colRef = collection(db, 'stores', storeHash, 'signupRequests');
+  const emailLower = email.toLowerCase();
+  const q = query(
+    colRef,
+    where('email', '==', emailLower),
+    where('status', '==', 'resubmission_requested'),
+    fsLimit(1)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const doc = snap.docs[0];
+  return { id: doc.id, ...(doc.data() as any) };
+}
+
 export async function getEmailTemplates(storeHash: string) {
   if (!storeHash) throw new Error('Missing storeHash');
   const ref = doc(db, 'stores', storeHash);
@@ -346,14 +391,86 @@ export async function getEmailTemplates(storeHash: string) {
         'Hi {{name}},\nAfter a thorough review of your signup information, we are unable to approve your request at this time.',
     },
     moreInfo: {
-      subject: 'Action Required from {{platform_name}}: Additional Details Needed to Proceed',
+      subject: 'Action Required from {{platform_name}}: Please Resubmit Your Signup Form',
       body:
-        'Hi {{name}},\nTo proceed with your signup review, we require the following information: {{required_information}}.',
+        'We need you to resubmit your signup form with corrections. Please review the highlighted fields below and resubmit your application through the signup form.\n\nOnce you resubmit, we will review your updated information and proceed accordingly.\n\nIf you have any questions or need clarification, please don\'t hesitate to reach out to us.',
     },
   };
   if (!snap.exists()) return defaults;
   const data = snap.data() as any;
-  return { ...defaults, ...(data?.emailTemplates || {}) } as EmailTemplates;
+  const savedTemplates = data?.emailTemplates || {};
+  
+  // Migrate old moreInfo template to new resubmission format
+  // Also clean up any greeting from body (greeting is handled separately in design.greeting)
+  if (savedTemplates.moreInfo) {
+    const oldTemplate = savedTemplates.moreInfo;
+    const bodyLower = (oldTemplate.body || '').toLowerCase();
+    const subjectLower = (oldTemplate.subject || '').toLowerCase();
+    
+    // Detect old "Info Request" format - check if it doesn't mention "resubmit" or "resubmission"
+    const isOldFormat = 
+      subjectLower.includes('additional details needed') ||
+      subjectLower.includes('additional details') ||
+      (bodyLower.includes('require the following information') && !bodyLower.includes('resubmit') && !bodyLower.includes('resubmission')) ||
+      oldTemplate.design?.title === 'We Need a Little More Information' ||
+      (!bodyLower.includes('resubmit') && !bodyLower.includes('resubmission') && bodyLower.includes('require'));
+    
+    // Always remove greeting from body if present (greeting is handled separately)
+    let cleanedBody = oldTemplate.body || '';
+    if (cleanedBody) {
+      // Remove common greeting patterns from the start of the body
+      cleanedBody = cleanedBody
+        .replace(/^Hi\s+\{\{name\}\},?\s*\n?/i, '')
+        .replace(/^Hello\s+\{\{name\}\},?\s*\n?/i, '')
+        .replace(/^Dear\s+\{\{name\}\},?\s*\n?/i, '')
+        .trim();
+    }
+    
+    if (isOldFormat) {
+      // Migrate to new format - update subject and body, preserve design if it exists
+      let migratedBody = defaults.moreInfo.body;
+      if (cleanedBody && cleanedBody.includes('resubmit')) {
+        // Body already has resubmission content, use cleaned version
+        migratedBody = cleanedBody;
+      }
+      
+      const migratedTemplate = {
+        ...oldTemplate,
+        subject: defaults.moreInfo.subject,
+        body: migratedBody,
+        design: oldTemplate.design ? {
+          ...oldTemplate.design,
+          title: oldTemplate.design.title === 'We Need a Little More Information' ? 'Resubmission Required' : (oldTemplate.design.title || 'Resubmission Required'),
+        } : oldTemplate.design,
+      };
+      
+      savedTemplates.moreInfo = migratedTemplate;
+      
+      // Save migrated template back to database (async, don't wait)
+      updateDoc(ref, {
+        'emailTemplates.moreInfo': migratedTemplate,
+      } as any).catch(err => {
+        console.error('Failed to save migrated template:', err);
+      });
+    } else if (cleanedBody !== oldTemplate.body) {
+      // Not old format, but has greeting in body - clean it up
+      const cleanedTemplate = {
+        ...oldTemplate,
+        body: cleanedBody,
+      };
+      
+      savedTemplates.moreInfo = cleanedTemplate;
+      
+      // Save cleaned template back to database (async, don't wait)
+      updateDoc(ref, {
+        'emailTemplates.moreInfo': cleanedTemplate,
+      } as any).catch(err => {
+        console.error('Failed to save cleaned template:', err);
+      });
+    }
+  }
+  
+  return { ...defaults, ...savedTemplates } as EmailTemplates;
 }
 
 export async function setEmailTemplates(storeHash: string, templates: EmailTemplates) {

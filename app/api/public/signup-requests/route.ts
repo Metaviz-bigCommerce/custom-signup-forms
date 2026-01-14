@@ -1,13 +1,14 @@
 import { NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { trySendTemplatedEmail } from '@/lib/email';
-import { uploadSignupFile } from '@/lib/storage';
+import { uploadSignupFile, deleteSignupRequestFiles } from '@/lib/storage';
 import { applyCorsHeaders, handleCorsPreflight } from '@/lib/middleware/cors';
 import { errorResponse, successResponse, apiErrors, ErrorCode } from '@/lib/api-response';
 import { signupRequestBodySchema, signupRequestDataSchema, publicIdSchema, validateFile } from '@/lib/validation';
 import { extractName } from '@/lib/utils';
 import { generateRequestId } from '@/lib/utils';
 import { logger } from '@/lib/logger';
+import { env } from '@/lib/env';
 
 export async function OPTIONS(req: NextRequest) {
   return handleCorsPreflight(req);
@@ -119,6 +120,32 @@ export async function POST(req: NextRequest) {
         return applyCorsHeaders(req, res);
       }
       
+      // Check for resubmission_requested request and delete it if found
+      let wasResubmission = false;
+      if (email) {
+        try {
+          const resubmissionRequest = await (db as any).findResubmissionRequestedRequest(storeHash, email);
+          if (resubmissionRequest) {
+            wasResubmission = true;
+            // Delete files from storage
+            if (resubmissionRequest.files && resubmissionRequest.files.length > 0) {
+              try {
+                await deleteSignupRequestFiles(resubmissionRequest.files);
+              } catch (fileDeleteError) {
+                logger.error('Failed to delete files from resubmission request', fileDeleteError, { ...logContext, requestId: resubmissionRequest.id });
+                // Continue even if file deletion fails
+              }
+            }
+            // Delete the resubmission request
+            await db.deleteSignupRequest(storeHash, resubmissionRequest.id);
+            logger.info('Deleted resubmission_requested request', { ...logContext, deletedRequestId: resubmissionRequest.id, email });
+          }
+        } catch (resubmissionCheckError) {
+          logger.error('Error checking for resubmission request', resubmissionCheckError, { ...logContext, email });
+          // Continue with normal flow if check fails
+        }
+      }
+      
       // Create signup request first
       let created;
       try {
@@ -187,29 +214,42 @@ export async function POST(req: NextRequest) {
         logger.warn('Some files failed to upload', { ...logContext, errors: uploadErrors, requestId: created.id });
       }
       
-      // Send signup confirmation email (best-effort, don't fail request)
+      // Send emails (best-effort, don't fail request)
       try {
         const templates = await db.getEmailTemplates(storeHash);
         const config = await db.getEmailConfig(storeHash);
         const name = extractName(data);
-        const platformName = process.env.PLATFORM_NAME || storeHash || 'Store';
+        const platformName = env.PLATFORM_NAME || storeHash || 'Store';
         
-        await trySendTemplatedEmail({
-          to: email || null,
-          template: templates.signup,
-          vars: {
-            name,
-            email: email || '',
-            date: new Date().toLocaleString(),
-            store_name: platformName,
-            platform_name: platformName,
-          },
-          replyTo: config?.replyTo || undefined,
-          config,
-          templateKey: 'signup',
-        });
+        // Send confirmation email to user
+        if (email) {
+          try {
+            await trySendTemplatedEmail({
+              to: email,
+              template: templates.signup,
+              vars: {
+                name,
+                email: email || '',
+                date: new Date().toLocaleString(),
+                store_name: platformName,
+                platform_name: platformName,
+              },
+              replyTo: config?.replyTo || undefined,
+              config,
+              templateKey: 'signup',
+            });
+          } catch (emailError) {
+            logger.error('Failed to send signup confirmation email', emailError, { ...logContext, email });
+          }
+        }
+        
+        // Note: Merchant will see the new request in their dashboard
+        // Owner notification can be added later if needed
+        if (wasResubmission) {
+          logger.info('User resubmitted request', { ...logContext, requestId: created.id, email });
+        }
       } catch (emailError) {
-        logger.error('Failed to send signup confirmation email', emailError, { ...logContext, email });
+        logger.error('Failed to send emails', emailError, { ...logContext, email });
         // Don't fail the request if email fails
       }
       
@@ -262,6 +302,33 @@ export async function POST(req: NextRequest) {
       const origin = req.headers.get('origin') || null;
       const userAgent = req.headers.get('user-agent') || null;
       
+      // Check for resubmission_requested request and delete it if found
+      let wasResubmission = false;
+      const emailLower = email ? email.toLowerCase().trim() : null;
+      if (emailLower) {
+        try {
+          const resubmissionRequest = await (db as any).findResubmissionRequestedRequest(storeHash, emailLower);
+          if (resubmissionRequest) {
+            wasResubmission = true;
+            // Delete files from storage
+            if (resubmissionRequest.files && resubmissionRequest.files.length > 0) {
+              try {
+                await deleteSignupRequestFiles(resubmissionRequest.files);
+              } catch (fileDeleteError) {
+                logger.error('Failed to delete files from resubmission request', fileDeleteError, { ...logContext, requestId: resubmissionRequest.id });
+                // Continue even if file deletion fails
+              }
+            }
+            // Delete the resubmission request
+            await db.deleteSignupRequest(storeHash, resubmissionRequest.id);
+            logger.info('Deleted resubmission_requested request', { ...logContext, deletedRequestId: resubmissionRequest.id, email: emailLower });
+          }
+        } catch (resubmissionCheckError) {
+          logger.error('Error checking for resubmission request', resubmissionCheckError, { ...logContext, email: emailLower });
+          // Continue with normal flow if check fails
+        }
+      }
+      
       // Create signup request
       let created;
       try {
@@ -295,29 +362,42 @@ export async function POST(req: NextRequest) {
         throw createError;
       }
       
-      // Send signup confirmation email (best-effort)
+      // Send emails (best-effort, don't fail request)
       try {
         const templates = await db.getEmailTemplates(storeHash);
         const config = await db.getEmailConfig(storeHash);
         const name = extractName(data);
-        const platformName = process.env.PLATFORM_NAME || storeHash || 'Store';
+        const platformName = env.PLATFORM_NAME || storeHash || 'Store';
         
-        await trySendTemplatedEmail({
-          to: email || null,
-          template: templates.signup,
-          vars: {
-            name,
-            email: email || '',
-            date: new Date().toLocaleString(),
-            store_name: platformName,
-            platform_name: platformName,
-          },
-          replyTo: config?.replyTo || undefined,
-          config,
-          templateKey: 'signup',
-        });
+        // Send confirmation email to user
+        if (email) {
+          try {
+            await trySendTemplatedEmail({
+              to: email,
+              template: templates.signup,
+              vars: {
+                name,
+                email: email || '',
+                date: new Date().toLocaleString(),
+                store_name: platformName,
+                platform_name: platformName,
+              },
+              replyTo: config?.replyTo || undefined,
+              config,
+              templateKey: 'signup',
+            });
+          } catch (emailError) {
+            logger.error('Failed to send signup confirmation email', emailError, { ...logContext, email });
+          }
+        }
+        
+        // Note: Merchant will see the new request in their dashboard
+        // Owner notification can be added later if needed
+        if (wasResubmission) {
+          logger.info('User resubmitted request', { ...logContext, requestId: created.id, email });
+        }
       } catch (emailError) {
-        logger.error('Failed to send signup confirmation email', emailError, { ...logContext, email });
+        logger.error('Failed to send emails', emailError, { ...logContext, email });
         // Don't fail the request if email fails
       }
       

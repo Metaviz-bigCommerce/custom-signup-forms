@@ -212,6 +212,12 @@ export const infoRequestSchema = z.object({
   required_information: z.string().min(1).max(2000),
 });
 
+// Resubmission request schema
+export const resubmissionRequestSchema = z.object({
+  problematicFields: z.array(z.string().min(1)).min(1).max(100),
+  message: z.string().max(2000).optional(),
+});
+
 // Cooldown period schema
 export const cooldownPeriodSchema = z.number().int().min(1).max(365);
 

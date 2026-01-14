@@ -59,7 +59,7 @@ const RequestInfoModal: React.FC<RequestInfoModalProps> = ({
         onClose();
         // Use setTimeout to ensure modals close before toast is shown
         setTimeout(() => {
-          showToast.success('Info request email sent (if email configured).');
+          showToast.success('Info request email sent.');
         }, 100);
       } else {
         const errorText = await res.text();

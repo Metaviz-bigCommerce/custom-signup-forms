@@ -143,11 +143,14 @@ export function generateEmailHtml(template: EmailTemplate, vars: Record<string, 
 	
 	if (templateKey === 'moreInfo' && vars.required_information) {
 		const requiredInfo = String(vars.required_information || '').trim();
+		const merchantMessage = String(vars.merchant_message || '').trim();
 		if (requiredInfo) {
-			// Remove the {{required_information}} placeholder from body text
-			// Also clean up common patterns like "the following information: {{required_information}}"
+			// Remove the {{required_information}} placeholder from body text (merchant_message is only shown in the box)
+			// Also clean up common patterns
 			bodyText = bodyText
 				.replace(/\{\{\s*required_information\s*\}\}/g, '')
+				.replace(/\{\{\s*merchant_message\s*\}\}/g, '') // Remove from body, only show in box
+				.replace(/\.\s*\./g, '.') // Fix double periods ".." -> "."
 				.replace(/:\s*\./g, '.') // Fix "information: ." -> "information."
 				.replace(/\s+/g, ' ') // Normalize whitespace
 				.trim();
@@ -162,46 +165,33 @@ export function generateEmailHtml(template: EmailTemplate, vars: Record<string, 
 					.replace(/'/g, '&#039;');
 			};
 			
-			const escapedInfo = escapeHtml(requiredInfo);
-			const infoWithBreaks = escapedInfo.replace(/\n/g, '<br/>');
+			// Format problematic fields - split by comma and create a list
+			const fieldsList = requiredInfo.split(',').map(f => f.trim()).filter(f => f);
+			const formattedFields = fieldsList.map(field => {
+				const escaped = escapeHtml(field);
+				return `<div style="font-size:16px;line-height:1.8;color:#0f172a;font-weight:500;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin-bottom:8px;">${escaped}</div>`;
+			}).join('');
 			
-			// Create a highlighted information box - make it very prominent
-			// Convert hex to RGB for opacity
-			const hexToRgb = (hex: string) => {
-				const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-				return result ? {
-					r: parseInt(result[1], 16),
-					g: parseInt(result[2], 16),
-					b: parseInt(result[3], 16)
-				} : { r: 37, g: 99, b: 235 }; // default blue
-			};
-			const rgb = hexToRgb(brand);
-			const bgColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`;
-			const borderColor = brand;
+			// Use orange color for resubmission request (matching the design)
+			const orangeColor = '#d97706'; // Amber/orange color
+			const orangeRgb = { r: 217, g: 119, b: 6 };
+			const bgColor = `rgba(${orangeRgb.r}, ${orangeRgb.g}, ${orangeRgb.b}, 0.1)`;
+			const borderColor = orangeColor;
 			
 			const infoBox = `
 				<tr>
 					<td style="padding:16px 24px 24px 24px;">
 						<div style="background:${bgColor};border:2px solid ${borderColor};border-radius:16px;padding:24px;margin:16px 0;box-shadow:0 8px 24px rgba(0,0,0,0.12);">
 							<div style="display:flex;gap:16px;align-items:flex-start;">
-								<div style="flex-shrink:0;width:15px;height:15px;background:${brand};border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px ${brand}50;margin:2px 16px 0 0;">
-									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-										<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="#ffffff"/>
+								<div style="flex-shrink:0;width:20px;height:20px;background:${orangeColor};border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px ${orangeColor}50;margin:2px 16px 0 0;">
+									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+										<circle cx="12" cy="12" r="10" fill="#ffffff"/>
 									</svg>
 								</div>
 								<div style="flex:1;">
-									<div style="font-size:12px;font-weight:800;color:${brand};text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">Required Information</div>
-									<div style="font-size:16px;line-height:1.8;color:#0f172a;white-space:pre-line;font-weight:500;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin-bottom:16px;">${infoWithBreaks}</div>
-									<div style="margin-top:16px;padding-top:16px;border-top:1px solid ${brand}30;">
-										<div style="display:flex;align-items:center;gap:8px;">
-											<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
-												<path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="${brand}"/>
-											</svg>
-											<div style="font-size:14px;line-height:1.6;color:#475569;font-weight:500;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
-												Please reply to this email with the requested information above.
-											</div>
-										</div>
-									</div>
+									<div style="font-size:12px;font-weight:800;color:${orangeColor};text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">FIELDS REQUIRING CORRECTION</div>
+									${formattedFields}
+									${merchantMessage ? `<div style="font-size:14px;line-height:1.6;color:#475569;font-weight:400;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin-top:12px;padding-top:12px;border-top:1px solid ${orangeColor}30;white-space:pre-line;">${escapeHtml(merchantMessage).replace(/\n/g, '<br/>')}</div>` : ''}
 								</div>
 							</div>
 						</div>

@@ -18,13 +18,13 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { getUserFriendlyError } from '@/lib/utils';
 import RequestDetailsModal, { RequestItem as ModalRequestItem } from '@/components/requests/RequestDetailsModal';
 import ApprovalDialog from '@/components/requests/ApprovalDialog';
-import RequestInfoModal from '@/components/requests/RequestInfoModal';
+import RequestResubmissionModal from '@/components/requests/RequestResubmissionModal';
 import RequestsTable, { RequestTableItem } from '@/components/requests/RequestsTable';
 
 type SignupRequestItem = {
   id: string;
   submittedAt?: { seconds?: number; nanoseconds?: number } | string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'resubmission_requested';
   data: Record<string, any>;
   email?: string | null;
   files?: Array<{ name: string; url: string; contentType?: string; size?: number }>;
@@ -53,6 +53,7 @@ const Dashboard: React.FC = () => {
   const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [requestInfoTargetId, setRequestInfoTargetId] = useState<string | null>(null);
+  const [requestInfoData, setRequestInfoData] = useState<Record<string, unknown> | undefined>(undefined);
   const [showRequestInfoModal, setShowRequestInfoModal] = useState(false);
   const toast = useToast();
 
@@ -229,7 +230,10 @@ const Dashboard: React.FC = () => {
   };
 
   const openRequestInfoModal = (id: string) => {
+    // Find the request data from selectedRequest or allRequests
+    const request = selectedRequest || allRequests.find(item => item.id === id);
     setRequestInfoTargetId(id);
+    setRequestInfoData(request?.data);
     setShowRequestInfoModal(true);
   };
 
@@ -570,19 +574,32 @@ const Dashboard: React.FC = () => {
         }}
       />
 
-      {/* Request Info Modal */}
-      <RequestInfoModal
+      {/* Request Resubmission Modal */}
+      <RequestResubmissionModal
         isOpen={showRequestInfoModal}
         requestId={requestInfoTargetId}
+        requestData={requestInfoData}
         context={context || ''}
         onClose={() => {
           setShowRequestInfoModal(false);
           setRequestInfoTargetId(null);
+          setRequestInfoData(undefined);
         }}
         onSent={(id) => {
-          // Close RequestDetailsModal first when info request is successfully sent
-          // The toast is already shown by RequestInfoModal
+          // Update the request status in local state to 'resubmission_requested'
+          setAllRequests(prevRequests => 
+            prevRequests.map(request => 
+              request.id === id ? { ...request, status: 'resubmission_requested' as const } : request
+            )
+          );
+          // Update selected request if it's the same one
+          if (selectedRequest && selectedRequest.id === id) {
+            setSelectedRequest({ ...selectedRequest, status: 'resubmission_requested' as const });
+          }
+          // Close RequestDetailsModal
           setSelectedRequest(null);
+          // Reload data to ensure consistency with server
+          loadSignupRequests();
         }}
         showToast={{
           success: (msg) => toast.showSuccess(msg),

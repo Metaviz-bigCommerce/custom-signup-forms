@@ -163,7 +163,7 @@ const RequestsManager: React.FC = () => {
         body: JSON.stringify({ required_information: requestInfoText.trim() }),
       });
       if (res.ok) {
-        toast.showSuccess('Info request email sent (if email configured).');
+        toast.showSuccess('Info request email sent.');
         setShowRequestInfoModal(false);
         setRequestInfoText('');
         setRequestInfoTargetId(null);

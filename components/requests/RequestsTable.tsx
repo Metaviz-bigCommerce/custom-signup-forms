@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Users, Mail, Calendar, Clock, Check, X, Eye, FileText, Activity, ChevronRight } from 'lucide-react';
+import { Users, Mail, Calendar, Clock, Check, X, Eye, FileText, Activity, ChevronRight, RotateCcw } from 'lucide-react';
 
 export interface RequestTableItem {
   id: string;
   submittedAt?: { seconds?: number; nanoseconds?: number } | string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'resubmission_requested';
   data: Record<string, unknown>;
   email?: string | null;
 }
@@ -264,12 +264,17 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                           ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200/60 shadow-sm shadow-amber-100'
                           : request.status === 'approved'
                           ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200/60 shadow-sm shadow-emerald-100'
-                          : 'bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border border-rose-200/60 shadow-sm shadow-rose-100'
+                          : request.status === 'rejected'
+                          ? 'bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border border-rose-200/60 shadow-sm shadow-rose-100'
+                          : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200/60 shadow-sm shadow-blue-100'
                       }`}>
                         {request.status === 'pending' && <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
                         {request.status === 'approved' && <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
                         {request.status === 'rejected' && <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
-                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                        {request.status === 'resubmission_requested' && <RotateCcw className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
+                        {request.status === 'resubmission_requested' 
+                          ? 'Resubmission Requested'
+                          : request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                       </span>
                     </div>
                   </div>
@@ -394,12 +399,17 @@ const RequestsTable: React.FC<RequestsTableProps> = ({
                           ? 'bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-200/60 shadow-sm shadow-amber-100'
                           : request.status === 'approved'
                           ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200/60 shadow-sm shadow-emerald-100'
-                          : 'bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border border-rose-200/60 shadow-sm shadow-rose-100'
+                          : request.status === 'rejected'
+                          ? 'bg-gradient-to-r from-rose-50 to-red-50 text-rose-700 border border-rose-200/60 shadow-sm shadow-rose-100'
+                          : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200/60 shadow-sm shadow-blue-100'
                       }`}>
                         {request.status === 'pending' && <Clock className="w-3 h-3 lg:w-3.5 lg:h-3.5" />}
                         {request.status === 'approved' && <Check className="w-3 h-3 lg:w-3.5 lg:h-3.5" />}
                         {request.status === 'rejected' && <X className="w-3 h-3 lg:w-3.5 lg:h-3.5" />}
-                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                        {request.status === 'resubmission_requested' && <RotateCcw className="w-3 h-3 lg:w-3.5 lg:h-3.5" />}
+                        {request.status === 'resubmission_requested' 
+                          ? 'Resubmission Requested'
+                          : request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                       </span>
                     </td>
                     <td className="px-4 lg:px-6 py-3 lg:py-4 text-right">

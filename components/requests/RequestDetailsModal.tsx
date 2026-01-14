@@ -26,10 +26,15 @@ import { FormField } from '@/components/FormBuilder/types';
 export type RequestItem = {
   id: string;
   submittedAt?: { seconds?: number; nanoseconds?: number } | string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'resubmission_requested';
   data: Record<string, unknown>;
   email?: string | null;
   files?: Array<{ name: string; url: string; contentType?: string; size?: number }>;
+  meta?: {
+    problematicFields?: string[];
+    resubmissionMessage?: string;
+    [key: string]: any;
+  };
 };
 
 export type ActionLoadingType = 'approve' | 'reject' | 'info' | 'delete' | 'resetCooldown' | null;
@@ -480,6 +485,7 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
   const isPending = request.status === 'pending';
   const isApproved = request.status === 'approved';
   const isRejected = request.status === 'rejected';
+  const isResubmissionRequested = request.status === 'resubmission_requested';
 
   const statusTheme = {
     pending: {
@@ -506,10 +512,22 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
       badgeText: 'text-rose-700',
       icon: X,
     },
+    resubmission_requested: {
+      headerBg: 'from-blue-50 via-indigo-50 to-blue-100',
+      accentColor: 'text-blue-800',
+      accentBg: 'bg-blue-600',
+      badgeBg: 'bg-blue-50 border-blue-200',
+      badgeText: 'text-blue-700',
+      icon: AlertCircle,
+    },
   };
 
   const theme = statusTheme[request.status] || statusTheme.pending;
   const StatusIcon = theme.icon;
+  
+  // Get problematic fields and message from metadata
+  const problematicFields = request.meta?.problematicFields || [];
+  const resubmissionMessage = request.meta?.resubmissionMessage;
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -588,6 +606,47 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
         {/* Body */}
         <div className="flex-1 overflow-y-auto bg-slate-50/30">
           <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5">
+            {/* Resubmission Request Info */}
+            {isResubmissionRequested && (problematicFields.length > 0 || resubmissionMessage) && (
+              <div className="mb-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="text-xs sm:text-sm font-semibold text-blue-900 mb-1.5">
+                      Resubmission Requested
+                    </div>
+                    {problematicFields.length > 0 && (
+                      <div className="mb-2">
+                        <div className="text-[10px] sm:text-xs font-medium text-blue-800 mb-1">
+                          Fields that need correction:
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {problematicFields.map((field, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                            >
+                              {field}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {resubmissionMessage && (
+                      <div className="mt-2 pt-2 border-t border-blue-200">
+                        <div className="text-[10px] sm:text-xs font-medium text-blue-800 mb-1">
+                          Additional message:
+                        </div>
+                        <div className="text-xs sm:text-sm text-blue-900 whitespace-pre-wrap">
+                          {resubmissionMessage}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 mb-3 sm:mb-4">
               <div className="flex-1 relative min-w-0">
                 <Search className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 shrink-0" />
@@ -831,7 +890,7 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
         {/* Footer */}
         <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 border-t border-slate-200 bg-gradient-to-b from-slate-50/50 to-white">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 md:gap-3">
-            {isPending && (
+            {(isPending || isResubmissionRequested) && (
               <>
                 <button
                   onClick={() => onApprove(request.id)}
@@ -867,33 +926,27 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
                     </>
                   )}
                 </button>
-                <button
-                  onClick={() => onRequestInfo(request.id)}
-                  disabled={actionLoading !== null}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed text-white px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3.5 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm md:text-[15px] transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
-                >
-                  {actionLoading === 'info' ? (
-                    <>
-                      <LoadingSpinner />
-                      <span className="hidden sm:inline">Sending...</span>
-                      <span className="sm:hidden">...</span>
-                    </>
-                  ) : (
-                    <>
-                      <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 shrink-0" />
-                      <span className="hidden sm:inline">Request Info</span>
-                      <span className="sm:hidden">Info</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => onDelete(request.id)}
-                  disabled={actionLoading !== null}
-                  className="px-2.5 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3.5 bg-white hover:bg-red-50 border-2 border-slate-200 hover:border-red-300 text-slate-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg sm:rounded-xl font-medium text-xs sm:text-sm transition-colors duration-200 flex items-center justify-center cursor-pointer shrink-0"
-                  title="Delete request"
-                >
-                  {actionLoading === 'delete' ? <DeleteSpinner /> : <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />}
-                </button>
+                {!isResubmissionRequested && (
+                  <button
+                    onClick={() => onRequestInfo(request.id)}
+                    disabled={actionLoading !== null}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed text-white px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3.5 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm md:text-[15px] transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
+                  >
+                    {actionLoading === 'info' ? (
+                      <>
+                        <LoadingSpinner />
+                        <span className="hidden sm:inline">Sending...</span>
+                        <span className="sm:hidden">...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 shrink-0" />
+                        <span className="hidden sm:inline">Request Resubmission</span>
+                        <span className="sm:hidden">Resubmit</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </>
             )}
 
@@ -903,28 +956,16 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
                   <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-emerald-600 shrink-0" />
                   <span className="text-emerald-700 font-semibold text-xs sm:text-sm md:text-[15px] truncate">Request Approved</span>
                 </div>
-                <button
-                  onClick={() => onDelete(request.id)}
-                  disabled={actionLoading !== null}
-                  className="px-2.5 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3.5 bg-white hover:bg-red-50 border-2 border-slate-200 hover:border-red-300 text-slate-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg sm:rounded-xl font-medium text-xs sm:text-sm transition-colors duration-200 flex items-center justify-center cursor-pointer shrink-0"
-                  title="Delete request"
-                >
-                  {actionLoading === 'delete' ? <DeleteSpinner /> : <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />}
-                </button>
               </>
             )}
 
             {isRejected && (
               <>
-                <div className="flex-1 flex items-center gap-1.5 sm:gap-2 md:gap-2.5 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3.5 bg-rose-50 rounded-lg sm:rounded-xl border border-rose-200 shadow-sm min-w-0">
-                  <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-rose-600 shrink-0" />
-                  <span className="text-rose-700 font-semibold text-xs sm:text-sm md:text-[15px] truncate">Request Rejected</span>
-                </div>
                 {onResetCooldown && request.email && (
                   <button
                     onClick={() => onResetCooldown(request.email!)}
                     disabled={actionLoading !== null}
-                    className="px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm md:text-[15px] transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer shrink-0"
+                    className="flex-1 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3.5 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 disabled:bg-purple-400 disabled:cursor-not-allowed text-white rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm md:text-[15px] transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     title="Reset cooldown period for this user"
                   >
                     {actionLoading === 'resetCooldown' ? (
@@ -945,7 +986,7 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
                 <button
                   onClick={() => onApprove(request.id)}
                   disabled={actionLoading !== null}
-                  className="px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm md:text-[15px] transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer shrink-0"
+                  className="flex-1 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-emerald-400 disabled:cursor-not-allowed text-white rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm md:text-[15px] transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                 >
                   {actionLoading === 'approve' ? (
                     <>
@@ -960,12 +1001,21 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
                   )}
                 </button>
                 <button
-                  onClick={() => onDelete(request.id)}
+                  onClick={() => onRequestInfo(request.id)}
                   disabled={actionLoading !== null}
-                  className="px-2.5 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3.5 bg-white hover:bg-red-50 border-2 border-slate-200 hover:border-red-300 text-slate-400 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg sm:rounded-xl font-medium text-xs sm:text-sm transition-colors duration-200 flex items-center justify-center cursor-pointer shrink-0"
-                  title="Delete request"
+                  className="flex-1 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm md:text-[15px] transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                 >
-                  {actionLoading === 'delete' ? <DeleteSpinner /> : <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />}
+                  {actionLoading === 'info' ? (
+                    <>
+                      <LoadingSpinner />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                      <span>Request Resubmission</span>
+                    </>
+                  )}
                 </button>
               </>
             )}

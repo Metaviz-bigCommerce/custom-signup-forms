@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { 
   Eye, Mail, Check, X, Send, Palette, Type, Link2, 
   Share2, ChevronDown, ChevronRight, Sparkles, Save,
-  TestTube, RefreshCw, MousePointer, Plus, Trash2, GripVertical
+  TestTube, RefreshCw, MousePointer, Plus, Trash2, GripVertical, RotateCcw
 } from 'lucide-react';
 import { useSession } from '@/context/session';
 import { useToast } from '@/components/common/Toast';
@@ -82,11 +82,11 @@ const templateMeta: Record<TemplateKey, { label: string; icon: React.ElementType
     bgColor: 'bg-rose-500'
   },
   moreInfo: { 
-    label: 'Info Request', 
-    icon: Mail, 
-    description: 'Sent when you request additional information',
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-500'
+    label: 'Resubmission Request', 
+    icon: RotateCcw, 
+    description: 'Sent when you request a user to resubmit their signup form with corrections',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-500'
   }
 };
 
@@ -110,7 +110,7 @@ const defaultCTAs: Record<TemplateKey, CTA[]> = {
   signup: [{ id: 'view-status', text: 'Check Application Status', url: '{{action_url}}' }],
   approval: [{ id: 'login', text: 'Login to Your Account', url: '{{action_url}}' }],
   rejection: [{ id: 'contact', text: 'Contact Support', url: '{{action_url}}' }],
-  moreInfo: [] // No default CTA - users will reply via email
+  moreInfo: [{ id: 'resubmit', text: 'Resubmit Form', url: '{{action_url}}' }]
 };
 
 // Default titles per template type
@@ -118,7 +118,7 @@ const defaultTitles: Record<TemplateKey, string> = {
   signup: 'Application Received Successfully',
   approval: 'Welcome Aboard! You\'re Approved',
   rejection: 'Application Status Update',
-  moreInfo: 'We Need a Little More Information'
+  moreInfo: 'Resubmission Required'
 };
 
 // Default branding colors per template type
@@ -126,7 +126,7 @@ const defaultBranding: Record<TemplateKey, { primaryColor: string; background: s
   signup: { primaryColor: '#2563eb', background: '#f7fafc' }, // Sky blue
   approval: { primaryColor: '#059669', background: '#ecfdf5' }, // Emerald green
   rejection: { primaryColor: '#e11d48', background: '#fff1f2' }, // Rose red
-  moreInfo: { primaryColor: '#d97706', background: '#fffbeb' } // Amber
+  moreInfo: { primaryColor: '#2563eb', background: '#eff6ff' } // Blue (matching resubmission theme)
 };
 
 // Collapsible Section Component - moved outside to prevent recreation on each render
@@ -208,8 +208,8 @@ const EmailTemplates: React.FC = () => {
       }
     },
     moreInfo: { 
-      subject: 'Action Required from {{platform_name}}: Additional Details Needed to Proceed', 
-      body: 'To proceed with your signup review, we require the following information: {{required_information}}. Providing accurate details will help us complete the verification process efficiently. You may submit the requested information through your signup portal or by replying directly to this email. Once received, we will resume the review and update you accordingly. Please let us know if you need clarification regarding any part of this request.',
+      subject: 'Action Required from {{platform_name}}: Please Resubmit Your Signup Form', 
+      body: 'We need you to resubmit your signup form with corrections. Please review the highlighted fields below and resubmit your application through the signup form.\n\nOnce you resubmit, we will review your updated information and proceed accordingly.\n\nIf you have any questions or need clarification, please don\'t hesitate to reach out to us.',
       design: {
         title: defaultTitles.moreInfo,
         primaryColor: defaultBranding.moreInfo.primaryColor,
@@ -237,7 +237,8 @@ const EmailTemplates: React.FC = () => {
     date: new Date().toLocaleString(),
     store_name: 'Demo Store',
     platform_name: 'SignupPro',
-    required_information: 'Business license and tax ID',
+    required_information: 'First Name, Last Name, Email',
+    merchant_message: '\n\nAdditional message: Please ensure all information is accurate and up to date.',
     action_url: 'https://example.com/action'
   }), []);
 
@@ -473,6 +474,80 @@ const EmailTemplates: React.FC = () => {
     const heading = (d.title || defaultTitles[selectedTemplate] || renderTemplate('{{platform_name}}')).replace(/\{\{.*?\}\}/g, (m)=>renderTemplate(m));
     const greeting = (d.greeting || 'Hello {{name}}').replace(/\{\{.*?\}\}/g, (m)=>renderTemplate(m));
 
+    // Special handling for moreInfo template - format problematic fields in highlighted box
+    let bodyContent = '';
+    if (selectedTemplate === 'moreInfo' && renderVars.required_information) {
+      const requiredInfo = String(renderVars.required_information || '').trim();
+      const merchantMessage = String(renderVars.merchant_message || '').trim();
+      
+      if (requiredInfo) {
+        // Remove placeholders from body text (merchant_message is only shown in the box)
+        let bodyText = t.body
+          .replace(/\{\{\s*required_information\s*\}\}/g, '')
+          .replace(/\{\{\s*merchant_message\s*\}\}/g, '') // Remove from body, only show in box
+          .replace(/\.\s*\./g, '.')
+          .replace(/:\s*\./g, '.')
+          .trim();
+        bodyText = renderTemplate(bodyText);
+        
+        // Format fields as a list
+        const fieldsList = requiredInfo.split(',').map(f => f.trim()).filter(f => f);
+        const formattedFields = fieldsList.map(field => 
+          `<div style="font-size:16px;line-height:1.8;color:#0f172a;font-weight:500;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin-bottom:8px;">${field}</div>`
+        ).join('');
+        
+        // Orange color for resubmission
+        const orangeColor = '#d97706';
+        const orangeRgb = { r: 217, g: 119, b: 6 };
+        const bgColor = `rgba(${orangeRgb.r}, ${orangeRgb.g}, ${orangeRgb.b}, 0.1)`;
+        
+        bodyContent = `
+          <tr>
+            <td style="padding:0 24px">
+              <div style="font-size:14px;color:#334155;text-align:center;margin-bottom:14px">${greeting},</div>
+              <div style="font-size:14px;line-height:1.7;color:#334155;white-space:pre-line;text-align:center">${bodyText}</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 24px 24px 24px;">
+              <div style="background:${bgColor};border:2px solid ${orangeColor};border-radius:16px;padding:24px;margin:16px 0;box-shadow:0 8px 24px rgba(0,0,0,0.12);">
+                <div style="display:flex;gap:16px;align-items:flex-start;">
+                  <div style="flex-shrink:0;width:20px;height:20px;background:${orangeColor};border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px ${orangeColor}50;margin:2px 16px 0 0;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="10" fill="#ffffff"/>
+                    </svg>
+                  </div>
+                  <div style="flex:1;">
+                    <div style="font-size:12px;font-weight:800;color:${orangeColor};text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">FIELDS REQUIRING CORRECTION</div>
+                    ${formattedFields}
+                    ${merchantMessage ? `<div style="font-size:14px;line-height:1.6;color:#475569;font-weight:400;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin-top:12px;padding-top:12px;border-top:1px solid ${orangeColor}30;white-space:pre-line;">${merchantMessage.replace(/\n/g, '<br/>')}</div>` : ''}
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+      } else {
+        bodyContent = `
+          <tr>
+            <td style="padding:0 24px">
+              <div style="font-size:14px;color:#334155;text-align:center;margin-bottom:14px">${greeting},</div>
+              <div style="font-size:14px;line-height:1.7;color:#334155;white-space:pre-line;text-align:center">${renderTemplate(t.body)}</div>
+            </td>
+          </tr>
+        `;
+      }
+    } else {
+      bodyContent = `
+        <tr>
+          <td style="padding:0 24px">
+            <div style="font-size:14px;color:#334155;text-align:center;margin-bottom:14px">${greeting},</div>
+            <div style="font-size:14px;line-height:1.7;color:#334155;white-space:pre-line;text-align:center">${renderTemplate(t.body)}</div>
+          </td>
+        </tr>
+      `;
+    }
+
     return `
 <!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1" /><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <title>${renderTemplate('{{platform_name}}')}</title>
@@ -498,12 +573,7 @@ const EmailTemplates: React.FC = () => {
               <div style="font-size:24px;line-height:1.3;font-weight:800;text-align:center;margin:8px 0 6px 0;">${heading}</div>
             </td>
           </tr>
-          <tr>
-            <td style="padding:0 24px">
-              <div style="font-size:14px;color:#334155;text-align:center;margin-bottom:14px">${greeting},</div>
-              <div style="font-size:14px;line-height:1.7;color:#334155;white-space:pre-line;text-align:center">${renderTemplate(t.body)}</div>
-            </td>
-          </tr>
+          ${bodyContent}
           ${ctasRow}
           ${socialsRow}
           <tr>
@@ -572,8 +642,8 @@ const EmailTemplates: React.FC = () => {
                 }
               },
               moreInfo: { 
-                subject: 'Action Required from {{platform_name}}: Additional Details Needed to Proceed', 
-                body: 'To proceed with your signup review, we require the following information: {{required_information}}. Providing accurate details will help us complete the verification process efficiently. You may submit the requested information through your signup portal or by replying directly to this email. Once received, we will resume the review and update you accordingly. Please let us know if you need clarification regarding any part of this request.',
+                subject: 'Action Required from {{platform_name}}: Please Resubmit Your Signup Form', 
+                body: 'We need you to resubmit your signup form with corrections. Please review the highlighted fields below and resubmit your application through the signup form.\n\nOnce you resubmit, we will review your updated information and proceed accordingly.\n\nIf you have any questions or need clarification, please don\'t hesitate to reach out to us.',
                 design: {
                   title: defaultTitles.moreInfo,
                   primaryColor: defaultBranding.moreInfo.primaryColor,
@@ -591,15 +661,35 @@ const EmailTemplates: React.FC = () => {
                 
                 // If loaded template exists, merge it with defaults
                 if (loaded) {
+                  // Special handling for moreInfo template migration from "Info Request" to "Resubmission Request"
+                  let subject = loaded.subject ?? defaultTemplate.subject;
+                  let body = loaded.body ?? defaultTemplate.body;
+                  let title = loaded.design?.title ?? defaultTemplate.design?.title;
+                  
+                  if (k === 'moreInfo') {
+                    // Detect old "Info Request" template and migrate to new "Resubmission Request" format
+                    const isOldTemplate = 
+                      (subject.includes('Additional Details Needed') || subject.includes('Additional Details')) ||
+                      (body.includes('require the following information') && !body.includes('resubmit')) ||
+                      (title === 'We Need a Little More Information');
+                    
+                    if (isOldTemplate) {
+                      // Migrate to new resubmission template
+                      subject = defaultTemplate.subject;
+                      body = defaultTemplate.body;
+                      title = defaultTemplate.design?.title;
+                    }
+                  }
+                  
                   return [k, {
-                    // Use saved values, fallback to defaults
-                    subject: loaded.subject ?? defaultTemplate.subject,
-                    body: loaded.body ?? defaultTemplate.body,
+                    // Use saved values (or migrated values), fallback to defaults
+                    subject,
+                    body,
                     html: loaded.html ?? null,
                     useHtml: loaded.useHtml ?? true,
                     design: loaded.design ? {
                       // Merge design: use saved values, fallback to defaults only if not set
-                      title: loaded.design.title ?? defaultTemplate.design?.title,
+                      title,
                       greeting: loaded.design.greeting ?? defaultTemplate.design?.greeting,
                       primaryColor: loaded.design.primaryColor ?? defaultTemplate.design?.primaryColor ?? defaultBranding[k].primaryColor,
                       background: loaded.design.background ?? defaultTemplate.design?.background ?? defaultBranding[k].background,
@@ -607,7 +697,10 @@ const EmailTemplates: React.FC = () => {
                       bannerUrl: loaded.design.bannerUrl ?? defaultTemplate.design?.bannerUrl,
                       footerNote: loaded.design.footerNote ?? defaultTemplate.design?.footerNote,
                       // Use saved arrays if they exist (even if empty), otherwise use defaults
-                      ctas: loaded.design.ctas !== undefined ? loaded.design.ctas : (defaultTemplate.design?.ctas || []),
+                      // For moreInfo, migrate empty CTA array to new default CTA
+                      ctas: k === 'moreInfo' && (!loaded.design.ctas || loaded.design.ctas.length === 0) 
+                        ? (defaultTemplate.design?.ctas || [])
+                        : (loaded.design.ctas !== undefined ? loaded.design.ctas : (defaultTemplate.design?.ctas || [])),
                       footerLinks: loaded.design.footerLinks !== undefined ? loaded.design.footerLinks : (defaultTemplate.design?.footerLinks || []),
                       socialLinks: loaded.design.socialLinks !== undefined ? loaded.design.socialLinks : (defaultTemplate.design?.socialLinks || []),
                     } : defaultTemplate.design,
@@ -841,7 +934,7 @@ const EmailTemplates: React.FC = () => {
                 <span className="text-xs font-semibold text-blue-800">Available Variables</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {['{{name}}', '{{email}}', '{{date}}', '{{store_name}}', '{{platform_name}}', '{{required_information}}'].map(v => (
+                {['{{name}}', '{{email}}', '{{date}}', '{{store_name}}', '{{platform_name}}', '{{required_information}}', '{{merchant_message}}'].map(v => (
                   <code key={v} className="px-2 py-1 bg-white border border-blue-200 rounded text-[10px] sm:text-[11px] text-blue-700 font-mono whitespace-nowrap">
                     {v}
                   </code>
