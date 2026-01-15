@@ -212,7 +212,7 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
           <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="text-[11px] sm:text-xs text-amber-800">
-              The request status will be updated to "Resubmission Requested". When the user resubmits, the old request will be deleted and a new request will be created.
+              The request status will be updated to &quot;Resubmission Requested&quot;. When the user resubmits, the old request will be deleted and a new request will be created.
             </div>
           </div>
 
