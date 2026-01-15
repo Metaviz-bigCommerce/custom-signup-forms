@@ -183,6 +183,7 @@ export const emailTemplatesSchema = z.object({
   approval: emailTemplateSchema,
   rejection: emailTemplateSchema,
   moreInfo: emailTemplateSchema,
+  resubmissionConfirmation: emailTemplateSchema,
 });
 
 // Email config schema

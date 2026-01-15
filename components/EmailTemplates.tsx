@@ -11,7 +11,7 @@ import { useToast } from '@/components/common/Toast';
 import TestEmailModal from '@/components/TestEmailModal';
 import { getUserFriendlyError } from '@/lib/utils';
 
-type TemplateKey = 'signup' | 'approval' | 'rejection' | 'moreInfo';
+type TemplateKey = 'signup' | 'approval' | 'rejection' | 'moreInfo' | 'resubmissionConfirmation';
 
 type CTA = {
   id: string;
@@ -81,12 +81,19 @@ const templateMeta: Record<TemplateKey, { label: string; icon: React.ElementType
     color: 'text-rose-600',
     bgColor: 'bg-rose-500'
   },
-  moreInfo: { 
-    label: 'Resubmission Request', 
-    icon: RotateCcw, 
+  moreInfo: {
+    label: 'Resubmission Request',
+    icon: RotateCcw,
     description: 'Sent when you request a user to resubmit their signup form with corrections',
     color: 'text-blue-600',
     bgColor: 'bg-blue-500'
+  },
+  resubmissionConfirmation: {
+    label: 'Resubmission Confirmation',
+    icon: RefreshCw,
+    description: 'Sent when a user successfully resubmits their signup form after corrections',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-500'
   }
 };
 
@@ -110,7 +117,8 @@ const defaultCTAs: Record<TemplateKey, CTA[]> = {
   signup: [{ id: 'view-status', text: 'Check Application Status', url: '{{action_url}}' }],
   approval: [{ id: 'login', text: 'Login to Your Account', url: '{{action_url}}' }],
   rejection: [{ id: 'contact', text: 'Contact Support', url: '{{action_url}}' }],
-  moreInfo: [{ id: 'resubmit', text: 'Resubmit Form', url: '{{action_url}}' }]
+  moreInfo: [{ id: 'resubmit', text: 'Resubmit Form', url: '{{action_url}}' }],
+  resubmissionConfirmation: [{ id: 'view-status', text: 'Check Application Status', url: '{{action_url}}' }]
 };
 
 // Default titles per template type
@@ -118,7 +126,8 @@ const defaultTitles: Record<TemplateKey, string> = {
   signup: 'Application Received Successfully',
   approval: 'Welcome Aboard! You\'re Approved',
   rejection: 'Application Status Update',
-  moreInfo: 'Resubmission Required'
+  moreInfo: 'Resubmission Required',
+  resubmissionConfirmation: 'Resubmission Received - Under Review'
 };
 
 // Default branding colors per template type
@@ -126,7 +135,8 @@ const defaultBranding: Record<TemplateKey, { primaryColor: string; background: s
   signup: { primaryColor: '#2563eb', background: '#f7fafc' }, // Sky blue
   approval: { primaryColor: '#059669', background: '#ecfdf5' }, // Emerald green
   rejection: { primaryColor: '#e11d48', background: '#fff1f2' }, // Rose red
-  moreInfo: { primaryColor: '#2563eb', background: '#eff6ff' } // Blue (matching resubmission theme)
+  moreInfo: { primaryColor: '#2563eb', background: '#eff6ff' }, // Blue (matching resubmission theme)
+  resubmissionConfirmation: { primaryColor: '#9333ea', background: '#faf5ff' } // Purple
 };
 
 // Collapsible Section Component - moved outside to prevent recreation on each render
@@ -207,14 +217,25 @@ const EmailTemplates: React.FC = () => {
         footerLinks: defaultFooterLinks
       }
     },
-    moreInfo: { 
-      subject: 'Action Required from {{platform_name}}: Please Resubmit Your Signup Form', 
+    moreInfo: {
+      subject: 'Action Required from {{platform_name}}: Please Resubmit Your Signup Form',
       body: 'We need you to resubmit your signup form with corrections. Please review the highlighted fields below and resubmit your application through the signup form.\n\nOnce you resubmit, we will review your updated information and proceed accordingly.\n\nIf you have any questions or need clarification, please don\'t hesitate to reach out to us.',
       design: {
         title: defaultTitles.moreInfo,
         primaryColor: defaultBranding.moreInfo.primaryColor,
         background: defaultBranding.moreInfo.background,
         ctas: defaultCTAs.moreInfo,
+        footerLinks: defaultFooterLinks
+      }
+    },
+    resubmissionConfirmation: {
+      subject: 'Notification from {{platform_name}}: Your Resubmission Has Been Received',
+      body: 'Thank you for resubmitting your signup request with the requested corrections. We have received your updated information and our team will review it shortly. You will receive an update once the review is complete. We appreciate your prompt response and cooperation.',
+      design: {
+        title: defaultTitles.resubmissionConfirmation,
+        primaryColor: defaultBranding.resubmissionConfirmation.primaryColor,
+        background: defaultBranding.resubmissionConfirmation.background,
+        ctas: defaultCTAs.resubmissionConfirmation,
         footerLinks: defaultFooterLinks
       }
     }
@@ -641,8 +662,8 @@ const EmailTemplates: React.FC = () => {
                   footerLinks: defaultFooterLinks
                 }
               },
-              moreInfo: { 
-                subject: 'Action Required from {{platform_name}}: Please Resubmit Your Signup Form', 
+              moreInfo: {
+                subject: 'Action Required from {{platform_name}}: Please Resubmit Your Signup Form',
                 body: 'We need you to resubmit your signup form with corrections. Please review the highlighted fields below and resubmit your application through the signup form.\n\nOnce you resubmit, we will review your updated information and proceed accordingly.\n\nIf you have any questions or need clarification, please don\'t hesitate to reach out to us.',
                 design: {
                   title: defaultTitles.moreInfo,
@@ -651,9 +672,20 @@ const EmailTemplates: React.FC = () => {
                   ctas: defaultCTAs.moreInfo,
                   footerLinks: defaultFooterLinks
                 }
+              },
+              resubmissionConfirmation: {
+                subject: 'Notification from {{platform_name}}: Your Resubmission Has Been Received',
+                body: 'Thank you for resubmitting your signup request with the requested corrections. We have received your updated information and our team will review it shortly. You will receive an update once the review is complete. We appreciate your prompt response and cooperation.',
+                design: {
+                  title: defaultTitles.resubmissionConfirmation,
+                  primaryColor: defaultBranding.resubmissionConfirmation.primaryColor,
+                  background: defaultBranding.resubmissionConfirmation.background,
+                  ctas: defaultCTAs.resubmissionConfirmation,
+                  footerLinks: defaultFooterLinks
+                }
               }
             };
-            
+
             const merged: Templates = Object.fromEntries(
               (Object.keys(defaultTemplates) as TemplateKey[]).map((k) => {
                 const loaded = templates[k];

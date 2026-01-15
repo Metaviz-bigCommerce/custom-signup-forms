@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 import { env } from './env';
 
-type TemplateKey = 'signup' | 'approval' | 'rejection' | 'moreInfo';
+type TemplateKey = 'signup' | 'approval' | 'rejection' | 'moreInfo' | 'resubmissionConfirmation';
 
 export type EmailTemplateDesign = {
 	logoUrl?: string;
@@ -87,7 +87,8 @@ const defaultTitles: Record<TemplateKey, string> = {
 	signup: 'Application Received Successfully',
 	approval: 'Welcome Aboard! You\'re Approved',
 	rejection: 'Application Status Update',
-	moreInfo: 'We Need a Little More Information'
+	moreInfo: 'We Need a Little More Information',
+	resubmissionConfirmation: 'Resubmission Received - Under Review'
 };
 
 // Generate HTML email from template with actual user variables

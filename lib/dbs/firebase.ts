@@ -395,6 +395,11 @@ export async function getEmailTemplates(storeHash: string) {
       body:
         'We need you to resubmit your signup form with corrections. Please review the highlighted fields below and resubmit your application through the signup form.\n\nOnce you resubmit, we will review your updated information and proceed accordingly.\n\nIf you have any questions or need clarification, please don\'t hesitate to reach out to us.',
     },
+    resubmissionConfirmation: {
+      subject: 'Notification from {{platform_name}}: Your Resubmission Has Been Received',
+      body:
+        'Thank you for resubmitting your signup request with the requested corrections. We have received your updated information and our team will review it shortly. You will receive an update once the review is complete. We appreciate your prompt response and cooperation.',
+    },
   };
   if (!snap.exists()) return defaults;
   const data = snap.data() as any;

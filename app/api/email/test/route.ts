@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 		const { storeHash } = session;
 		const body = await req.json().catch(() => ({}));
 		const to = String(body?.to || '').trim();
-		const key = String(body?.key || 'signup') as 'signup' | 'approval' | 'rejection' | 'moreInfo';
+		const key = String(body?.key || 'signup') as 'signup' | 'approval' | 'rejection' | 'moreInfo' | 'resubmissionConfirmation';
 		if (!to) return NextResponse.json({ message: 'Missing to' }, { status: 400 });
 		const templates = await db.getEmailTemplates(storeHash);
 		const config = await db.getEmailConfig(storeHash);
