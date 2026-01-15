@@ -224,9 +224,13 @@ export async function POST(req: NextRequest) {
         // Send confirmation email to user
         if (email) {
           try {
+            // Use resubmissionConfirmation template if this is a resubmission, otherwise use signup template
+            const templateToUse = wasResubmission ? templates.resubmissionConfirmation : templates.signup;
+            const templateKey = wasResubmission ? 'resubmissionConfirmation' : 'signup';
+
             await trySendTemplatedEmail({
               to: email,
-              template: templates.signup,
+              template: templateToUse,
               vars: {
                 name,
                 email: email || '',
@@ -236,7 +240,7 @@ export async function POST(req: NextRequest) {
               },
               replyTo: config?.replyTo || undefined,
               config,
-              templateKey: 'signup',
+              templateKey,
             });
           } catch (emailError) {
             logger.error('Failed to send signup confirmation email', emailError, { ...logContext, email });
@@ -372,9 +376,13 @@ export async function POST(req: NextRequest) {
         // Send confirmation email to user
         if (email) {
           try {
+            // Use resubmissionConfirmation template if this is a resubmission, otherwise use signup template
+            const templateToUse = wasResubmission ? templates.resubmissionConfirmation : templates.signup;
+            const templateKey = wasResubmission ? 'resubmissionConfirmation' : 'signup';
+
             await trySendTemplatedEmail({
               to: email,
-              template: templates.signup,
+              template: templateToUse,
               vars: {
                 name,
                 email: email || '',
@@ -384,7 +392,7 @@ export async function POST(req: NextRequest) {
               },
               replyTo: config?.replyTo || undefined,
               config,
-              templateKey: 'signup',
+              templateKey,
             });
           } catch (emailError) {
             logger.error('Failed to send signup confirmation email', emailError, { ...logContext, email });
