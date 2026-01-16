@@ -9,13 +9,14 @@ interface TooltipProps {
   delay?: number;
 }
 
-export default function Tooltip({ 
-  content, 
-  children, 
+export default function Tooltip({
+  content,
+  children,
   position = 'top',
-  delay = 200 
+  delay = 200
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const [isPositioned, setIsPositioned] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -60,6 +61,9 @@ export default function Tooltip({
       }
 
       setTooltipPosition({ top, left });
+      setIsPositioned(true);
+    } else if (!isVisible) {
+      setIsPositioned(false);
     }
   }, [isVisible, position]);
 
@@ -113,7 +117,9 @@ export default function Tooltip({
       {isVisible && (
         <div
           ref={tooltipRef}
-          className="fixed z-[9999] pointer-events-none animate-in fade-in duration-200"
+          className={`fixed z-[9999] pointer-events-none transition-opacity duration-200 ${
+            isPositioned ? 'opacity-100' : 'opacity-0'
+          }`}
           style={{
             top: `${tooltipPosition.top}px`,
             left: `${tooltipPosition.left}px`,

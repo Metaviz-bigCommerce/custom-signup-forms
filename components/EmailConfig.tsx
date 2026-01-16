@@ -322,7 +322,7 @@ const EmailConfigForm: React.FC = () => {
 										type="text"
 										value={fromName}
 										onChange={(e) => setFromName(e.target.value)}
-										placeholder="e.g. Signup Customisation App"
+										placeholder="e.g. John's Store"
 										className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-slate-200 rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white text-slate-900 transition-all"
 									/>
 									<p className="text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-1.5 break-words">

@@ -3,6 +3,9 @@ import { env } from './env';
 
 type TemplateKey = 'signup' | 'approval' | 'rejection' | 'moreInfo' | 'resubmissionConfirmation';
 
+// Notification templates for store owners (not exposed in UI)
+type NotificationTemplateKey = 'ownerNewSignup' | 'ownerResubmission';
+
 export type EmailTemplateDesign = {
 	logoUrl?: string;
 	bannerUrl?: string;
@@ -25,6 +28,34 @@ export type EmailTemplate = {
 };
 
 export type EmailTemplates = Record<TemplateKey, EmailTemplate>;
+
+// Internal notification templates (hardcoded, not in Firestore)
+const NOTIFICATION_TEMPLATES: Record<NotificationTemplateKey, EmailTemplate> = {
+	ownerNewSignup: {
+		subject: 'New Signup Request Received - {{name}}',
+		body: `You have received a new signup request from a customer. This request is now pending your review and requires action.
+
+Please review this request in your dashboard and take appropriate action. You can <span style="color:#059669;font-weight:700;">approve</span> the request, <span style="color:#dc2626;font-weight:700;">reject</span> it, or <span style="color:#3b82f6;font-weight:700;">Request Resubmission</span> from the applicant.`,
+		design: {
+			title: 'New Signup Request',
+			greeting: 'Hello there,',
+			primaryColor: '#059669', // Green color for new requests
+			background: '#f0fdf4', // Light green background
+		}
+	},
+	ownerResubmission: {
+		subject: 'Signup Request Resubmitted - {{name}}',
+		body: `{{name}} has resubmitted their signup request with the corrections you requested. The updated information is now available for your review.
+
+Please review the updated information in your dashboard. The applicant has made changes based on your feedback and is waiting for your approval.`,
+		design: {
+			title: 'Request Resubmitted',
+			greeting: 'Dear Store Owner,',
+			primaryColor: '#f59e0b', // Amber color for resubmissions
+			background: '#fffbeb', // Light amber background
+		}
+	}
+};
 
 const DEFAULT_FROM = env.EMAIL_FROM || 'no-reply@example.com';
 const SMTP_HOST = env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com';
@@ -221,6 +252,65 @@ export function generateEmailHtml(template: EmailTemplate, vars: Record<string, 
 				</tr>
 			`;
 		}
+	} else if (vars.request_id) {
+		// Special handling for notification emails (when request_id is present)
+		// Escape HTML helper
+		const escapeHtml = (text: string) => {
+			return text
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;')
+				.replace(/'/g, '&#039;');
+		};
+
+		// Create highlighted box for request details
+		const boxColor = brand; // Use template's primary color
+		const boxBgRgb = brand === '#059669'
+			? { r: 5, g: 150, b: 105 }  // Green for new requests
+			: brand === '#f59e0b'
+			? { r: 245, g: 158, b: 11 }  // Amber for resubmissions
+			: { r: 37, g: 99, b: 235 }; // Default blue
+		const bgColor = `rgba(${boxBgRgb.r}, ${boxBgRgb.g}, ${boxBgRgb.b}, 0.1)`;
+
+		// Status badge styling (matches requests table)
+		const statusBadge = `<span style="display:inline-block;background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:9999px;font-size:12px;font-weight:600;text-transform:capitalize;">Pending</span>`;
+
+		const detailsBox = `
+			<tr>
+				<td style="padding:8px 24px 0 24px;">
+					<div style="background:${bgColor};border:2px solid ${boxColor};border-radius:16px;padding:24px 24px 28px 24px;margin:8px 0 32px 0;box-shadow:0 8px 24px rgba(0,0,0,0.12);">
+						<div style="display:flex;gap:16px;align-items:flex-start;">
+							<div style="flex-shrink:0;width:20px;height:20px;background:${boxColor};border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px ${boxColor}50;margin:2px 16px 0 0;">
+								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<circle cx="12" cy="12" r="10" fill="#ffffff"/>
+								</svg>
+							</div>
+							<div style="flex:1;">
+								<div style="font-size:12px;font-weight:800;color:${boxColor};text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">REQUEST DETAILS</div>
+								<div style="font-size:15px;line-height:1.8;color:#0f172a;font-weight:500;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+									<div style="margin-bottom:10px;"><strong>Name:</strong> ${escapeHtml(String(vars.name || 'N/A'))}</div>
+									<div style="margin-bottom:10px;"><strong>Email:</strong> ${escapeHtml(String(vars.email || 'N/A'))}</div>
+									<div style="margin-bottom:10px;"><strong>${brand === '#f59e0b' ? 'Resubmitted' : 'Submitted'}:</strong> ${escapeHtml(String(vars.date || 'N/A'))}</div>
+									<div style="margin-bottom:10px;"><strong>Status:</strong> ${statusBadge}</div>
+									<div><strong>Request ID:</strong> <code style="background:rgba(0,0,0,0.05);padding:2px 8px;border-radius:4px;font-family:monospace;font-size:13px;">${escapeHtml(String(vars.request_id || 'N/A'))}</code></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</td>
+			</tr>
+		`;
+
+		bodyContent = `
+			<tr>
+				<td style="padding:0 24px">
+					<div style="font-size:14px;color:#334155;text-align:center;margin-bottom:8px">${greeting}</div>
+					<div style="font-size:14px;line-height:1.7;color:#334155;white-space:pre-line;text-align:center">${bodyText}</div>
+				</td>
+			</tr>
+			${detailsBox}
+		`;
 	} else {
 		// Normal body rendering for other templates
 		bodyContent = `
@@ -267,7 +357,6 @@ export function generateEmailHtml(template: EmailTemplate, vars: Record<string, 
 					<tr>
 						<td style="font-size:12px;line-height:1.7;color:#64748b;padding:8px 24px 0 24px;text-align:center">
 							${renderTemplate(footerNote, vars)}${footerLinksHtml ? '<br/>' + footerLinksHtml : ''}
-							<div style="padding-top:6px;color:#94a3b8">Sent by ${renderTemplate('{{store_name}}', vars)} · ${renderTemplate('{{date}}', vars)}</div>
 						</td>
 					</tr>
 				</table>
@@ -357,6 +446,41 @@ export async function trySendTemplatedEmail(args: {
 	}
 	
 	return await sendEmail({ to, subject, body, html, from, replyTo, config });
+}
+
+// Helper function to send owner notification emails
+export async function sendOwnerNotification(args: {
+	ownerEmail: string;
+	templateKey: NotificationTemplateKey;
+	vars: Record<string, any>;
+	config?: EmailConfig | null;
+}) {
+	const { ownerEmail, templateKey, vars, config } = args;
+	if (!ownerEmail) return { ok: false, skipped: true };
+
+	const template = NOTIFICATION_TEMPLATES[templateKey];
+	if (!template) return { ok: false, skipped: true };
+
+	const subject = renderTemplate(template.subject, vars);
+	const body = renderTemplate(template.body, vars);
+
+	// Generate HTML using the existing generateEmailHtml function
+	// We need to cast templateKey to work with generateEmailHtml
+	let html: string | null = null;
+	if (template.design) {
+		// Use a placeholder for the template key since generateEmailHtml expects TemplateKey
+		// but we're using NotificationTemplateKey. The function doesn't actually validate the key,
+		// it just uses it for default titles which we're overriding anyway.
+		html = generateEmailHtml(template, vars, 'signup' as TemplateKey);
+	}
+
+	return await sendEmail({
+		to: ownerEmail,
+		subject,
+		body,
+		html,
+		config
+	});
 }
 
 

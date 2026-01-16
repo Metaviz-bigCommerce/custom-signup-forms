@@ -2,10 +2,11 @@
 
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { XCircle, Search } from 'lucide-react';
+import { XCircle, Search, RefreshCw } from 'lucide-react';
 import { useSession } from '@/context/session';
 import { useToast } from '@/components/common/Toast';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
+import Tooltip from '@/components/common/Tooltip';
 import { getUserFriendlyError } from '@/lib/utils';
 import RequestDetailsModal, { RequestItem as ModalRequestItem } from '@/components/requests/RequestDetailsModal';
 import ApprovalDialog from '@/components/requests/ApprovalDialog';
@@ -92,6 +93,12 @@ const RequestsManager: React.FC = () => {
 
   useEffect(() => {
     // initial load and when filter changes
+    setAllItems([]);
+    setNextCursor(null);
+    load(null, true);
+  }, [load]);
+
+  const handleRefresh = useCallback(() => {
     setAllItems([]);
     setNextCursor(null);
     load(null, true);
@@ -300,9 +307,10 @@ const RequestsManager: React.FC = () => {
                 </div>
               </div>
             </div>
-            
-            {/* Status Filter Pills */}
-            <div className="flex flex-nowrap min-[361px]:flex-wrap gap-1.5 min-[361px]:gap-2 overflow-x-auto min-[361px]:overflow-x-visible -mx-1 min-[361px]:mx-0 px-1 min-[361px]:px-0">
+
+            {/* Status Filter Pills with Refresh Button */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <div className="flex flex-nowrap flex-1 min-w-0 gap-1.5 min-[361px]:gap-2 overflow-x-auto scrollbar-hide -mx-1 min-[361px]:mx-0 px-1 min-[361px]:px-0">
               <button 
                 onClick={() => setStatusFilter('')} 
                 className={`px-2 min-[361px]:px-3 sm:px-4 py-1 min-[361px]:py-1.5 sm:py-2 text-[10px] min-[361px]:text-xs sm:text-sm font-medium rounded-lg min-[361px]:rounded-xl transition-all duration-300 cursor-pointer whitespace-nowrap flex-shrink-0 ${
@@ -333,16 +341,33 @@ const RequestsManager: React.FC = () => {
               >
                 Approved
               </button>
-              <button 
-                onClick={() => setStatusFilter('rejected')} 
+              <button
+                onClick={() => setStatusFilter('rejected')}
                 className={`px-2 min-[361px]:px-3 sm:px-4 py-1 min-[361px]:py-1.5 sm:py-2 text-[10px] min-[361px]:text-xs sm:text-sm font-medium rounded-lg min-[361px]:rounded-xl transition-all duration-300 cursor-pointer whitespace-nowrap flex-shrink-0 ${
-                  statusFilter === 'rejected' 
-                    ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30' 
+                  statusFilter === 'rejected'
+                    ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30'
                     : 'bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 border border-rose-500/20'
                 }`}
               >
                 Rejected
               </button>
+              </div>
+
+              {/* Refresh Button */}
+              <Tooltip content="Refresh requests" position="bottom">
+                <button
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className={`flex-shrink-0 p-1.5 min-[361px]:p-2 sm:p-2.5 rounded-lg sm:rounded-xl transition-all duration-300 ${
+                    loading
+                      ? 'bg-white/5 text-slate-500 cursor-not-allowed'
+                      : 'bg-white/10 text-white hover:bg-white/20 hover:shadow-lg hover:shadow-white/10 border border-white/10 cursor-pointer'
+                  }`}
+                  aria-label="Refresh requests"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 min-[361px]:w-4 min-[361px]:h-4 sm:w-5 sm:h-5 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+              </Tooltip>
             </div>
           </div>
           

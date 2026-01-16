@@ -4,9 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Home, Users, Mail, Wrench, Menu, X, HelpCircle, ChevronDown } from 'lucide-react';
+import { Home, Users, Mail, Wrench, Menu, X, HelpCircle, ChevronDown, Settings } from 'lucide-react';
 import { useSession } from '@/context/session';
 import { env } from '@/lib/env';
+import Tooltip from '@/components/common/Tooltip';
 
 const NavBar: React.FC = () => {
   const pathname = usePathname();
@@ -220,9 +221,19 @@ const NavBar: React.FC = () => {
               })}
           </div>
 
-            {/* Right: Help Dropdown Section */}
+            {/* Right: Settings & Help Section */}
             <div className="hidden md:flex items-center gap-1 sm:gap-1.5 lg:gap-2 flex-shrink-0 relative" ref={helpDropdownRef}>
-              <button 
+              <Tooltip content="Settings" position="bottom">
+                <Link
+                  href={`/settings?context=${context}`}
+                  className="group/settings flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 lg:w-11 lg:h-11 rounded-lg sm:rounded-xl transition-all duration-300 text-white hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm"
+                >
+                  <Settings className="w-4 h-4 sm:w-4.5 sm:h-4.5 lg:w-5 lg:h-5 transition-all duration-300 group-hover/settings:scale-110 group-hover/settings:rotate-90 text-white flex-shrink-0" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))' }} />
+                </Link>
+              </Tooltip>
+
+              {/* Help Dropdown */}
+              <button
                 onClick={() => setHelpDropdownOpen(!helpDropdownOpen)}
                 className="group/help flex items-center gap-1 sm:gap-1.5 lg:gap-2 px-2 sm:px-2.5 md:px-3 lg:px-4 py-1.5 sm:py-2 md:py-2.5 text-xs lg:text-sm font-semibold rounded-lg sm:rounded-xl transition-all duration-300 text-white hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm"
                 title="Help & Support"
@@ -324,6 +335,18 @@ const NavBar: React.FC = () => {
                   </Link>
                 );
               })}
+              {/* Settings in mobile menu */}
+              <Link
+                href={`/settings?context=${context}`}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 sm:py-4 text-base sm:text-lg font-semibold rounded-xl transition-all duration-200 text-white hover:bg-white/10"
+                style={{
+                  textShadow: '0 1px 2px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 255, 255, 0.2)',
+                }}
+              >
+                <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-white flex-shrink-0" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))' }} />
+                <span className="text-white">Settings</span>
+              </Link>
               {/* Help in mobile menu */}
               <div className="pt-4 sm:pt-6 mt-4 sm:mt-6 border-t border-white/20 relative" ref={mobileHelpDropdownRef}>
                 <button 

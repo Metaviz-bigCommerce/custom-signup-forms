@@ -3,9 +3,8 @@
 import NavBar from '@/components/NavBar';
 import EmailTemplates from '@/components/EmailTemplates';
 import EmailConfig from '@/components/EmailConfig';
-import CooldownConfig from '@/components/CooldownConfig';
 import { Tabs } from '@/components/common/tabs';
-import { Settings, FileText, Clock } from 'lucide-react';
+import { Settings, FileText } from 'lucide-react';
 
 export default function EmailsPage() {
   return (
@@ -17,7 +16,6 @@ export default function EmailsPage() {
           tabs={[
             { id: 1, label: 'Templates', icon: FileText, content: <EmailTemplates /> },
             { id: 2, label: 'Email Settings', icon: Settings, content: <EmailConfig /> },
-            { id: 3, label: 'Cooldown Period', icon: Clock, content: <CooldownConfig /> },
           ]}
         />
       </main>

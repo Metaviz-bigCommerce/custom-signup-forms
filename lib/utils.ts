@@ -8,23 +8,57 @@
  */
 export function extractName(data: Record<string, unknown>): string {
   if (!data || typeof data !== 'object') return '';
-  
+
   const entries = Object.entries(data);
-  const candidates = ['name', 'full_name', 'full name', 'first_name', 'first name'];
-  
-  for (const key of candidates) {
+
+  // First, try to find full name fields
+  const fullNameCandidates = ['name', 'full_name', 'full name', 'fullname'];
+  for (const key of fullNameCandidates) {
     const found = entries.find(([k]) => k.toLowerCase() === key);
     if (found && found[1] != null) {
-      return String(found[1]);
+      return String(found[1]).trim();
     }
   }
-  
+
+  // Try to combine first_name and last_name
+  const firstNameCandidates = ['first_name', 'first name', 'firstname'];
+  const lastNameCandidates = ['last_name', 'last name', 'lastname'];
+
+  let firstName = '';
+  let lastName = '';
+
+  for (const key of firstNameCandidates) {
+    const found = entries.find(([k]) => k.toLowerCase() === key);
+    if (found && found[1] != null) {
+      firstName = String(found[1]).trim();
+      break;
+    }
+  }
+
+  for (const key of lastNameCandidates) {
+    const found = entries.find(([k]) => k.toLowerCase() === key);
+    if (found && found[1] != null) {
+      lastName = String(found[1]).trim();
+      break;
+    }
+  }
+
+  // If we have both first and last name, combine them
+  if (firstName && lastName) {
+    return `${firstName} ${lastName}`;
+  }
+
+  // If we only have first name, return it
+  if (firstName) {
+    return firstName;
+  }
+
   // Fuzzy: field containing 'name'
   const fuzzy = entries.find(([k]) => /name/i.test(k));
   if (fuzzy && fuzzy[1] != null) {
-    return String(fuzzy[1]);
+    return String(fuzzy[1]).trim();
   }
-  
+
   return '';
 }
 

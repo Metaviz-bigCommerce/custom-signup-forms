@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import db from '@/lib/db';
-import { trySendTemplatedEmail } from '@/lib/email';
+import { trySendTemplatedEmail, sendOwnerNotification } from '@/lib/email';
 import { uploadSignupFile, deleteSignupRequestFiles } from '@/lib/storage';
 import { applyCorsHeaders, handleCorsPreflight } from '@/lib/middleware/cors';
 import { errorResponse, successResponse, apiErrors, ErrorCode } from '@/lib/api-response';
@@ -246,9 +246,42 @@ export async function POST(req: NextRequest) {
             logger.error('Failed to send signup confirmation email', emailError, { ...logContext, email });
           }
         }
-        
-        // Note: Merchant will see the new request in their dashboard
-        // Owner notification can be added later if needed
+
+        // Send notification email to store owner
+        try {
+          const ownerEmail = await db.getStoreOwnerEmail(storeHash);
+          if (ownerEmail) {
+            const notificationTemplateKey = wasResubmission ? 'ownerResubmission' : 'ownerNewSignup';
+            // Construct dashboard URL for the CTA button
+            const baseUrl = env.BASE_URL || env.API_URL || 'https://your-app-domain.com';
+            const dashboardUrl = `${baseUrl}/requests?storeHash=${storeHash}`;
+
+            await sendOwnerNotification({
+              ownerEmail,
+              templateKey: notificationTemplateKey,
+              vars: {
+                name,
+                email: email || 'No email provided',
+                date: new Date().toLocaleString(),
+                store_name: platformName,
+                platform_name: platformName,
+                request_id: created.id,
+                dashboard_url: dashboardUrl,
+              },
+              config,
+            });
+            logger.info('Sent owner notification email', {
+              ...logContext,
+              ownerEmail,
+              requestId: created.id,
+              wasResubmission
+            });
+          }
+        } catch (notificationError) {
+          logger.error('Failed to send owner notification email', notificationError, { ...logContext });
+          // Don't fail the request if notification fails
+        }
+
         if (wasResubmission) {
           logger.info('User resubmitted request', { ...logContext, requestId: created.id, email });
         }
@@ -398,9 +431,42 @@ export async function POST(req: NextRequest) {
             logger.error('Failed to send signup confirmation email', emailError, { ...logContext, email });
           }
         }
-        
-        // Note: Merchant will see the new request in their dashboard
-        // Owner notification can be added later if needed
+
+        // Send notification email to store owner
+        try {
+          const ownerEmail = await db.getStoreOwnerEmail(storeHash);
+          if (ownerEmail) {
+            const notificationTemplateKey = wasResubmission ? 'ownerResubmission' : 'ownerNewSignup';
+            // Construct dashboard URL for the CTA button
+            const baseUrl = env.BASE_URL || env.API_URL || 'https://your-app-domain.com';
+            const dashboardUrl = `${baseUrl}/requests?storeHash=${storeHash}`;
+
+            await sendOwnerNotification({
+              ownerEmail,
+              templateKey: notificationTemplateKey,
+              vars: {
+                name,
+                email: email || 'No email provided',
+                date: new Date().toLocaleString(),
+                store_name: platformName,
+                platform_name: platformName,
+                request_id: created.id,
+                dashboard_url: dashboardUrl,
+              },
+              config,
+            });
+            logger.info('Sent owner notification email', {
+              ...logContext,
+              ownerEmail,
+              requestId: created.id,
+              wasResubmission
+            });
+          }
+        } catch (notificationError) {
+          logger.error('Failed to send owner notification email', notificationError, { ...logContext });
+          // Don't fail the request if notification fails
+        }
+
         if (wasResubmission) {
           logger.info('User resubmitted request', { ...logContext, requestId: created.id, email });
         }

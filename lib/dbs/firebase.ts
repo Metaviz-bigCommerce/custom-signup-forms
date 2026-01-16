@@ -374,31 +374,73 @@ export async function getEmailTemplates(storeHash: string) {
   if (!storeHash) throw new Error('Missing storeHash');
   const ref = doc(db, 'stores', storeHash);
   const snap = await getDoc(ref);
+
+  // Default footer links
+  const defaultFooterLinks = [
+    { id: 'contact', text: 'Contact Us', url: '#' },
+    { id: 'privacy', text: 'Privacy Policy', url: '#' }
+  ];
+
   const defaults: EmailTemplates = {
     signup: {
       subject: 'Notification from {{platform_name}}: Your Signup Request Has Been Received',
-      body:
-        'Hi {{name}},\nWe have received your signup request and initiated the review process. Our team is currently validating the information you provided to ensure it meets our account requirements. You will receive an update once this review is complete.',
+      body: 'We have received your signup request and initiated the review process. Our team is currently validating the information you provided to ensure it meets our account requirements. You will receive an update once this review is complete. If any clarification or additional details are needed, we will contact you directly. Thank you for your patience while we complete this verification step.',
+      useHtml: true,
+      design: {
+        title: 'Application Received Successfully',
+        primaryColor: '#2563eb',
+        background: '#f7fafc',
+        ctas: [{ id: 'view-status', text: 'Check Application Status', url: '{{action_url}}' }],
+        footerLinks: defaultFooterLinks
+      }
     },
     approval: {
       subject: '{{platform_name}} Account Update: Your Application Has Been Approved',
-      body:
-        'Hi {{name}},\nYour signup request has been approved, and your account is now active. You may now log in to begin configuring your store.',
+      body: 'Your signup request has been approved, and your account is now active. You may now log in to begin configuring your store and accessing your dashboard. We recommend reviewing the available onboarding resources to support your initial setup. Should you need any assistance during this process, our support team is available to help. Thank you for choosing our platform for your business operations.',
+      useHtml: true,
+      design: {
+        title: 'Welcome Aboard! You\'re Approved',
+        primaryColor: '#059669',
+        background: '#ecfdf5',
+        ctas: [{ id: 'login', text: 'Login to Your Account', url: '{{action_url}}' }],
+        footerLinks: defaultFooterLinks
+      }
     },
     rejection: {
       subject: '{{platform_name}} Review Outcome: Status of Your Signup Request',
-      body:
-        'Hi {{name}},\nAfter a thorough review of your signup information, we are unable to approve your request at this time.',
+      body: 'After a thorough review of your signup information, we are unable to approve your request at this time. This decision reflects the criteria required for account activation on our platform. If you have updated information or additional context that may support reconsideration, you are welcome to reply to this email. Our team will review any new details you provide. Thank you for your interest in our services and for taking the time to apply.',
+      useHtml: true,
+      design: {
+        title: 'Application Status Update',
+        primaryColor: '#e11d48',
+        background: '#fff1f2',
+        ctas: [{ id: 'contact', text: 'Contact Support', url: '{{action_url}}' }],
+        footerLinks: defaultFooterLinks
+      }
     },
     moreInfo: {
       subject: 'Action Required from {{platform_name}}: Please Resubmit Your Signup Form',
-      body:
-        'We need you to resubmit your signup form with corrections. Please review the highlighted fields below and resubmit your application through the signup form.\n\nOnce you resubmit, we will review your updated information and proceed accordingly.\n\nIf you have any questions or need clarification, please don\'t hesitate to reach out to us.',
+      body: 'We need you to resubmit your signup form with corrections. Please review the highlighted fields below and resubmit your application through the signup form. Once you resubmit, we will review your updated information and proceed accordingly. If you have any questions or need clarification, please don\'t hesitate to reach out to us.',
+      useHtml: true,
+      design: {
+        title: 'Resubmission Required',
+        primaryColor: '#f59e0b',
+        background: '#fffbeb',
+        ctas: [{ id: 'resubmit', text: 'Resubmit Form', url: '{{action_url}}' }],
+        footerLinks: defaultFooterLinks
+      }
     },
     resubmissionConfirmation: {
       subject: 'Notification from {{platform_name}}: Your Resubmission Has Been Received',
-      body:
-        'Thank you for resubmitting your signup request with the requested corrections. We have received your updated information and our team will review it shortly. You will receive an update once the review is complete. We appreciate your prompt response and cooperation.',
+      body: 'Thank you for resubmitting your signup request with the requested corrections. We have received your updated information and our team will review it shortly. You will receive an update once the review is complete. We appreciate your prompt response and cooperation.',
+      useHtml: true,
+      design: {
+        title: 'Resubmission Received - Under Review',
+        primaryColor: '#9333ea',
+        background: '#faf5ff',
+        ctas: [{ id: 'view-status', text: 'Check Application Status', url: '{{action_url}}' }],
+        footerLinks: defaultFooterLinks
+      }
     },
   };
   if (!snap.exists()) return defaults;
@@ -754,4 +796,63 @@ export async function resetCooldownForEmail(storeHash: string, email: string): P
       return;
     }
   }
+}
+
+// ============================================================================
+// Notification Configuration
+// ============================================================================
+
+export async function getNotificationConfig(storeHash: string): Promise<{ enabled: boolean; notifyEmail: string | null }> {
+  if (!storeHash) throw new Error('Missing storeHash');
+  const ref = doc(db, 'stores', storeHash);
+  const snap = await getDoc(ref);
+  const data = snap.exists() ? (snap.data() as any) : {};
+  return {
+    enabled: data?.notificationConfig?.enabled ?? true, // Default: enabled
+    notifyEmail: data?.notificationConfig?.notifyEmail || null,
+  };
+}
+
+export async function setNotificationConfig(storeHash: string, config: { enabled: boolean; notifyEmail: string | null }): Promise<void> {
+  if (!storeHash) throw new Error('Missing storeHash');
+  const ref = doc(db, 'stores', storeHash);
+  await setDoc(ref, {
+    notificationConfig: {
+      enabled: Boolean(config.enabled),
+      notifyEmail: config.notifyEmail || null,
+    }
+  }, { merge: true } as any);
+}
+
+// Get store owner email for notifications
+export async function getStoreOwnerEmail(storeHash: string): Promise<string | null> {
+  if (!storeHash) return null;
+
+  // 1. Get notification config first (check for custom email)
+  const notificationConfig = await getNotificationConfig(storeHash);
+  if (!notificationConfig.enabled) {
+    return null; // Notifications disabled
+  }
+
+  // 2. If custom notification email is set, use it
+  if (notificationConfig.notifyEmail && notificationConfig.notifyEmail.trim()) {
+    return notificationConfig.notifyEmail.trim();
+  }
+
+  // 3. Otherwise, get store owner's email from users collection
+  const storeRef = doc(db, 'stores', storeHash);
+  const storeSnap = await getDoc(storeRef);
+  if (!storeSnap.exists()) return null;
+
+  const storeData = storeSnap.data();
+  const adminId = storeData?.adminId;
+  if (!adminId) return null;
+
+  // 4. Fetch user document
+  const userRef = doc(db, 'users', String(adminId));
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) return null;
+
+  const userData = userSnap.data();
+  return userData?.email || null;
 }

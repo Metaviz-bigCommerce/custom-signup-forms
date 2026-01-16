@@ -49,4 +49,7 @@ export interface Db {
     setCooldownPeriod(storeHash: string, days: number): Promise<void>;
     checkCooldownStatus(storeHash: string, email: string): Promise<{ inCooldown: boolean; remainingDays?: number }>;
     resetCooldownForEmail(storeHash: string, email: string): Promise<void>;
+    getNotificationConfig(storeHash: string): Promise<{ enabled: boolean; notifyEmail: string | null }>;
+    setNotificationConfig(storeHash: string, config: { enabled: boolean; notifyEmail: string | null }): Promise<void>;
+    getStoreOwnerEmail(storeHash: string): Promise<string | null>;
 }

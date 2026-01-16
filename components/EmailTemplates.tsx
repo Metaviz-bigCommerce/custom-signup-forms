@@ -67,6 +67,13 @@ const templateMeta: Record<TemplateKey, { label: string; icon: React.ElementType
     color: 'text-blue-600',
     bgColor: 'bg-blue-500'
   },
+  resubmissionConfirmation: {
+    label: 'Resubmission Confirmation',
+    icon: RefreshCw,
+    description: 'Sent when a user successfully resubmits their signup form after corrections',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-500'
+  },
   approval: { 
     label: 'Approval Email', 
     icon: Check, 
@@ -87,13 +94,6 @@ const templateMeta: Record<TemplateKey, { label: string; icon: React.ElementType
     description: 'Sent when you request a user to resubmit their signup form with corrections',
     color: 'text-blue-600',
     bgColor: 'bg-blue-500'
-  },
-  resubmissionConfirmation: {
-    label: 'Resubmission Confirmation',
-    icon: RefreshCw,
-    description: 'Sent when a user successfully resubmits their signup form after corrections',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-500'
   }
 };
 
@@ -135,7 +135,7 @@ const defaultBranding: Record<TemplateKey, { primaryColor: string; background: s
   signup: { primaryColor: '#2563eb', background: '#f7fafc' }, // Sky blue
   approval: { primaryColor: '#059669', background: '#ecfdf5' }, // Emerald green
   rejection: { primaryColor: '#e11d48', background: '#fff1f2' }, // Rose red
-  moreInfo: { primaryColor: '#2563eb', background: '#eff6ff' }, // Blue (matching resubmission theme)
+  moreInfo: { primaryColor: '#f59e0b', background: '#fffbeb' }, // Amber/Orange (action required)
   resubmissionConfirmation: { primaryColor: '#9333ea', background: '#faf5ff' } // Purple
 };
 
@@ -219,7 +219,7 @@ const EmailTemplates: React.FC = () => {
     },
     moreInfo: {
       subject: 'Action Required from {{platform_name}}: Please Resubmit Your Signup Form',
-      body: 'We need you to resubmit your signup form with corrections. Please review the highlighted fields below and resubmit your application through the signup form.\n\nOnce you resubmit, we will review your updated information and proceed accordingly.\n\nIf you have any questions or need clarification, please don\'t hesitate to reach out to us.',
+      body: 'We need you to resubmit your signup form with corrections. Please review the highlighted fields below and resubmit your application through the signup form. Once you resubmit, we will review your updated information and proceed accordingly. If you have any questions or need clarification, please don\'t hesitate to reach out to us.',
       design: {
         title: defaultTitles.moreInfo,
         primaryColor: defaultBranding.moreInfo.primaryColor,
@@ -257,7 +257,7 @@ const EmailTemplates: React.FC = () => {
     email: 'john@example.com',
     date: new Date().toLocaleString(),
     store_name: 'Demo Store',
-    platform_name: 'SignupPro',
+    platform_name: 'Custom Signup Forms',
     required_information: 'First Name, Last Name, Email',
     merchant_message: '\n\nAdditional message: Please ensure all information is accurate and up to date.',
     action_url: 'https://example.com/action'
@@ -605,7 +605,6 @@ const EmailTemplates: React.FC = () => {
           <tr>
             <td style="font-size:12px;line-height:1.7;color:#64748b;padding:8px 24px 0 24px;text-align:center">
               ${renderTemplate(footerNote)}${footerLinksHtml ? '<br/>' + footerLinksHtml : ''}
-              <div style="padding-top:6px;color:#94a3b8">Sent by ${renderTemplate('{{store_name}}')} · ${renderTemplate('{{date}}')}</div>
             </td>
           </tr>
         </table>
@@ -887,7 +886,7 @@ const EmailTemplates: React.FC = () => {
           {(() => {
             const primaryColor = emailTemplates[selectedTemplate].design?.primaryColor || '#2563eb';
             const isLight = isLightColor(primaryColor);
-            const textColor = isLight ? '#1e293b' : '#ffffff';
+            const textColor = '#ffffff';
             const textColorMuted = isLight ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.8)';
             const iconBg = isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.2)';
             return (
