@@ -78,7 +78,18 @@ export async function PUT(req: NextRequest) {
           requestId
         );
       }
-      
+
+      // Check for duplicate form name
+      const nameExists = await db.checkFormNameExists(storeHash, versionName);
+      if (nameExists) {
+        return errorResponse(
+          'A form with this name already exists. Please use a different name.',
+          409,
+          'DUPLICATE_NAME' as any,
+          requestId
+        );
+      }
+
       await db.saveFormVersion(storeHash, {
         name: versionName,
         type: saveType as 'draft' | 'version',

@@ -153,16 +153,25 @@ export function useStoreForm() {
 
 export function useStoreFormActions() {
   const encodedContext = useSession()?.context;
-  const saveForm = async (form: any) => {
+  const saveForm = async (form: any, versionName?: string, saveType?: 'draft' | 'version') => {
     if (!encodedContext) throw new Error("Missing BigCommerce session context");
+    const body: Record<string, unknown> = { form };
+    if (versionName) body.versionName = versionName;
+    if (saveType) body.saveType = saveType;
     const res = await fetch(`/api/store-form?context=${encodedContext}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ form }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText || 'Unable to save form. Please try again.');
+      let errorMessage = 'Unable to save form. Please try again.';
+      try {
+        const errorData = await res.json();
+        if (errorData?.message) errorMessage = errorData.message;
+      } catch {
+        // If JSON parsing fails, use default message
+      }
+      throw new Error(errorMessage);
     }
     return res.json();
   };
@@ -207,8 +216,14 @@ export function useFormVersionActions() {
       body: JSON.stringify({ name, type, form }),
     });
     if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText || 'Unable to save version. Please try again.');
+      let errorMessage = 'Unable to save version. Please try again.';
+      try {
+        const errorData = await res.json();
+        if (errorData?.message) errorMessage = errorData.message;
+      } catch {
+        // If JSON parsing fails, use default message
+      }
+      throw new Error(errorMessage);
     }
     const data = await res.json();
     return { ...data, id: data.id }; // Ensure id is returned
@@ -261,8 +276,14 @@ export function useFormVersionActions() {
       body: JSON.stringify({ action: 'update', versionId, ...updates }),
     });
     if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText || 'Unable to update version. Please try again.');
+      let errorMessage = 'Unable to update version. Please try again.';
+      try {
+        const errorData = await res.json();
+        if (errorData?.message) errorMessage = errorData.message;
+      } catch {
+        // If JSON parsing fails, use default message
+      }
+      throw new Error(errorMessage);
     }
     return res.json();
   };

@@ -64,7 +64,18 @@ export async function POST(req: NextRequest) {
     if (!['draft', 'version'].includes(type)) {
       return errorResponse('Invalid type. Must be "draft" or "version"', 400, 'VALIDATION_ERROR' as any, requestId);
     }
-    
+
+    // Check for duplicate form name
+    const nameExists = await db.checkFormNameExists(storeHash, name);
+    if (nameExists) {
+      return errorResponse(
+        'A form with this name already exists. Please use a different name.',
+        409,
+        'DUPLICATE_NAME' as any,
+        requestId
+      );
+    }
+
     const result = await db.saveFormVersion(storeHash, { name, type: type as 'draft' | 'version', form });
     
     logger.info('Form version saved', { ...logContext, storeHash, name, type });
@@ -207,6 +218,20 @@ export async function PUT(req: NextRequest) {
       if (!versionId) {
         return errorResponse('Missing versionId', 400, 'MISSING_REQUIRED_FIELD' as any, requestId);
       }
+
+      // Check for duplicate form name if name is being updated
+      if (name) {
+        const nameExists = await db.checkFormNameExists(storeHash, name, versionId);
+        if (nameExists) {
+          return errorResponse(
+            'A form with this name already exists. Please use a different name.',
+            409,
+            'DUPLICATE_NAME' as any,
+            requestId
+          );
+        }
+      }
+
       await db.updateFormVersion(storeHash, versionId, { name, form });
       logger.info('Form version updated', { ...logContext, storeHash, versionId });
       return successResponse({ updated: true, action: 'update' }, 200, requestId);

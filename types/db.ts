@@ -44,6 +44,7 @@ export interface Db {
     setActiveFormVersion(storeHash: string, versionId: string): Promise<{ ok: boolean }>;
     updateFormVersion(storeHash: string, versionId: string, updates: { name?: string; form?: any }): Promise<{ ok: boolean }>;
     deactivateAllVersions(storeHash: string): Promise<{ ok: boolean }>;
+    checkFormNameExists(storeHash: string, name: string, excludeVersionId?: string): Promise<boolean>;
     getCooldownPeriod(storeHash: string): Promise<number>;
     setCooldownPeriod(storeHash: string, days: number): Promise<void>;
     checkCooldownStatus(storeHash: string, email: string): Promise<{ inCooldown: boolean; remainingDays?: number }>;

@@ -189,6 +189,7 @@ export function getUserFriendlyError(error: unknown, defaultMessage?: string): s
     [/unauthorized|401/i, 'Your session has expired. Please refresh the page.'],
     [/forbidden|403/i, 'You don\'t have permission to perform this action.'],
     [/not\s*found|404/i, 'The requested item could not be found.'],
+    [/form with this name already exists/i, 'A form with this name already exists. Please use a different name.'],
     [/conflict|409/i, 'This action conflicts with the current state. Please refresh and try again.'],
     [/validation|422/i, 'Please check your input and try again.'],
     [/too\s*many\s*requests|429/i, 'Too many requests. Please wait a moment and try again.'],

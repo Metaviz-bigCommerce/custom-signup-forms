@@ -600,16 +600,45 @@ export async function updateFormVersion(storeHash: string, versionId: string, up
 
 export async function deactivateAllVersions(storeHash: string) {
   if (!storeHash) throw new Error('Missing storeHash');
-  
+
   // Set all versions to inactive
   const allVersions = await listFormVersions(storeHash);
   const updatePromises = allVersions.map((v) => {
     const vRef = doc(db, 'stores', storeHash, 'formVersions', v.id);
     return updateDoc(vRef, { isActive: false, updatedAt: serverTimestamp() });
   });
-  
+
   await Promise.all(updatePromises);
   return { ok: true };
+}
+
+/**
+ * Check if a form with the given name already exists in the formVersions collection.
+ * @param storeHash - The store identifier
+ * @param name - The form name to check
+ * @param excludeVersionId - Optional version ID to exclude from the check (for updates)
+ * @returns true if a form with the same name exists, false otherwise
+ */
+export async function checkFormNameExists(
+  storeHash: string,
+  name: string,
+  excludeVersionId?: string
+): Promise<boolean> {
+  if (!storeHash || !name) return false;
+
+  const colRef = collection(db, 'stores', storeHash, 'formVersions');
+  const q = query(colRef, where('name', '==', name.trim()));
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) return false;
+
+  // If excludeVersionId is provided, check if the only match is the excluded version
+  if (excludeVersionId) {
+    const matchingDocs = snapshot.docs.filter((doc) => doc.id !== excludeVersionId);
+    return matchingDocs.length > 0;
+  }
+
+  return true;
 }
 
 // Cooldown period configuration
