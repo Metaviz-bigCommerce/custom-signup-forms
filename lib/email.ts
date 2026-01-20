@@ -58,6 +58,7 @@ Please review the updated information in your dashboard. The applicant has made 
 };
 
 const DEFAULT_FROM = env.EMAIL_FROM || 'no-reply@example.com';
+const COMPANY_REPLY_TO = env.EMAIL_REPLY_TO || env.EMAIL_FROM || 'no-reply@example.com';
 const SMTP_HOST = env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com';
 const SMTP_PORT = Number(env.BREVO_SMTP_PORT || 587);
 const SMTP_USER = env.BREVO_SMTP_USER || '';
@@ -85,9 +86,11 @@ export type EmailConfig = {
 	fromEmail?: string | null;
 	fromName?: string | null;
 	replyTo?: string | null;
-	useShared?: boolean | null;
+	useShared?: boolean | null; // Deprecated - kept for backward compatibility
 	// If provided, we use this transporter instead of the shared one
 	smtp?: EmailSmtpConfig | null;
+	// New field to track if customer emails are enabled
+	customerEmailsEnabled?: boolean | null;
 };
 
 const transportCache = new Map<string, nodemailer.Transporter>();
@@ -104,6 +107,13 @@ function getCustomTransporter(smtp?: EmailSmtpConfig | null) {
 	});
 	transportCache.set(key, t);
 	return t;
+}
+
+// Helper function to validate SMTP configuration
+export function isSmtpConfigured(config?: EmailConfig | null): boolean {
+	if (!config?.smtp) return false;
+	const { host, port, user, pass } = config.smtp;
+	return !!(host?.trim() && port && user?.trim() && pass?.trim());
 }
 
 export function renderTemplate(input: string, vars: Record<string, string | number | null | undefined>) {
@@ -376,39 +386,65 @@ export async function sendEmail(params: {
 	replyTo?: string;
 	config?: EmailConfig | null;
 	html?: string | null;
+	forceCompanySmtp?: boolean; // When true, always use company SMTP (for store owner emails)
 }) {
-	const { to, subject, body, from, replyTo, config, html } = params;
-	// choose transporter (tenant or shared)
-	const tenantTransporter = config && config.useShared === false
-		? getCustomTransporter(config?.smtp || null)
-		: null;
-	const activeTransporter = tenantTransporter || transporter;
-	// Soft no-op if not configured
-	if (!activeTransporter) {
-		// Logging is handled by caller
-		return { ok: false, skipped: true, reason: 'SMTP not configured' };
-	}
-	try {
-		const fromName = (config?.fromName || '').trim() || undefined;
-		const usingCustomSmtp = Boolean(
+	const { to, subject, body, from, replyTo, config, html, forceCompanySmtp } = params;
+	
+	// If forceCompanySmtp is true, always use company SMTP (for store owner emails)
+	let activeTransporter: nodemailer.Transporter | null;
+	let usingCustomSmtp: boolean;
+	
+	if (forceCompanySmtp) {
+		// Store owner emails always use company SMTP
+		activeTransporter = transporter;
+		usingCustomSmtp = false;
+	} else {
+		// Customer emails use store owner's SMTP if configured
+		const tenantTransporter = config && config.useShared === false
+			? getCustomTransporter(config?.smtp || null)
+			: null;
+		activeTransporter = tenantTransporter || transporter;
+		usingCustomSmtp = Boolean(
 			!config?.useShared &&
 			config?.smtp &&
 			(config.smtp as any).user &&
 			(config.smtp as any).pass
 		);
-		// If using shared SMTP, force DEFAULT_FROM (ignore config.fromEmail to avoid unauthorized domain issues)
+	}
+	
+	// Soft no-op if not configured
+	if (!activeTransporter) {
+		// Logging is handled by caller
+		return { ok: false, skipped: true, reason: 'SMTP not configured' };
+	}
+	
+	try {
+		const fromName = (config?.fromName || '').trim() || undefined;
+		// If using shared SMTP (company SMTP), force DEFAULT_FROM (ignore config.fromEmail to avoid unauthorized domain issues)
+		// If using custom SMTP, allow config.fromEmail
 		const resolvedFromEmail = usingCustomSmtp
 			? (config?.fromEmail || from || DEFAULT_FROM).trim()
 			: (from || DEFAULT_FROM).trim();
 		const fromEmail = resolvedFromEmail || DEFAULT_FROM;
 		const prettyFrom = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
+		
+		// Reply-to handling: Separate logic for store owner emails vs customer emails
+		let resolvedReplyTo: string | undefined;
+		if (forceCompanySmtp) {
+			// Store owner emails: Use company reply-to from .env (or passed parameter), NOT store owner's config
+			resolvedReplyTo = replyTo || COMPANY_REPLY_TO || undefined;
+		} else {
+			// Customer emails: Use store owner's configured reply-to (or passed parameter)
+			resolvedReplyTo = replyTo || config?.replyTo || undefined;
+		}
+		
 		await activeTransporter.sendMail({
 			from: prettyFrom,
 			to: Array.isArray(to) ? to.join(',') : to,
 			subject,
 			text: body,
 			html: html || undefined,
-			replyTo: replyTo || config?.replyTo || undefined,
+			replyTo: resolvedReplyTo,
 		});
 		return { ok: true };
 	} catch (e) {
@@ -425,9 +461,22 @@ export async function trySendTemplatedEmail(args: {
 	replyTo?: string;
 	config?: EmailConfig | null;
 	templateKey?: TemplateKey;
+	isCustomerEmail?: boolean; // When true, validates SMTP before sending
 }) {
-	const { to, template, vars, from, replyTo, config, templateKey } = args;
+	const { to, template, vars, from, replyTo, config, templateKey, isCustomerEmail } = args;
 	if (!to) return { ok: false, skipped: true };
+	
+	// For customer emails, validate SMTP is configured and customer emails are enabled
+	if (isCustomerEmail) {
+		if (!isSmtpConfigured(config)) {
+			return { ok: false, skipped: true, reason: 'Store owner SMTP not configured. Customer emails require SMTP configuration.' };
+		}
+		// Check if customer emails are explicitly disabled
+		if (config?.customerEmailsEnabled === false) {
+			return { ok: false, skipped: true, reason: 'Customer emails are disabled in Email Settings.' };
+		}
+	}
+	
 	const subject = renderTemplate(template.subject, vars);
 	const body = renderTemplate(template.body, vars);
 	
@@ -445,7 +494,7 @@ export async function trySendTemplatedEmail(args: {
 		}
 	}
 	
-	return await sendEmail({ to, subject, body, html, from, replyTo, config });
+	return await sendEmail({ to, subject, body, html, from, replyTo, config, forceCompanySmtp: false });
 }
 
 // Helper function to send owner notification emails
@@ -474,12 +523,14 @@ export async function sendOwnerNotification(args: {
 		html = generateEmailHtml(template, vars, 'signup' as TemplateKey);
 	}
 
+	// Store owner emails always use company SMTP
 	return await sendEmail({
 		to: ownerEmail,
 		subject,
 		body,
 		html,
-		config
+		config,
+		forceCompanySmtp: true // Always use company SMTP for store owner emails
 	});
 }
 

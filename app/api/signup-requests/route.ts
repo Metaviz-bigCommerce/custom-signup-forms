@@ -134,7 +134,7 @@ export async function PATCH(req: NextRequest) {
         const template = status === 'approved' ? templates.approval : status === 'rejected' ? templates.rejection : null;
         
         if (template && email) {
-          await trySendTemplatedEmail({
+          const emailResult = await trySendTemplatedEmail({
             to: email,
             template,
             vars: {
@@ -147,9 +147,14 @@ export async function PATCH(req: NextRequest) {
             replyTo: config?.replyTo || undefined,
             config,
             templateKey: status === 'approved' ? 'approval' : status === 'rejected' ? 'rejection' : undefined,
+            isCustomerEmail: true, // Customer emails require store owner SMTP
           });
           
-          logger.info('Status update email sent', { ...logContext, email, status });
+          if (emailResult.ok) {
+            logger.info('Status update email sent', { ...logContext, email, status });
+          } else if (emailResult.skipped) {
+            logger.warn('Status update email skipped', { ...logContext, email, status, reason: emailResult.reason });
+          }
         }
       }
     } catch (emailError) {

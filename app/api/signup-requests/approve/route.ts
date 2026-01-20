@@ -467,7 +467,7 @@ export async function POST(req: NextRequest) {
       const templates = await db.getEmailTemplates(storeHash);
       const config = await db.getEmailConfig(storeHash);
       const platformName = env.PLATFORM_NAME || storeHash || 'Store';
-      await trySendTemplatedEmail({
+      const emailResult = await trySendTemplatedEmail({
         to: email,
         template: templates.approval,
         vars: {
@@ -480,7 +480,11 @@ export async function POST(req: NextRequest) {
         replyTo: config?.replyTo || undefined,
         config,
         templateKey: 'approval',
+        isCustomerEmail: true, // Customer emails require store owner SMTP
       });
+      if (!emailResult.ok && emailResult.skipped) {
+        console.warn('Approval email skipped:', emailResult.reason);
+      }
     } catch {}
 
     return NextResponse.json({ ok: true }, { status: 200 });

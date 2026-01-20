@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 		// Send email (best-effort)
 		if (email) {
 			try {
-				await trySendTemplatedEmail({
+				const emailResult = await trySendTemplatedEmail({
 					to: email,
 					template: templates.moreInfo,
 					vars: {
@@ -80,9 +80,14 @@ export async function POST(req: NextRequest) {
 					replyTo: config?.replyTo || undefined,
 					config,
 					templateKey: 'moreInfo',
+					isCustomerEmail: true, // Customer emails require store owner SMTP
 				});
 				
-				logger.info('Info request email sent', { ...logContext, storeHash, requestId: id, email });
+				if (emailResult.ok) {
+					logger.info('Info request email sent', { ...logContext, storeHash, requestId: id, email });
+				} else if (emailResult.skipped) {
+					logger.warn('Info request email skipped', { ...logContext, storeHash, requestId: id, email, reason: emailResult.reason });
+				}
 			} catch (emailError) {
 				logger.error('Failed to send info request email', emailError, { ...logContext, storeHash, requestId: id, email });
 				// Don't fail the request if email fails

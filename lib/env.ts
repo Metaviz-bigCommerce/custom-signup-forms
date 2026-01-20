@@ -21,6 +21,7 @@ const optionalEnvVars = [
   'PLATFORM_NAME',
   'ALLOWED_ORIGINS',
   'EMAIL_FROM',
+  'EMAIL_REPLY_TO',
   'BREVO_SMTP_HOST',
   'BREVO_SMTP_PORT',
   'BREVO_SMTP_USER',
@@ -46,6 +47,7 @@ interface EnvConfig {
   PLATFORM_NAME?: string;
   ALLOWED_ORIGINS?: string;
   EMAIL_FROM?: string;
+  EMAIL_REPLY_TO?: string;
   BREVO_SMTP_HOST?: string;
   BREVO_SMTP_PORT?: string;
   BREVO_SMTP_USER?: string;
@@ -84,6 +86,7 @@ function validateEnv(): EnvConfig {
       // Only expose client-safe variables via NEXT_PUBLIC_ prefix
       // Note: For client access, use NEXT_PUBLIC_EMAIL_FROM in environment variables
       EMAIL_FROM: process.env.NEXT_PUBLIC_EMAIL_FROM || 'support@example.com',
+      EMAIL_REPLY_TO: undefined,
       BREVO_SMTP_HOST: undefined,
       BREVO_SMTP_PORT: undefined,
       BREVO_SMTP_USER: undefined,
@@ -130,6 +133,7 @@ function validateEnv(): EnvConfig {
         PLATFORM_NAME: process.env.PLATFORM_NAME,
         ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
         EMAIL_FROM: process.env.EMAIL_FROM,
+        EMAIL_REPLY_TO: process.env.EMAIL_REPLY_TO,
         BREVO_SMTP_HOST: process.env.BREVO_SMTP_HOST,
         BREVO_SMTP_PORT: process.env.BREVO_SMTP_PORT,
         BREVO_SMTP_USER: process.env.BREVO_SMTP_USER,
@@ -169,6 +173,7 @@ function validateEnv(): EnvConfig {
     PLATFORM_NAME: process.env.PLATFORM_NAME,
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
     EMAIL_FROM: process.env.EMAIL_FROM,
+    EMAIL_REPLY_TO: process.env.EMAIL_REPLY_TO,
     BREVO_SMTP_HOST: process.env.BREVO_SMTP_HOST,
     BREVO_SMTP_PORT: process.env.BREVO_SMTP_PORT,
     BREVO_SMTP_USER: process.env.BREVO_SMTP_USER,
