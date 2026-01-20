@@ -1355,8 +1355,8 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
             <div className="flex flex-col flex-1 px-3 sm:px-4 md:px-5 pb-2.5 sm:pb-3 md:pb-4 pt-2.5 sm:pt-3 md:pt-4 bg-gradient-to-b from-white to-slate-50/30">
               {/* Header - Name with Active Badge */}
               <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-                <div className="flex items-start gap-1.5 sm:gap-2 flex-1 min-w-0">
-                  <h3 className="text-[10px] sm:text-xs md:text-sm font-semibold text-slate-800 break-words group-hover:text-blue-600 transition-colors leading-tight">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                  <h3 className="text-xs sm:text-sm md:text-base lg:text-2xl font-semibold text-slate-800 break-words group-hover:text-blue-600 transition-colors leading-tight">
                     {version.name || 'Unnamed'}
                   </h3>
                   {version.isActive && isFormActive && (
@@ -1473,7 +1473,7 @@ export default function VersionsList({ onLoadVersion, onVersionLoaded, onNavigat
               
               <div className="flex-1 min-w-0">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 md:gap-3 mb-1 sm:mb-0">
-                  <h3 className="text-xs sm:text-sm md:text-base font-semibold text-slate-900 break-words group-hover:text-blue-600 transition-colors leading-tight">
+                  <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-slate-900 break-words group-hover:text-blue-600 transition-colors leading-tight">
                     {version.name || 'Unnamed'}
                   </h3>
                   {version.isActive && isFormActive && (
