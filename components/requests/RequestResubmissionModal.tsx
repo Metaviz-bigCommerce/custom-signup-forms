@@ -34,6 +34,21 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
+  // Word count helper functions
+  const countWords = (text: string): number => {
+    if (!text || !text.trim()) return 0;
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  };
+
+  const limitToMaxWords = (text: string, maxWords: number): string => {
+    const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+    if (words.length <= maxWords) return text;
+    return words.slice(0, maxWords).join(' ');
+  };
+
+  const wordCount = useMemo(() => countWords(message), [message]);
+  const maxWords = 500;
+
   // Get form fields from the form definition
   const formFields: FormField[] = useMemo(() => {
     return (form?.fields as FormField[]) || [];
@@ -148,6 +163,21 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
     );
   };
 
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    const limitedValue = limitToMaxWords(newValue, maxWords);
+    setMessage(limitedValue);
+  };
+
+  const handleMessagePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    const currentText = message;
+    const combinedText = currentText + (currentText && !currentText.endsWith(' ') ? ' ' : '') + pastedText;
+    const limitedValue = limitToMaxWords(combinedText, maxWords);
+    setMessage(limitedValue);
+  };
+
   const handleSend = async () => {
     if (!context || !requestId) {
       showToast.warning('Missing required information.');
@@ -248,17 +278,38 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
 
           {/* Optional Message */}
           <div>
-            <label className="block text-[11px] sm:text-xs md:text-sm font-medium text-gray-800 mb-1.5 sm:mb-2">
-              Additional Message (Optional)
-            </label>
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <label className="block text-[11px] sm:text-xs md:text-sm font-medium text-gray-800">
+                Additional Message (Optional)
+              </label>
+              <span className={`text-[10px] sm:text-xs font-medium ${
+                wordCount > maxWords 
+                  ? 'text-red-600' 
+                  : wordCount > maxWords * 0.9 
+                    ? 'text-amber-600' 
+                    : 'text-gray-500'
+              }`}>
+                {wordCount} / {maxWords} words
+              </span>
+            </div>
             <textarea
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={handleMessageChange}
+              onPaste={handleMessagePaste}
               placeholder="Add any additional instructions or context for the user..."
-              className="w-full px-2.5 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 border border-gray-300 rounded-lg text-xs sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
+              className={`w-full px-2.5 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 border rounded-lg text-xs sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all resize-none ${
+                wordCount > maxWords
+                  ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                  : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+              }`}
               rows={3}
               disabled={sending}
             />
+            {wordCount >= maxWords && (
+              <p className="mt-1 text-[10px] sm:text-xs text-red-600">
+                Maximum {maxWords} words reached. Further input will be ignored.
+              </p>
+            )}
           </div>
         </div>
 

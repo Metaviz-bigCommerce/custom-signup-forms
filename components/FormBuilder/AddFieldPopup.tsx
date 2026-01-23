@@ -16,6 +16,8 @@ interface AddFieldPopupProps {
 const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType, onAdd, onClose }) => {
   const [localField, setLocalField] = useState<FormField | null>(null);
   const [openSection, setOpenSection] = useState<'basic' | 'labelStyle' | 'inputStyle' | null>('basic');
+  const [countryData, setCountryData] = useState<Array<{ countryName: string; countryShortCode: string; regions: Array<{ name: string; shortCode?: string }> }>>([]);
+  const [loadingCountries, setLoadingCountries] = useState(false);
 
   useEffect(() => {
     if (pendingFieldType && isOpen) {
@@ -43,9 +45,13 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
       }
 
       // Initialize options for select, radio, and checkbox fields
+      // Special case: Country fields should NOT have default options (data is fetched dynamically)
       let initialOptions: Array<{ label: string; value: string }> | undefined;
       if (type === 'select' || type === 'radio' || type === 'checkbox') {
-        if (type === 'radio') {
+        // Skip default options for Country fields
+        if (role === 'country') {
+          initialOptions = undefined; // No default options for Country fields
+        } else if (type === 'radio') {
           // Radio always needs at least 2 options
           initialOptions = [
             { label: 'Option 1', value: 'option1' },
@@ -85,6 +91,36 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
       setOpenSection(null);
     }
   }, [pendingFieldType, isOpen]);
+
+  // Fetch country data when Country field is being added
+  useEffect(() => {
+    if (localField?.role === 'country' && isOpen) {
+      setLoadingCountries(true);
+      let cancelled = false;
+      const fetchCountries = async () => {
+        try {
+          const res = await fetch('https://cdn.jsdelivr.net/npm/country-region-data@3.0.0/data.json');
+          const json = await res.json();
+          if (!cancelled && Array.isArray(json)) {
+            setCountryData(json);
+          }
+        } catch (error) {
+          console.error('Failed to fetch country data:', error);
+        } finally {
+          if (!cancelled) {
+            setLoadingCountries(false);
+          }
+        }
+      };
+      fetchCountries();
+      return () => {
+        cancelled = true;
+      };
+    } else {
+      setCountryData([]);
+      setLoadingCountries(false);
+    }
+  }, [localField?.role, isOpen]);
 
   if (!localField || !isOpen) return null;
 
@@ -131,8 +167,8 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
       alert('Radio fields must have at least 2 options');
       return;
     }
-    // For select, ensure at least 1 option remains
-    if (localField.type === 'select' && localField.options.length <= 1) {
+    // For select, ensure at least 1 option remains (except Country fields which don't need options)
+    if (localField.type === 'select' && localField.role !== 'country' && localField.options.length <= 1) {
       alert('Select fields must have at least 1 option');
       return;
     }
@@ -297,8 +333,42 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                       </label>
                     </div>
                     
+                    {/* Show country preview for Country fields */}
+                    {localField.type === 'select' && localField.role === 'country' && (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-semibold text-blue-800">Country List Preview</p>
+                            {loadingCountries && (
+                              <span className="text-xs text-blue-600">Loading...</span>
+                            )}
+                          </div>
+                          {countryData.length > 0 ? (
+                            <div className="max-h-32 overflow-y-auto space-y-1">
+                              {countryData.slice(0, 10).map((country, idx) => (
+                                <div key={idx} className="text-xs text-blue-700 py-0.5">
+                                  {country.countryName} ({country.countryShortCode})
+                                </div>
+                              ))}
+                              {countryData.length > 10 && (
+                                <p className="text-xs text-blue-600 italic pt-1">
+                                  + {countryData.length - 10} more countries...
+                                </p>
+                              )}
+                            </div>
+                          ) : !loadingCountries ? (
+                            <p className="text-xs text-blue-600">Country list will be loaded from API</p>
+                          ) : null}
+                        </div>
+                        <p className="text-xs text-blue-600 font-medium">
+                          Countries are fetched dynamically from an external API. No manual options needed.
+                        </p>
+                      </div>
+                    )}
+                    
                     {/* Options management for select, radio, and checkbox */}
-                    {(localField.type === 'select' || localField.type === 'radio' || localField.type === 'checkbox') && (
+                    {/* Hide options section for Country fields since data is fetched dynamically */}
+                    {((localField.type === 'select' && localField.role !== 'country') || localField.type === 'radio' || localField.type === 'checkbox') && (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <label className="block text-sm font-medium text-gray-700">
@@ -317,7 +387,7 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                         {localField.type === 'radio' && (
                           <p className="text-xs text-gray-500">Radio fields require at least 2 options</p>
                         )}
-                        {localField.type === 'select' && (
+                        {localField.type === 'select' && localField.role !== 'country' && (
                           <p className="text-xs text-gray-500">Select fields require at least 1 option</p>
                         )}
                         {localField.type === 'checkbox' && (
@@ -360,7 +430,7 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                                 className="cursor-pointer p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={
                                   (localField.type === 'radio' && (localField.options?.length || 0) <= 2) ||
-                                  (localField.type === 'select' && (localField.options?.length || 0) <= 1) ||
+                                  (localField.type === 'select' && localField.role !== 'country' && (localField.options?.length || 0) <= 1) ||
                                   (localField.type === 'checkbox' && !localField.label?.trim() && (localField.options?.length || 0) <= 1)
                                 }
                                 title="Remove option"
@@ -369,8 +439,13 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                               </button>
                             </div>
                           ))}
-                          {(!localField.options || localField.options.length === 0) && (
+                          {(!localField.options || localField.options.length === 0) && localField.role !== 'country' && (
                             <p className="text-xs text-gray-400 text-center py-2">No options added yet</p>
+                          )}
+                          {(!localField.options || localField.options.length === 0) && localField.role === 'country' && (
+                            <p className="text-xs text-blue-500 text-center py-2 italic">
+                              Country options are fetched dynamically - no manual entry needed
+                            </p>
                           )}
                         </div>
                       </div>
@@ -564,9 +639,20 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                           className="w-full outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                         >
                           <option value="">{localField.placeholder || 'Select an option'}</option>
-                          {(localField.options || []).map((opt, idx) => (
-                            <option key={idx} value={opt.value}>{opt.label}</option>
-                          ))}
+                          {/* For Country fields, show fetched country data in preview */}
+                          {localField.role === 'country' ? (
+                            countryData.length > 0 ? (
+                              countryData.map((country, idx) => (
+                                <option key={idx} value={country.countryShortCode}>{country.countryName}</option>
+                              ))
+                            ) : (
+                              <option value="" disabled>Loading countries...</option>
+                            )
+                          ) : (
+                            (localField.options || []).map((opt, idx) => (
+                              <option key={idx} value={opt.value}>{opt.label}</option>
+                            ))
+                          )}
                         </select>
                         <svg
                           style={{
