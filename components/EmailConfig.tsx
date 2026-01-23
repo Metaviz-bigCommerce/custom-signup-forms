@@ -45,14 +45,16 @@ const EmailConfigForm: React.FC = () => {
 		pass: '',
 		secure: false,
 	});
-	const [original, setOriginal] = useState<EmailConfig | null>(null);
-	const [editSnapshot, setEditSnapshot] = useState<{
-		customerEmailsEnabled: boolean;
-		fromEmail: string;
-		fromName: string;
-		replyTo: string;
-		smtp: SmtpConfig;
-	} | null>(null);
+  const [original, setOriginal] = useState<EmailConfig | null>(null);
+  const [editSnapshot, setEditSnapshot] = useState<{
+    customerEmailsEnabled: boolean;
+    fromEmail: string;
+    fromName: string;
+    replyTo: string;
+    smtp: SmtpConfig;
+  } | null>(null);
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+  const [saveAttempted, setSaveAttempted] = useState(false);
 	
 	// Helper function to check if SMTP is fully configured
 	const isSmtpConfigured = (): boolean => {
@@ -178,32 +180,36 @@ const EmailConfigForm: React.FC = () => {
 		}
 	}, [hasUnsavedChanges, router]);
 	
-	// Enter edit mode
-	const handleEdit = () => {
-		setIsEditing(true);
-		setEditSnapshot({
-			customerEmailsEnabled,
-			fromEmail,
-			fromName,
-			replyTo,
-			smtp: { ...smtp },
-		});
-		setNotice(null);
-	};
+  // Enter edit mode
+  const handleEdit = () => {
+    setIsEditing(true);
+    setEditSnapshot({
+      customerEmailsEnabled,
+      fromEmail,
+      fromName,
+      replyTo,
+      smtp: { ...smtp },
+    });
+    setNotice(null);
+    setTouchedFields(new Set());
+    setSaveAttempted(false);
+  };
 	
-	// Cancel editing and revert to snapshot
-	const handleCancel = () => {
-		if (editSnapshot) {
-			setCustomerEmailsEnabled(editSnapshot.customerEmailsEnabled);
-			setFromEmail(editSnapshot.fromEmail);
-			setFromName(editSnapshot.fromName);
-			setReplyTo(editSnapshot.replyTo);
-			setSmtp(editSnapshot.smtp);
-		}
-		setIsEditing(false);
-		setEditSnapshot(null);
-		setNotice(null);
-	};
+  // Cancel editing and revert to snapshot
+  const handleCancel = () => {
+    if (editSnapshot) {
+      setCustomerEmailsEnabled(editSnapshot.customerEmailsEnabled);
+      setFromEmail(editSnapshot.fromEmail);
+      setFromName(editSnapshot.fromName);
+      setReplyTo(editSnapshot.replyTo);
+      setSmtp(editSnapshot.smtp);
+    }
+    setIsEditing(false);
+    setEditSnapshot(null);
+    setNotice(null);
+    setTouchedFields(new Set());
+    setSaveAttempted(false);
+  };
 	
 	const handleConfirmNavigation = () => {
 		setShowUnsavedDialog(false);
@@ -218,26 +224,27 @@ const EmailConfigForm: React.FC = () => {
 		setPendingNavigation(null);
 	};
 
-	const save = async () => {
-		if (!context) return;
-		setNotice(null);
-		setSaving(true);
-		try {
-			// Validate all required fields
-			const missingFields: string[] = [];
-			if (!String(fromEmail || '').trim()) missingFields.push('From Email');
-			if (!String(fromName || '').trim()) missingFields.push('From Name');
-			if (!String(replyTo || '').trim()) missingFields.push('Reply-To');
-			if (!String(smtp.host || '').trim()) missingFields.push('SMTP Host');
-			if (!smtp.port) missingFields.push('SMTP Port');
-			if (!String(smtp.user || '').trim()) missingFields.push('SMTP Username');
-			if (!String(smtp.pass || '').trim()) missingFields.push('SMTP Password');
-			
-			if (missingFields.length > 0) {
-				toast.showWarning(`Please fill in all required fields: ${missingFields.join(', ')}`);
-				setSaving(false);
-				return;
-			}
+  const save = async () => {
+    if (!context) return;
+    setNotice(null);
+    setSaving(true);
+    setSaveAttempted(true);
+    try {
+      // Validate all required fields
+      const missingFields: string[] = [];
+      if (!String(fromEmail || '').trim()) missingFields.push('From Email');
+      if (!String(fromName || '').trim()) missingFields.push('From Name');
+      if (!String(replyTo || '').trim()) missingFields.push('Reply-To');
+      if (!String(smtp.host || '').trim()) missingFields.push('SMTP Host');
+      if (!smtp.port) missingFields.push('SMTP Port');
+      if (!String(smtp.user || '').trim()) missingFields.push('SMTP Username');
+      if (!String(smtp.pass || '').trim()) missingFields.push('SMTP Password');
+      
+      if (missingFields.length > 0) {
+        toast.showWarning(`Please fill in all required fields: ${missingFields.join(', ')}`);
+        setSaving(false);
+        return;
+      }
 			
 			// If customer emails are enabled, SMTP must be fully configured
 			if (customerEmailsEnabled && !isSmtpConfigured()) {
@@ -269,11 +276,13 @@ const EmailConfigForm: React.FC = () => {
 				const msg = await res.text();
 				throw new Error(msg || 'Failed to save settings');
 			}
-			// Update original so button disables
-			setOriginal(normalized(payload));
-			setNotice({ type: 'success', text: 'Settings saved successfully.' });
-			setIsEditing(false);
-			setEditSnapshot(null);
+      // Update original so button disables
+      setOriginal(normalized(payload));
+      setNotice({ type: 'success', text: 'Settings saved successfully.' });
+      setIsEditing(false);
+      setEditSnapshot(null);
+      setTouchedFields(new Set());
+      setSaveAttempted(false);
 		} finally {
 			setSaving(false);
 			setTimeout(() => setNotice(null), 2500);
@@ -493,14 +502,17 @@ const EmailConfigForm: React.FC = () => {
 									<input
 										type="email"
 										value={fromEmail}
-										onChange={(e) => setFromEmail(e.target.value)}
+										onChange={(e) => {
+											setFromEmail(e.target.value);
+											setTouchedFields(prev => new Set(prev).add('fromEmail'));
+										}}
+										onBlur={() => setTouchedFields(prev => new Set(prev).add('fromEmail'))}
 										placeholder="no-reply@yourdomain.com"
-										required
 										disabled={!isEditing}
 										className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${
 											!isEditing
 												? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed'
-												: !fromEmail?.trim() && isDirty
+												: (touchedFields.has('fromEmail') || saveAttempted) && !fromEmail?.trim()
 												? 'border-red-300 focus:border-red-500 focus:ring-red-500/20 bg-white text-slate-900'
 												: 'border-slate-200 bg-white text-slate-900'
 										}`}
@@ -527,14 +539,17 @@ const EmailConfigForm: React.FC = () => {
 									<input
 										type="text"
 										value={fromName}
-										onChange={(e) => setFromName(e.target.value)}
+										onChange={(e) => {
+											setFromName(e.target.value);
+											setTouchedFields(prev => new Set(prev).add('fromName'));
+										}}
+										onBlur={() => setTouchedFields(prev => new Set(prev).add('fromName'))}
 										placeholder="e.g. John's Store"
-										required
 										disabled={!isEditing}
 										className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${
 											!isEditing
 												? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed'
-												: !fromName?.trim() && isDirty
+												: (touchedFields.has('fromName') || saveAttempted) && !fromName?.trim()
 												? 'border-red-300 focus:border-red-500 focus:ring-red-500/20 bg-white text-slate-900'
 												: 'border-slate-200 bg-white text-slate-900'
 										}`}
@@ -561,14 +576,17 @@ const EmailConfigForm: React.FC = () => {
 									<input
 										type="email"
 										value={replyTo}
-										onChange={(e) => setReplyTo(e.target.value)}
+										onChange={(e) => {
+											setReplyTo(e.target.value);
+											setTouchedFields(prev => new Set(prev).add('replyTo'));
+										}}
+										onBlur={() => setTouchedFields(prev => new Set(prev).add('replyTo'))}
 										placeholder="support@yourstore.com"
-										required
 										disabled={!isEditing}
 										className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${
 											!isEditing
 												? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed'
-												: !replyTo?.trim() && isDirty
+												: (touchedFields.has('replyTo') || saveAttempted) && !replyTo?.trim()
 												? 'border-red-300 focus:border-red-500 focus:ring-red-500/20 bg-white text-slate-900'
 												: 'border-slate-200 bg-white text-slate-900'
 										}`}
@@ -621,14 +639,17 @@ const EmailConfigForm: React.FC = () => {
 									<input
 										type="text"
 										value={smtp.host}
-										onChange={(e) => setSmtp({ ...smtp, host: e.target.value })}
+										onChange={(e) => {
+											setSmtp({ ...smtp, host: e.target.value });
+											setTouchedFields(prev => new Set(prev).add('smtpHost'));
+										}}
+										onBlur={() => setTouchedFields(prev => new Set(prev).add('smtpHost'))}
 										placeholder="smtp-relay.brevo.com"
-										required
 										disabled={!isEditing}
 										className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${
 											!isEditing
 												? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed'
-												: !smtp.host?.trim() && isDirty
+												: (touchedFields.has('smtpHost') || saveAttempted) && !smtp.host?.trim()
 												? 'border-red-300 focus:border-red-500 focus:ring-red-500/20 bg-white text-slate-900'
 												: 'border-slate-200 bg-white text-slate-900'
 										}`}
@@ -655,16 +676,19 @@ const EmailConfigForm: React.FC = () => {
 									<input
 										type="number"
 										value={smtp.port}
-										onChange={(e) => setSmtp({ ...smtp, port: Number(e.target.value || 0) })}
+										onChange={(e) => {
+											setSmtp({ ...smtp, port: Number(e.target.value || 0) });
+											setTouchedFields(prev => new Set(prev).add('smtpPort'));
+										}}
+										onBlur={() => setTouchedFields(prev => new Set(prev).add('smtpPort'))}
 										placeholder="587"
-										required
 										min="1"
 										max="65535"
 										disabled={!isEditing}
 										className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${
 											!isEditing
 												? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed'
-												: !smtp.port && isDirty
+												: (touchedFields.has('smtpPort') || saveAttempted) && !smtp.port
 												? 'border-red-300 focus:border-red-500 focus:ring-red-500/20 bg-white text-slate-900'
 												: 'border-slate-200 bg-white text-slate-900'
 										}`}
@@ -691,14 +715,17 @@ const EmailConfigForm: React.FC = () => {
 									<input
 										type="text"
 										value={smtp.user}
-										onChange={(e) => setSmtp({ ...smtp, user: e.target.value })}
+										onChange={(e) => {
+											setSmtp({ ...smtp, user: e.target.value });
+											setTouchedFields(prev => new Set(prev).add('smtpUser'));
+										}}
+										onBlur={() => setTouchedFields(prev => new Set(prev).add('smtpUser'))}
 										placeholder="Your SMTP username"
-										required
 										disabled={!isEditing}
 										className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${
 											!isEditing
 												? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed'
-												: !smtp.user?.trim() && isDirty
+												: (touchedFields.has('smtpUser') || saveAttempted) && !smtp.user?.trim()
 												? 'border-red-300 focus:border-red-500 focus:ring-red-500/20 bg-white text-slate-900'
 												: 'border-slate-200 bg-white text-slate-900'
 										}`}
@@ -725,14 +752,17 @@ const EmailConfigForm: React.FC = () => {
 									<input
 										type="password"
 										value={smtp.pass}
-										onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })}
+										onChange={(e) => {
+											setSmtp({ ...smtp, pass: e.target.value });
+											setTouchedFields(prev => new Set(prev).add('smtpPass'));
+										}}
+										onBlur={() => setTouchedFields(prev => new Set(prev).add('smtpPass'))}
 										placeholder="Your SMTP password"
-										required
 										disabled={!isEditing}
 										className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${
 											!isEditing
 												? 'border-slate-200 bg-slate-50 text-slate-600 cursor-not-allowed'
-												: !smtp.pass?.trim() && isDirty
+												: (touchedFields.has('smtpPass') || saveAttempted) && !smtp.pass?.trim()
 												? 'border-red-300 focus:border-red-500 focus:ring-red-500/20 bg-white text-slate-900'
 												: 'border-slate-200 bg-white text-slate-900'
 										}`}
