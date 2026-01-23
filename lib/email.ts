@@ -59,6 +59,7 @@ Please review the updated information in your dashboard. The applicant has made 
 
 const DEFAULT_FROM = env.EMAIL_FROM || 'no-reply@example.com';
 const COMPANY_REPLY_TO = env.EMAIL_REPLY_TO || env.EMAIL_FROM || 'no-reply@example.com';
+const COMPANY_FROM_NAME = env.EMAIL_FROM_NAME || undefined;
 const SMTP_HOST = env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com';
 const SMTP_PORT = Number(env.BREVO_SMTP_PORT || 587);
 const SMTP_USER = env.BREVO_SMTP_USER || '';
@@ -419,14 +420,23 @@ export async function sendEmail(params: {
 	}
 	
 	try {
-		const fromName = (config?.fromName || '').trim() || undefined;
+		// From Name handling: Separate logic for store owner emails vs customer emails
+		let resolvedFromName: string | undefined;
+		if (forceCompanySmtp) {
+			// Store owner emails: Use company from name from .env, NOT store owner's config
+			resolvedFromName = COMPANY_FROM_NAME ? COMPANY_FROM_NAME.trim() : undefined;
+		} else {
+			// Customer emails: Use store owner's configured from name
+			resolvedFromName = (config?.fromName || '').trim() || undefined;
+		}
+		
 		// If using shared SMTP (company SMTP), force DEFAULT_FROM (ignore config.fromEmail to avoid unauthorized domain issues)
 		// If using custom SMTP, allow config.fromEmail
 		const resolvedFromEmail = usingCustomSmtp
 			? (config?.fromEmail || from || DEFAULT_FROM).trim()
 			: (from || DEFAULT_FROM).trim();
 		const fromEmail = resolvedFromEmail || DEFAULT_FROM;
-		const prettyFrom = fromName ? `"${fromName}" <${fromEmail}>` : fromEmail;
+		const prettyFrom = resolvedFromName ? `"${resolvedFromName}" <${fromEmail}>` : fromEmail;
 		
 		// Reply-to handling: Separate logic for store owner emails vs customer emails
 		let resolvedReplyTo: string | undefined;
