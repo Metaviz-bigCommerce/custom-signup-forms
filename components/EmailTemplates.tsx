@@ -570,15 +570,12 @@ const EmailTemplates: React.FC = () => {
     }
 
     return `
-<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1" /><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1" /><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /><meta name="color-scheme" content="light" />
 <title>${renderTemplate('{{platform_name}}')}</title>
 <style>
   :root { --brand: ${brand}; --bg: ${bg}; }
   /* Disable all link interactions in preview */
   a { pointer-events: none; cursor: default; }
-  @media (prefers-color-scheme: dark) {
-    body { background-color: #0b1020 !important; }
-  }
 </style>
 </head>
 <body style="background-color:${bg};margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
