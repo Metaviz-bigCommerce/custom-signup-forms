@@ -600,7 +600,7 @@ const EmailTemplates: React.FC = () => {
             </td>
           </tr>
           <tr>
-            <td style="font-size:12px;line-height:1.7;color:#64748b;padding:8px 24px 0 24px;text-align:center">
+            <td style="font-size:12px;line-height:1.7;color:#64748b;padding:8px 24px 8px 24px;text-align:center">
               ${renderTemplate(footerNote)}${footerLinksHtml ? '<br/>' + footerLinksHtml : ''}
             </td>
           </tr>
