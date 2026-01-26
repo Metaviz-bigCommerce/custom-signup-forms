@@ -13,6 +13,45 @@ interface LivePreviewProps {
   onViewModeChange: (mode: 'desktop' | 'mobile') => void;
 }
 
+/**
+ * Get maximum character length for a field based on its type and role.
+ * This ensures consistent validation across Form Builder, Live Preview, and embedded forms.
+ */
+function getMaxLength(field: FormField): number | undefined {
+  // Email fields: reasonable limit for email addresses
+  if (field.type === 'email' || field.role === 'email') {
+    return 50;
+  }
+  
+  // Phone/Number fields: reasonable limit for phone numbers
+  if (field.type === 'phone' || field.type === 'number') {
+    return 20;
+  }
+  
+  // Name fields: reasonable limit for first/last names
+  if (field.role === 'first_name' || field.role === 'last_name') {
+    return 30;
+  }
+  
+  // Textarea: more lenient for longer text
+  if (field.type === 'textarea') {
+    return 1000;
+  }
+  
+  // URL fields: reasonable limit for URLs
+  if (field.type === 'url') {
+    return 2048;
+  }
+  
+  // Generic text fields: reasonable default
+  if (field.type === 'text') {
+    return 100;
+  }
+  
+  // Password, date, file, select, radio, checkbox don't need maxlength
+  return undefined;
+}
+
 const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, onViewModeChange }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -370,6 +409,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
                   <textarea
                     placeholder={field.placeholder || ''}
                     rows={3}
+                    maxLength={getMaxLength(field)}
                     style={{
                       borderColor: borderColor,
                       borderWidth: borderWidth + 'px',
@@ -525,6 +565,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({ formFields, theme, viewMode, 
                     placeholder={field.placeholder || ''}
                     pattern={field.type === 'phone' ? '[0-9]*' : undefined}
                     inputMode={field.type === 'phone' ? 'numeric' : undefined}
+                    maxLength={getMaxLength(field)}
                     onKeyPress={field.type === 'phone' ? (e) => {
                       if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)) {
                         e.preventDefault();

@@ -143,6 +143,45 @@ const scrollbarStyles = `
 `;
 
 // Enhanced Form Preview Component - Exact replica of LivePreview rendering
+/**
+ * Get maximum character length for a field based on its type and role.
+ * This ensures consistent validation across Form Builder, Live Preview, and embedded forms.
+ */
+function getMaxLength(field: any): number | undefined {
+  // Email fields: reasonable limit for email addresses
+  if (field.type === 'email' || field.role === 'email') {
+    return 50;
+  }
+  
+  // Phone/Number fields: reasonable limit for phone numbers
+  if (field.type === 'phone' || field.type === 'number') {
+    return 20;
+  }
+  
+  // Name fields: reasonable limit for first/last names
+  if (field.role === 'first_name' || field.role === 'last_name') {
+    return 30;
+  }
+  
+  // Textarea: more lenient for longer text
+  if (field.type === 'textarea') {
+    return 1000;
+  }
+  
+  // URL fields: reasonable limit for URLs
+  if (field.type === 'url') {
+    return 2048;
+  }
+  
+  // Generic text fields: reasonable default
+  if (field.type === 'text') {
+    return 100;
+  }
+  
+  // Password, date, file, select, radio, checkbox don't need maxlength
+  return undefined;
+}
+
 const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean; currentFields?: any[]; currentTheme?: any; isCurrentForm?: boolean }> = ({ form, isCompact = false, currentFields, currentTheme, isCurrentForm = false }) => {
   // Use current fields/theme if this is the form being edited, otherwise use saved form data
   const formData = form?.form || form;
@@ -307,6 +346,7 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean; currentFi
           <textarea
             placeholder={field.placeholder || ''}
             rows={Math.max(2, Math.floor(3 * scale))}
+            maxLength={getMaxLength(field)}
             style={{ ...inputStyle, paddingRight: (parseFloat(padding) * scale) + 'px' }}
             aria-label={field.label}
             readOnly
@@ -415,6 +455,7 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean; currentFi
             placeholder={field.placeholder || ''}
             pattern={field.type === 'phone' ? '[0-9]*' : undefined}
             inputMode={field.type === 'phone' ? 'numeric' : undefined}
+            maxLength={getMaxLength(field)}
             style={{ ...inputStyle, paddingRight: (parseFloat(padding) * scale) + 'px' }}
             aria-label={field.label}
             readOnly
