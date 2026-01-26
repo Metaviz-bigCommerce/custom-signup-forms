@@ -375,6 +375,21 @@ export async function findResubmissionRequestedRequest(storeHash: string, email:
   return { id: doc.id, ...(doc.data() as any) };
 }
 
+// Find all rejected requests for a given email
+export async function findRejectedRequestsByEmail(storeHash: string, email: string) {
+  if (!storeHash || !email) return [];
+  const colRef = collection(db, 'stores', storeHash, 'signupRequests');
+  const emailLower = email.toLowerCase();
+  const q = query(
+    colRef,
+    where('email', '==', emailLower),
+    where('status', '==', 'rejected')
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return [];
+  return snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+}
+
 export async function getEmailTemplates(storeHash: string) {
   if (!storeHash) throw new Error('Missing storeHash');
   const ref = doc(db, 'stores', storeHash);

@@ -145,6 +145,33 @@ export async function POST(req: NextRequest) {
           // Continue with normal flow if check fails
         }
       }
+
+      // Check for rejected requests and delete them if found (after cooldown reset, user can resubmit)
+      // Note: This does NOT apply to pending requests - those are handled by duplicate check in createSignupRequest
+      if (email) {
+        try {
+          const rejectedRequests = await (db as any).findRejectedRequestsByEmail(storeHash, email);
+          if (rejectedRequests && rejectedRequests.length > 0) {
+            // Delete files from storage for all rejected requests
+            for (const rejectedRequest of rejectedRequests) {
+              if (rejectedRequest.files && rejectedRequest.files.length > 0) {
+                try {
+                  await deleteSignupRequestFiles(rejectedRequest.files);
+                } catch (fileDeleteError) {
+                  logger.error('Failed to delete files from rejected request', fileDeleteError, { ...logContext, requestId: rejectedRequest.id });
+                  // Continue even if file deletion fails
+                }
+              }
+              // Delete the rejected request
+              await db.deleteSignupRequest(storeHash, rejectedRequest.id);
+              logger.info('Deleted rejected request', { ...logContext, deletedRequestId: rejectedRequest.id, email });
+            }
+          }
+        } catch (rejectedCheckError) {
+          logger.error('Error checking for rejected requests', rejectedCheckError, { ...logContext, email });
+          // Continue with normal flow if check fails
+        }
+      }
       
       // Create signup request first
       let created;
@@ -375,6 +402,33 @@ export async function POST(req: NextRequest) {
           }
         } catch (resubmissionCheckError) {
           logger.error('Error checking for resubmission request', resubmissionCheckError, { ...logContext, email: emailLower });
+          // Continue with normal flow if check fails
+        }
+      }
+
+      // Check for rejected requests and delete them if found (after cooldown reset, user can resubmit)
+      // Note: This does NOT apply to pending requests - those are handled by duplicate check in createSignupRequest
+      if (emailLower) {
+        try {
+          const rejectedRequests = await (db as any).findRejectedRequestsByEmail(storeHash, emailLower);
+          if (rejectedRequests && rejectedRequests.length > 0) {
+            // Delete files from storage for all rejected requests
+            for (const rejectedRequest of rejectedRequests) {
+              if (rejectedRequest.files && rejectedRequest.files.length > 0) {
+                try {
+                  await deleteSignupRequestFiles(rejectedRequest.files);
+                } catch (fileDeleteError) {
+                  logger.error('Failed to delete files from rejected request', fileDeleteError, { ...logContext, requestId: rejectedRequest.id });
+                  // Continue even if file deletion fails
+                }
+              }
+              // Delete the rejected request
+              await db.deleteSignupRequest(storeHash, rejectedRequest.id);
+              logger.info('Deleted rejected request', { ...logContext, deletedRequestId: rejectedRequest.id, email: emailLower });
+            }
+          }
+        } catch (rejectedCheckError) {
+          logger.error('Error checking for rejected requests', rejectedCheckError, { ...logContext, email: emailLower });
           // Continue with normal flow if check fails
         }
       }
