@@ -219,7 +219,12 @@ export async function createSignupRequest(storeHash: string, payload: Record<str
       const existing = dupSnap.docs[0].data();
       // Only block if it's pending or approved, not rejected (rejected is handled by cooldown)
       // Also allow 'resubmission_requested' (will be deleted by public API before creating new)
-      if (existing.status === 'pending' || existing.status === 'approved') {
+      if (existing.status === 'approved') {
+        const err: any = new Error('account_already_exists');
+        err.code = 'ACCOUNT_EXISTS';
+        throw err;
+      }
+      if (existing.status === 'pending') {
         const err: any = new Error('duplicate_signup');
         err.code = 'DUPLICATE';
         throw err;

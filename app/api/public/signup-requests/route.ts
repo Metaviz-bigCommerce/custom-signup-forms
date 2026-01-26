@@ -159,6 +159,15 @@ export async function POST(req: NextRequest) {
         });
       } catch (createError: unknown) {
         const error = createError as { code?: string; remainingDays?: number; message?: string };
+        if (error.code === 'ACCOUNT_EXISTS') {
+          const res = errorResponse(
+            'An account with this email already exists. Please login instead.',
+            409,
+            ErrorCode.CONFLICT,
+            requestId
+          );
+          return applyCorsHeaders(req, res);
+        }
         if (error.code === 'DUPLICATE') {
           const res = apiErrors.duplicate(
             'You have already submitted a request. Please wait for approval or contact the store admin.',
@@ -383,6 +392,15 @@ export async function POST(req: NextRequest) {
         });
       } catch (createError: unknown) {
         const error = createError as { code?: string; remainingDays?: number; message?: string };
+        if (error.code === 'ACCOUNT_EXISTS') {
+          const res = errorResponse(
+            'An account with this email already exists. Please login instead.',
+            409,
+            ErrorCode.CONFLICT,
+            requestId
+          );
+          return applyCorsHeaders(req, res);
+        }
         if (error.code === 'DUPLICATE') {
           const res = apiErrors.duplicate(
             'You have already submitted a request. Please wait for approval or contact the store admin.',
