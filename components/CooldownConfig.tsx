@@ -10,9 +10,11 @@ const CooldownConfig: React.FC = () => {
   const toast = useToast();
   const [cooldownDays, setCooldownDays] = useState<number>(7);
   const [originalDays, setOriginalDays] = useState<number>(7);
+  const [inputValue, setInputValue] = useState<string>('7');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!context) return;
@@ -33,6 +35,7 @@ const CooldownConfig: React.FC = () => {
         const days = data.data?.days ?? 7;
         setCooldownDays(days);
         setOriginalDays(days);
+        setInputValue(days.toString());
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Failed to load cooldown configuration';
         setError(message);
@@ -44,6 +47,116 @@ const CooldownConfig: React.FC = () => {
     
     load();
   }, [context, toast]);
+
+  const validateValue = (value: number | string): { isValid: boolean; error: string | null; numericValue: number } => {
+    const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
+    
+    if (isNaN(numValue) || numValue < 1 || numValue > 365) {
+      return {
+        isValid: false,
+        error: 'Please enter a value between 1 and 365.',
+        numericValue: numValue
+      };
+    }
+    
+    return {
+      isValid: true,
+      error: null,
+      numericValue: numValue
+    };
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    
+    // Allow empty string for better UX while typing
+    if (rawValue === '') {
+      setInputValue('');
+      setCooldownDays(0);
+      setValidationError('Please enter a value between 1 and 365.');
+      return;
+    }
+    
+    // Remove any non-numeric characters
+    const numericOnly = rawValue.replace(/[^0-9]/g, '');
+    
+    // Prevent leading zeros: if the value starts with 0 and has more digits, remove the leading zero
+    let cleanedValue = numericOnly;
+    if (cleanedValue.length > 1 && cleanedValue.startsWith('0')) {
+      cleanedValue = cleanedValue.replace(/^0+/, '');
+      // If all zeros were removed, keep it as empty
+      if (cleanedValue === '') {
+        setInputValue('');
+        setCooldownDays(0);
+        setValidationError('Please enter a value between 1 and 365.');
+        return;
+      }
+    }
+    
+    // If single zero, show validation error
+    if (cleanedValue === '0') {
+      setInputValue('0');
+      setCooldownDays(0);
+      setValidationError('Please enter a value between 1 and 365.');
+      return;
+    }
+    
+    setInputValue(cleanedValue);
+    const numValue = parseInt(cleanedValue, 10);
+    const validation = validateValue(numValue);
+    
+    if (validation.isValid) {
+      setCooldownDays(validation.numericValue);
+      setValidationError(null);
+    } else {
+      setCooldownDays(validation.numericValue);
+      setValidationError(validation.error);
+    }
+  };
+
+  const handleInputBlur = () => {
+    // Auto-correct on blur: remove leading zeros and validate
+    if (inputValue === '' || inputValue === '0') {
+      setInputValue('7');
+      setCooldownDays(7);
+      setValidationError(null);
+      toast.showInfo('Value set to default: 7 days.');
+      return;
+    }
+    
+    // Remove any remaining leading zeros
+    let cleanedValue = inputValue.replace(/^0+/, '');
+    if (cleanedValue === '') {
+      cleanedValue = '7';
+      setCooldownDays(7);
+      setValidationError(null);
+      toast.showInfo('Value set to default: 7 days.');
+    } else {
+      const numValue = parseInt(cleanedValue, 10);
+      const validation = validateValue(numValue);
+      
+      if (validation.isValid) {
+        setCooldownDays(validation.numericValue);
+        setInputValue(cleanedValue);
+        setValidationError(null);
+      } else {
+        // If out of range, clamp to valid range
+        if (numValue < 1) {
+          setCooldownDays(1);
+          setInputValue('1');
+          setValidationError(null);
+          toast.showInfo('Value adjusted to minimum: 1 day.');
+        } else if (numValue > 365) {
+          setCooldownDays(365);
+          setInputValue('365');
+          setValidationError(null);
+          toast.showInfo('Value adjusted to maximum: 365 days.');
+        } else {
+          setValidationError(validation.error);
+        }
+      }
+    }
+  };
 
   const handleSave = async () => {
     if (!context) return;
@@ -74,6 +187,7 @@ const CooldownConfig: React.FC = () => {
       }
       
       setOriginalDays(cooldownDays);
+      setInputValue(cooldownDays.toString());
       toast.showSuccess('Cooldown period updated successfully.');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to save cooldown configuration';
@@ -85,6 +199,7 @@ const CooldownConfig: React.FC = () => {
   };
 
   const hasChanges = cooldownDays !== originalDays;
+  const isValid = cooldownDays >= 1 && cooldownDays <= 365 && validationError === null;
 
   if (loading) {
     return (
@@ -123,24 +238,30 @@ const CooldownConfig: React.FC = () => {
             Cooldown Period (days)
           </label>
           <div className="flex items-center gap-4">
-            <input
-              id="cooldown-days"
-              type="number"
-              min="1"
-              max="365"
-              value={cooldownDays}
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
-                if (!isNaN(value) && value >= 1 && value <= 365) {
-                  setCooldownDays(value);
-                  setError(null);
-                } else if (e.target.value === '') {
-                  setCooldownDays(0);
-                }
-              }}
-              className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              placeholder="7"
-            />
+            <div className="flex flex-col">
+              <input
+                id="cooldown-days"
+                type="text"
+                inputMode="numeric"
+                value={inputValue}
+                onChange={handleInputChange}
+                onBlur={handleInputBlur}
+                className={`w-32 px-3 py-2 border rounded-lg focus:ring-2 text-sm transition-colors ${
+                  validationError
+                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500 bg-red-50'
+                    : isValid && inputValue !== ''
+                    ? 'border-green-500 focus:ring-green-500 focus:border-green-500'
+                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                }`}
+                placeholder="7"
+              />
+              {validationError && (
+                <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {validationError}
+                </p>
+              )}
+            </div>
             <span className="text-sm text-gray-600">
               Users must wait this many days after rejection before they can resubmit
             </span>
@@ -153,9 +274,9 @@ const CooldownConfig: React.FC = () => {
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
           <button
             onClick={handleSave}
-            disabled={!hasChanges || saving || cooldownDays < 1 || cooldownDays > 365}
+            disabled={!hasChanges || saving || !isValid}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 ${
-              hasChanges && !saving && cooldownDays >= 1 && cooldownDays <= 365
+              hasChanges && !saving && isValid
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }`}
