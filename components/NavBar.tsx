@@ -112,9 +112,9 @@ const NavBar: React.FC = () => {
           }
         }
         @media (min-width: 1278px) {
-          .logo-large-screen img {
-            height: 72px !important;
-          }
+          // .logo-large-screen img {
+          //   height: 72px !important;
+          // }
           .logo-large-screen {
             padding-top: 0.5rem;
             padding-bottom: 0.5rem;
@@ -145,10 +145,10 @@ const NavBar: React.FC = () => {
               {/* Logo Image */}
               <div className="relative flex-shrink-0 py-1 logo-large-screen">
                 <Image
-                  src="/Primary Logo 350 x 130.png"
+                  src="/Navbar Logo.png"
                   alt="Logo"
                   width={350}
-                  height={130}
+                  height={200}
                   className="h-12 w-auto sm:h-14 md:h-16 lg:h-20 xl:h-20 object-contain transition-all duration-300 group-hover:scale-105"
                   priority
                   style={{
