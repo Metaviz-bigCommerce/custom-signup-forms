@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Home, Users, Mail, Wrench, Menu, X, HelpCircle, ChevronDown, Settings } from 'lucide-react';
+import { Home, Users, Mail, Wrench, Menu, X, HelpCircle, ChevronDown, Settings, BookOpen } from 'lucide-react';
 import { useSession } from '@/context/session';
 import { env } from '@/lib/env';
 import Tooltip from '@/components/common/Tooltip';
@@ -250,25 +250,36 @@ const NavBar: React.FC = () => {
               {helpDropdownOpen && (
                 <div className="absolute top-full right-0 mt-2 w-56 sm:w-64 lg:w-72 bg-white rounded-lg sm:rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
                   <div className="px-3 sm:px-4 py-3 sm:py-4 space-y-2 sm:space-y-3">
-                    <div>
-                      <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">App Name</p>
-                      <p className="text-xs sm:text-sm font-semibold text-gray-900">Custom Signup Forms</p>
-                    </div>
+                    <Link
+                      href={`/help/smtp-guidelines?context=${context}`}
+                      onClick={() => setHelpDropdownOpen(false)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs sm:text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors duration-200"
+                    >
+                      <BookOpen className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <span className="font-medium">SMTP Guidelines</span>
+                    </Link>
                     
-                    <div>
-                      <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Version</p>
-                      <p className="text-xs sm:text-sm text-gray-900">0.1.0</p>
-                    </div>
-                    
-                    <div>
-                      <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Contact Email</p>
-                      <a 
-                        href={`mailto:${env.EMAIL_FROM || 'support@example.com'}`}
-                        className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline break-all transition-colors duration-200"
-                        onClick={() => setHelpDropdownOpen(false)}
-                      >
-                        {env.EMAIL_FROM || 'support@example.com'}
-                      </a>
+                    <div className="border-t border-gray-200 pt-2 sm:pt-3 mt-2 sm:mt-3">
+                      <div>
+                        <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">App Name</p>
+                        <p className="text-xs sm:text-sm font-semibold text-gray-900">Custom Signup Forms</p>
+                      </div>
+                      
+                      <div className="mt-2 sm:mt-3">
+                        <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Version</p>
+                        <p className="text-xs sm:text-sm text-gray-900">0.1.0</p>
+                      </div>
+                      
+                      <div className="mt-2 sm:mt-3">
+                        <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1">Contact Email</p>
+                        <a 
+                          href={`mailto:${env.EMAIL_FROM || 'support@example.com'}`}
+                          className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 hover:underline break-all transition-colors duration-200"
+                          onClick={() => setHelpDropdownOpen(false)}
+                        >
+                          {env.EMAIL_FROM || 'support@example.com'}
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -367,26 +378,38 @@ const NavBar: React.FC = () => {
                 {mobileHelpDropdownOpen && (
                   <div className="mt-2 w-full bg-white/10 backdrop-blur-sm rounded-xl shadow-xl border border-white/20 overflow-hidden">
                     <div className="px-4 sm:px-5 py-3.5 sm:py-4 space-y-2 sm:space-y-3">
-                      <div>
-                        <p className="text-xs sm:text-sm text-white/70 mb-0.5 sm:mb-1" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>App Name</p>
-                        <p className="text-sm sm:text-base font-semibold text-white" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>Custom Signup Forms</p>
-                      </div>
+                      <Link
+                        href={`/help/smtp-guidelines?context=${context}`}
+                        onClick={() => setMobileHelpDropdownOpen(false)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm sm:text-base text-white hover:bg-white/10 rounded-lg transition-colors duration-200"
+                        style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}
+                      >
+                        <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-white flex-shrink-0" style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))' }} />
+                        <span className="font-medium">SMTP Guidelines</span>
+                      </Link>
                       
-                      <div>
-                        <p className="text-xs sm:text-sm text-white/70 mb-0.5 sm:mb-1" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>Version</p>
-                        <p className="text-sm sm:text-base text-white" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>0.1.0</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-xs sm:text-sm text-white/70 mb-0.5 sm:mb-1" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>Contact Email</p>
-                        <a 
-                          href={`mailto:${env.EMAIL_FROM || 'support@example.com'}`}
-                          className="text-sm sm:text-base text-white hover:text-blue-200 hover:underline break-all transition-colors duration-200"
-                          style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}
-                          onClick={() => setMobileHelpDropdownOpen(false)}
-                        >
-                          {env.EMAIL_FROM || 'support@example.com'}
-                        </a>
+                      <div className="border-t border-white/20 pt-2 sm:pt-3 mt-2 sm:mt-3 space-y-2 sm:space-y-3">
+                        <div>
+                          <p className="text-xs sm:text-sm text-white/70 mb-0.5 sm:mb-1" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>App Name</p>
+                          <p className="text-sm sm:text-base font-semibold text-white" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>Custom Signup Forms</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs sm:text-sm text-white/70 mb-0.5 sm:mb-1" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>Version</p>
+                          <p className="text-sm sm:text-base text-white" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>0.1.0</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs sm:text-sm text-white/70 mb-0.5 sm:mb-1" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}>Contact Email</p>
+                          <a 
+                            href={`mailto:${env.EMAIL_FROM || 'support@example.com'}`}
+                            className="text-sm sm:text-base text-white hover:text-blue-200 hover:underline break-all transition-colors duration-200"
+                            style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)' }}
+                            onClick={() => setMobileHelpDropdownOpen(false)}
+                          >
+                            {env.EMAIL_FROM || 'support@example.com'}
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </div>
