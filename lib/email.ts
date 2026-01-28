@@ -124,6 +124,58 @@ export function renderTemplate(input: string, vars: Record<string, string | numb
 	});
 }
 
+// Function to automatically detect social media platform and return colorful PNG icon URL (for email use)
+// Uses a reliable CDN that provides PNG format colorful icons for email compatibility
+function getSocialIconUrlPng(platformName: string, url: string): string {
+	const name = (platformName || '').toLowerCase().trim();
+	const urlLower = (url || '').toLowerCase();
+	
+	// Use colorful PNG icons from a reliable CDN (icons8 provides PNG format)
+	// These are colorful, email-compatible PNG icons (24x24px for optimal email display)
+	if (name.includes('facebook') || urlLower.includes('facebook.com') || urlLower.includes('fb.com')) {
+		return 'https://img.icons8.com/color/24/000000/facebook-new.png';
+	}
+	if (name.includes('twitter') || name.includes('x ') || urlLower.includes('twitter.com') || urlLower.includes('x.com')) {
+		return 'https://img.icons8.com/color/24/000000/twitter--v1.png';
+	}
+	if (name.includes('instagram') || urlLower.includes('instagram.com')) {
+		return 'https://img.icons8.com/color/24/000000/instagram-new.png';
+	}
+	if (name.includes('linkedin') || urlLower.includes('linkedin.com')) {
+		return 'https://img.icons8.com/color/24/000000/linkedin.png';
+	}
+	if (name.includes('youtube') || urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) {
+		return 'https://img.icons8.com/color/24/000000/youtube-play.png';
+	}
+	if (name.includes('tiktok') || urlLower.includes('tiktok.com')) {
+		return 'https://img.icons8.com/color/24/000000/tiktok--v1.png';
+	}
+	if (name.includes('pinterest') || urlLower.includes('pinterest.com')) {
+		return 'https://img.icons8.com/color/24/000000/pinterest.png';
+	}
+	if (name.includes('snapchat') || urlLower.includes('snapchat.com')) {
+		return 'https://img.icons8.com/color/24/000000/snapchat.png';
+	}
+	if (name.includes('reddit') || urlLower.includes('reddit.com')) {
+		return 'https://img.icons8.com/color/24/000000/reddit.png';
+	}
+	if (name.includes('discord') || urlLower.includes('discord.com') || urlLower.includes('discord.gg')) {
+		return 'https://img.icons8.com/color/24/000000/discord-logo.png';
+	}
+	if (name.includes('github') || urlLower.includes('github.com')) {
+		return 'https://img.icons8.com/color/24/000000/github--v1.png';
+	}
+	if (name.includes('whatsapp') || urlLower.includes('whatsapp.com') || urlLower.includes('wa.me')) {
+		return 'https://img.icons8.com/color/24/000000/whatsapp.png';
+	}
+	if (name.includes('telegram') || urlLower.includes('telegram.org') || urlLower.includes('t.me')) {
+		return 'https://img.icons8.com/color/24/000000/telegram-app.png';
+	}
+	
+	// Default: return empty string if platform not recognized
+	return '';
+}
+
 // Default titles per template type
 const defaultTitles: Record<TemplateKey, string> = {
 	signup: 'Application Received Successfully',
@@ -141,11 +193,11 @@ export function generateEmailHtml(template: EmailTemplate, vars: Record<string, 
 	const platformName = String(vars.platform_name || vars.store_name || 'Store');
 	
 	const logo = d.logoUrl 
-		? `<img src="${d.logoUrl}" alt="${platformName}" style="max-width:200px;height:auto;display:block;margin:0 auto">` 
+		? `<img src="${d.logoUrl}" alt="${platformName}" width="200" height="auto" border="0" style="max-width:200px;height:auto;display:block;margin:0 auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic">` 
 		: `<div style="font-size:32px;font-weight:900;letter-spacing:.3px;color:${brand};text-align:center">${platformName}</div>`;
 	
 	const banner = d.bannerUrl 
-		? `<tr><td style="padding:0 24px 8px 24px"><img src="${d.bannerUrl}" alt="" style="width:100%;height:auto;border-radius:14px;display:block"></td></tr>` 
+		? `<tr><td style="padding:0 24px 8px 24px"><img src="${d.bannerUrl}" alt="" width="592" height="auto" border="0" style="width:100%;max-width:592px;height:auto;border-radius:14px;display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic"></td></tr>` 
 		: '';
 	
 	// Generate CTAs row - exclude CTAs for moreInfo template (users reply via email)
@@ -158,13 +210,29 @@ export function generateEmailHtml(template: EmailTemplate, vars: Record<string, 
 			</tr>`
 		: '';
 	
-	// Generate social links row
-	const socialLinks = d.socialLinks || [];
+	// Generate social links row - convert SVG to PNG for email compatibility
+	// In-app we use SVG (stored in iconUrl), but for email we need PNG format
+	const socialLinks = (d.socialLinks || []).map(social => {
+		// If iconUrl is SVG or empty, convert to PNG for email
+		const iconUrl = social.iconUrl || '';
+		let emailIconUrl = iconUrl;
+		
+		// If it's an SVG URL or empty, get PNG version for email
+		if (!iconUrl || iconUrl.includes('.svg') || iconUrl.includes('simpleicons.org')) {
+			emailIconUrl = getSocialIconUrlPng(social.name || '', social.url || '');
+		}
+		
+		return { ...social, iconUrl: emailIconUrl };
+	}).filter(social => {
+		// Only include links with valid icon URLs
+		return social.iconUrl && social.iconUrl.trim().length > 0;
+	});
+	
 	const socialsRow = socialLinks.length > 0
 		? `<tr><td align="center" style="padding-top:8px;padding-bottom:8px">
 				<table role="presentation" cellspacing="0" cellpadding="0" border="0">
 					<tr>
-						${socialLinks.map(social => `<td style="padding:0 6px"><a href="${social.url}" target="_blank"><img src="${social.iconUrl}" alt="${social.name}" style="width:24px;height:24px;border-radius:4px;display:block" /></a></td>`).join('')}
+						${socialLinks.map(social => `<td style="padding:0 6px"><a href="${social.url || '#'}" target="_blank" style="text-decoration:none;display:inline-block"><img src="${social.iconUrl}" alt="${social.name || 'Social'}" width="24" height="24" border="0" style="width:24px;height:24px;border-radius:4px;display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic" /></a></td>`).join('')}
 					</tr>
 				</table>
 			</td></tr>`

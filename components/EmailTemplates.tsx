@@ -103,13 +103,118 @@ const defaultFooterLinks: FooterLink[] = [
   { id: 'privacy', text: 'Privacy Policy', url: '#' }
 ];
 
+// Function to automatically detect social media platform and return SVG icon URL (for in-app use)
+// Uses colorful SVG icons for better performance and scalability in the UI
+const getSocialIconUrlSvg = (platformName: string, url: string): string => {
+  const name = (platformName || '').toLowerCase().trim();
+  const urlLower = (url || '').toLowerCase();
+  
+  // Use colorful SVG icons from simple-icons CDN (lightweight, scalable, colorful)
+  // These are perfect for in-app display
+  if (name.includes('facebook') || urlLower.includes('facebook.com') || urlLower.includes('fb.com')) {
+    return 'https://cdn.simpleicons.org/facebook/1877F2';
+  }
+  if (name.includes('twitter') || name.includes('x ') || urlLower.includes('twitter.com') || urlLower.includes('x.com')) {
+    return 'https://cdn.simpleicons.org/x/000000';
+  }
+  if (name.includes('instagram') || urlLower.includes('instagram.com')) {
+    return 'https://cdn.simpleicons.org/instagram/E4405F';
+  }
+  if (name.includes('linkedin') || urlLower.includes('linkedin.com')) {
+    return 'https://cdn.simpleicons.org/linkedin/0A66C2';
+  }
+  if (name.includes('youtube') || urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) {
+    return 'https://cdn.simpleicons.org/youtube/FF0000';
+  }
+  if (name.includes('tiktok') || urlLower.includes('tiktok.com')) {
+    return 'https://cdn.simpleicons.org/tiktok/000000';
+  }
+  if (name.includes('pinterest') || urlLower.includes('pinterest.com')) {
+    return 'https://cdn.simpleicons.org/pinterest/BD081C';
+  }
+  if (name.includes('snapchat') || urlLower.includes('snapchat.com')) {
+    return 'https://cdn.simpleicons.org/snapchat/FFFC00';
+  }
+  if (name.includes('reddit') || urlLower.includes('reddit.com')) {
+    return 'https://cdn.simpleicons.org/reddit/FF4500';
+  }
+  if (name.includes('discord') || urlLower.includes('discord.com') || urlLower.includes('discord.gg')) {
+    return 'https://cdn.simpleicons.org/discord/5865F2';
+  }
+  if (name.includes('github') || urlLower.includes('github.com')) {
+    return 'https://cdn.simpleicons.org/github/181717';
+  }
+  if (name.includes('whatsapp') || urlLower.includes('whatsapp.com') || urlLower.includes('wa.me')) {
+    return 'https://cdn.simpleicons.org/whatsapp/25D366';
+  }
+  if (name.includes('telegram') || urlLower.includes('telegram.org') || urlLower.includes('t.me')) {
+    return 'https://cdn.simpleicons.org/telegram/26A5E4';
+  }
+  
+  // Default: return empty string if platform not recognized
+  return '';
+};
+
+// Function to automatically detect social media platform and return PNG icon URL (for email use)
+// Uses colorful PNG icons for email client compatibility
+const getSocialIconUrlPng = (platformName: string, url: string): string => {
+  const name = (platformName || '').toLowerCase().trim();
+  const urlLower = (url || '').toLowerCase();
+  
+  // Use colorful PNG icons from a reliable CDN (icons8 provides PNG format)
+  // These are colorful, email-compatible PNG icons (24x24px for optimal email display)
+  if (name.includes('facebook') || urlLower.includes('facebook.com') || urlLower.includes('fb.com')) {
+    return 'https://img.icons8.com/color/24/000000/facebook-new.png';
+  }
+  if (name.includes('twitter') || name.includes('x ') || urlLower.includes('twitter.com') || urlLower.includes('x.com')) {
+    return 'https://img.icons8.com/color/24/000000/twitter--v1.png';
+  }
+  if (name.includes('instagram') || urlLower.includes('instagram.com')) {
+    return 'https://img.icons8.com/color/24/000000/instagram-new.png';
+  }
+  if (name.includes('linkedin') || urlLower.includes('linkedin.com')) {
+    return 'https://img.icons8.com/color/24/000000/linkedin.png';
+  }
+  if (name.includes('youtube') || urlLower.includes('youtube.com') || urlLower.includes('youtu.be')) {
+    return 'https://img.icons8.com/color/24/000000/youtube-play.png';
+  }
+  if (name.includes('tiktok') || urlLower.includes('tiktok.com')) {
+    return 'https://img.icons8.com/color/24/000000/tiktok--v1.png';
+  }
+  if (name.includes('pinterest') || urlLower.includes('pinterest.com')) {
+    return 'https://img.icons8.com/color/24/000000/pinterest.png';
+  }
+  if (name.includes('snapchat') || urlLower.includes('snapchat.com')) {
+    return 'https://img.icons8.com/color/24/000000/snapchat.png';
+  }
+  if (name.includes('reddit') || urlLower.includes('reddit.com')) {
+    return 'https://img.icons8.com/color/24/000000/reddit.png';
+  }
+  if (name.includes('discord') || urlLower.includes('discord.com') || urlLower.includes('discord.gg')) {
+    return 'https://img.icons8.com/color/24/000000/discord-logo.png';
+  }
+  if (name.includes('github') || urlLower.includes('github.com')) {
+    return 'https://img.icons8.com/color/24/000000/github--v1.png';
+  }
+  if (name.includes('whatsapp') || urlLower.includes('whatsapp.com') || urlLower.includes('wa.me')) {
+    return 'https://img.icons8.com/color/24/000000/whatsapp.png';
+  }
+  if (name.includes('telegram') || urlLower.includes('telegram.org') || urlLower.includes('t.me')) {
+    return 'https://img.icons8.com/color/24/000000/telegram-app.png';
+  }
+  
+  // Default: return empty string if platform not recognized
+  return '';
+};
+
 // Pre-configured social media platforms (optional quick-add)
+// Icons are automatically detected when platform is added (using SVG for in-app display)
 const presetSocialPlatforms: { name: string; iconUrl: string }[] = [
-  { name: 'Facebook', iconUrl: 'https://cdn.simpleicons.org/facebook/1877F2' },
-  { name: 'Twitter/X', iconUrl: 'https://cdn.simpleicons.org/x/000000' },
-  { name: 'Instagram', iconUrl: 'https://cdn.simpleicons.org/instagram/E4405F' },
-  { name: 'LinkedIn', iconUrl: 'https://cdn.simpleicons.org/linkedin/0A66C2' },
-  { name: 'YouTube', iconUrl: 'https://cdn.simpleicons.org/youtube/FF0000' }
+  { name: 'Facebook', iconUrl: getSocialIconUrlSvg('Facebook', '') },
+  { name: 'Twitter/X', iconUrl: getSocialIconUrlSvg('Twitter/X', '') },
+  { name: 'Instagram', iconUrl: getSocialIconUrlSvg('Instagram', '') },
+  { name: 'LinkedIn', iconUrl: getSocialIconUrlSvg('LinkedIn', '') },
+  { name: 'YouTube', iconUrl: getSocialIconUrlSvg('YouTube', '') }
 ];
 
 // Default CTAs per template type
@@ -417,7 +522,15 @@ const EmailTemplates: React.FC = () => {
   const handleSocialNameChange = useCallback((index: number, value: string) => {
     setEmailTemplates(prev => {
       const newSocials = [...(prev[selectedTemplate].design?.socialLinks || [])];
-      newSocials[index] = { ...newSocials[index], name: value };
+      const currentSocial = newSocials[index];
+      const currentUrl = currentSocial?.url || '';
+      // Automatically detect and set SVG icon URL for in-app display (lightweight, colorful)
+      const autoIconUrl = getSocialIconUrlSvg(value, currentUrl);
+      newSocials[index] = { 
+        ...newSocials[index], 
+        name: value,
+        iconUrl: autoIconUrl || currentSocial?.iconUrl || ''
+      };
       return {
         ...prev,
         [selectedTemplate]: { 
@@ -431,7 +544,15 @@ const EmailTemplates: React.FC = () => {
   const handleSocialUrlChange = useCallback((index: number, value: string) => {
     setEmailTemplates(prev => {
       const newSocials = [...(prev[selectedTemplate].design?.socialLinks || [])];
-      newSocials[index] = { ...newSocials[index], url: value };
+      const currentSocial = newSocials[index];
+      const currentName = currentSocial?.name || '';
+      // Automatically detect and set SVG icon URL for in-app display (lightweight, colorful)
+      const autoIconUrl = getSocialIconUrlSvg(currentName, value);
+      newSocials[index] = { 
+        ...newSocials[index], 
+        url: value,
+        iconUrl: autoIconUrl || currentSocial?.iconUrl || ''
+      };
       return {
         ...prev,
         [selectedTemplate]: { 
@@ -442,26 +563,14 @@ const EmailTemplates: React.FC = () => {
     });
   }, [selectedTemplate]);
 
-  const handleSocialIconUrlChange = useCallback((index: number, value: string) => {
-    setEmailTemplates(prev => {
-      const newSocials = [...(prev[selectedTemplate].design?.socialLinks || [])];
-      newSocials[index] = { ...newSocials[index], iconUrl: value };
-      return {
-        ...prev,
-        [selectedTemplate]: { 
-          ...prev[selectedTemplate], 
-          design: { ...(prev[selectedTemplate].design||{}), socialLinks: newSocials } 
-        }
-      };
-    });
-  }, [selectedTemplate]);
+  // Removed handleSocialIconUrlChange - icon URLs are now automatically detected
 
   const generateHtml = (t: Template) => {
     const d: Design = t.design || {};
     const brand = d.primaryColor || '#2563eb';
     const bg = d.background || '#f7fafc';
-    const logo = d.logoUrl ? `<img src="${d.logoUrl}" alt="${renderTemplate('{{platform_name}}')}" style="max-width:200px;height:auto;display:block;margin:0 auto">` : `<div style="font-size:32px;font-weight:900;letter-spacing:.3px;color:${brand};text-align:center">${renderTemplate('{{platform_name}}')}</div>`;
-    const banner = d.bannerUrl ? `<tr><td style="padding:0 24px 8px 24px"><img src="${d.bannerUrl}" alt="" style="width:100%;height:auto;border-radius:14px;display:block"></td></tr>` : '';
+    const logo = d.logoUrl ? `<img src="${d.logoUrl}" alt="${renderTemplate('{{platform_name}}')}" width="200" height="auto" border="0" style="max-width:200px;height:auto;display:block;margin:0 auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic">` : `<div style="font-size:32px;font-weight:900;letter-spacing:.3px;color:${brand};text-align:center">${renderTemplate('{{platform_name}}')}</div>`;
+    const banner = d.bannerUrl ? `<tr><td style="padding:0 24px 8px 24px"><img src="${d.bannerUrl}" alt="" width="592" height="auto" border="0" style="width:100%;max-width:592px;height:auto;border-radius:14px;display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic"></td></tr>` : '';
     
     // Generate CTAs row (optional, can have multiple)
     const ctas = d.ctas || [];
@@ -473,13 +582,31 @@ const EmailTemplates: React.FC = () => {
           </tr>`
       : '';
     
-    // Generate social links row (custom icons)
-    const socialLinks = d.socialLinks || [];
+    // Generate social links row (custom icons) - convert SVG to PNG for email compatibility
+    // In-app we use SVG (stored in iconUrl), but for email we need PNG format
+    const socialLinks = (d.socialLinks || [])
+      .map(social => {
+        // If iconUrl is SVG or empty, convert to PNG for email
+        const iconUrl = social.iconUrl || '';
+        let emailIconUrl = iconUrl;
+        
+        // If it's an SVG URL or empty, get PNG version for email
+        if (!iconUrl || iconUrl.includes('.svg') || iconUrl.includes('simpleicons.org')) {
+          emailIconUrl = getSocialIconUrlPng(social.name || '', social.url || '');
+        }
+        
+        return { ...social, iconUrl: emailIconUrl };
+      })
+      .filter(social => {
+        // Only include links with valid icon URLs
+        return social.iconUrl && social.iconUrl.trim().length > 0;
+      });
+    
     const socialsRow = socialLinks.length > 0
       ? `<tr><td align="center" style="padding-top:8px;padding-bottom:8px">
             <table role="presentation" cellspacing="0" cellpadding="0" border="0">
               <tr>
-                ${socialLinks.map(social => `<td style="padding:0 6px"><a href="${social.url}" target="_blank"><img src="${social.iconUrl}" alt="${social.name}" style="width:24px;height:24px;border-radius:4px;display:block" /></a></td>`).join('')}
+                ${socialLinks.map(social => `<td style="padding:0 6px"><a href="${social.url || '#'}" target="_blank" style="text-decoration:none;display:inline-block"><img src="${social.iconUrl}" alt="${social.name || 'Social'}" width="24" height="24" border="0" style="width:24px;height:24px;border-radius:4px;display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic" /></a></td>`).join('')}
               </tr>
             </table>
          </td></tr>`
@@ -1052,6 +1179,7 @@ const EmailTemplates: React.FC = () => {
                 className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder="https://your-domain.com/logo.png"
               />
+              <p className="text-xs text-slate-400 mt-1">Must be a full HTTPS URL. Image will be displayed at max 200px width.</p>
             </div>
 
             <div>
@@ -1063,6 +1191,7 @@ const EmailTemplates: React.FC = () => {
                 className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base text-slate-900 transition-all"
                 placeholder="https://your-domain.com/banner.jpg"
               />
+              <p className="text-xs text-slate-400 mt-1">Must be a full HTTPS URL. Image will scale to fit email width.</p>
             </div>
           </Section>
 
@@ -1216,7 +1345,21 @@ const EmailTemplates: React.FC = () => {
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {social.iconUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={social.iconUrl} alt={social.name} className="w-6 h-6 sm:w-8 sm:h-8 object-contain" />
+                        <img 
+                          src={social.iconUrl} 
+                          alt={social.name} 
+                          className="w-6 h-6 sm:w-8 sm:h-8 object-contain" 
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const parent = e.currentTarget.parentElement;
+                            if (parent && !parent.querySelector('.error-indicator')) {
+                              const errorSpan = document.createElement('span');
+                              errorSpan.className = 'error-indicator text-xs font-bold text-rose-400';
+                              errorSpan.textContent = '!';
+                              parent.appendChild(errorSpan);
+                            }
+                          }}
+                        />
                       ) : (
                         <span className="text-xs font-bold text-slate-400">?</span>
                       )}
@@ -1229,7 +1372,7 @@ const EmailTemplates: React.FC = () => {
                           value={social.name}
                           onChange={(e) => handleSocialNameChange(index, e.target.value)}
                           className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                          placeholder="Platform name"
+                          placeholder="Platform name (e.g., Facebook, LinkedIn)"
                         />
                         <input
                           type="url"
@@ -1239,13 +1382,9 @@ const EmailTemplates: React.FC = () => {
                           placeholder="https://..."
                         />
                       </div>
-                      <input
-                        type="url"
-                        value={social.iconUrl}
-                        onChange={(e) => handleSocialIconUrlChange(index, e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                        placeholder="Icon URL (PNG, SVG, etc.)"
-                      />
+                      <p className="text-xs text-slate-400 mt-1">
+                        💡 Icon is automatically detected from platform name or URL. Supported: Facebook, Twitter/X, Instagram, LinkedIn, YouTube, TikTok, Pinterest, Snapchat, Reddit, Discord, GitHub, WhatsApp, Telegram.
+                      </p>
                     </div>
                     
                     <button
@@ -1273,6 +1412,9 @@ const EmailTemplates: React.FC = () => {
               {/* Quick add preset platforms */}
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-2">Quick Add Popular Platforms</label>
+                <p className="text-xs text-slate-400 mb-2">
+                  Icons are automatically detected and set when you add a platform.
+                </p>
                 <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {presetSocialPlatforms.map((preset) => {
                     const alreadyAdded = (emailTemplates[selectedTemplate].design?.socialLinks || []).some(
@@ -1283,11 +1425,13 @@ const EmailTemplates: React.FC = () => {
                         key={preset.name}
                         disabled={alreadyAdded}
                         onClick={() => {
+                          // Auto-detect SVG icon URL for in-app display
+                          const autoIconUrl = getSocialIconUrlSvg(preset.name, '');
                           const newSocial: SocialLink = { 
                             id: `social-${Date.now()}`, 
                             name: preset.name, 
                             url: '', 
-                            iconUrl: preset.iconUrl 
+                            iconUrl: autoIconUrl
                           };
                           const currentSocials = emailTemplates[selectedTemplate].design?.socialLinks || [];
                           setEmailTemplates({
@@ -1333,8 +1477,7 @@ const EmailTemplates: React.FC = () => {
                 <div className="flex items-start gap-2">
                   <Sparkles className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="text-xs text-blue-700 leading-relaxed">
-                    <span className="font-semibold">Tip:</span> For custom platforms, use square icons (24x24px recommended). You can use URLs from your CDN or{' '}
-                    <span className="font-mono">simpleicons.org</span> for brand icons.
+                    <span className="font-semibold">Automatic Icon Detection:</span> Icons are automatically detected from the platform name or URL. Simply enter the platform name (e.g., &quot;Facebook&quot;) or paste the social media URL, and the icon will be set automatically.
                   </div>
                 </div>
               </div>
