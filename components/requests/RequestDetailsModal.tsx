@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Check,
   RotateCcw,
+  File,
 } from 'lucide-react';
 import { useStoreForm } from '@/lib/hooks';
 import { FormField } from '@/components/FormBuilder/types';
@@ -115,6 +116,46 @@ const basename = (v: unknown) => {
   if (typeof v !== 'string') return String(v ?? '');
   const parts = v.split('/');
   return parts[parts.length - 1] || v;
+};
+
+// Extract filename from storage path (removes timestamp prefix if present)
+const extractFileName = (file: { name?: string; url?: string; path?: string }) => {
+  // First try the name field
+  if (file.name) {
+    // Remove timestamp prefix if present (format: timestamp-filename)
+    const nameWithoutPath = file.name.split(/[/\\]/).pop() || file.name;
+    // Check if it starts with a timestamp pattern (e.g., "1234567890-filename.pdf")
+    const timestampMatch = nameWithoutPath.match(/^\d+-(.+)$/);
+    return timestampMatch ? timestampMatch[1] : nameWithoutPath;
+  }
+  // Fallback to URL or path
+  const path = file.url || file.path || '';
+  if (path) {
+    const parts = path.split('/');
+    const lastPart = parts[parts.length - 1] || '';
+    // Remove timestamp prefix if present
+    const timestampMatch = lastPart.match(/^\d+-(.+)$/);
+    return timestampMatch ? timestampMatch[1] : lastPart;
+  }
+  return 'Unknown file';
+};
+
+// Get file type icon based on file extension or content type
+const getFileIcon = (file: { name?: string; url?: string; contentType?: string }) => {
+  const fileName = extractFileName(file);
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  const contentType = file.contentType?.toLowerCase() || '';
+  
+  if (ext === 'pdf' || contentType.includes('pdf')) {
+    return { icon: FileText, color: '#dc2626', label: 'PDF file' };
+  }
+  if (ext === 'doc' || ext === 'docx' || contentType.includes('word') || contentType.includes('document')) {
+    return { icon: FileText, color: '#2563eb', label: 'Word document' };
+  }
+  if (ext === 'xls' || ext === 'xlsx' || contentType.includes('excel') || contentType.includes('spreadsheet')) {
+    return { icon: FileText, color: '#16a34a', label: 'Excel spreadsheet' };
+  }
+  return { icon: File, color: '#6b7280', label: 'File' };
 };
 
 const formatDate = (ts?: { seconds?: number; nanoseconds?: number } | string) => {
@@ -433,6 +474,52 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
   const lastName = lastNameKey ? String(request.data[lastNameKey] || '') : '';
   const requestEmail = extractEmail(request.data, request.email) || '—';
   
+  // Helper to check if a field is a file field
+  const isFileField = (key: string): boolean => {
+    const field = matchKeyToField(key);
+    return field?.type === 'file';
+  };
+
+  // Helper to find file URL from request.files by matching filename
+  const findFileUrl = (filename: string, fieldKey?: string): string | null => {
+    if (!request.files || request.files.length === 0) return null;
+    const cleanFilename = filename.replace(/^.*[\\/]/, '').replace(/^C:\\fakepath\\/, '').replace(/^\d+-/, '').toLowerCase(); // Remove path and timestamp prefix, normalize
+    
+    // Try exact match first
+    let matchingFile = request.files.find(f => {
+      const fileFileName = extractFileName(f).toLowerCase();
+      return fileFileName === cleanFilename || fileFileName === filename.toLowerCase();
+    });
+    
+    // Try partial match (filename contains or is contained in)
+    if (!matchingFile) {
+      matchingFile = request.files.find(f => {
+        const fileFileName = extractFileName(f).toLowerCase();
+        return fileFileName.includes(cleanFilename) || cleanFilename.includes(fileFileName);
+      });
+    }
+    
+    // If still no match and we have field key, try to match by field label
+    if (!matchingFile && fieldKey) {
+      const field = matchKeyToField(fieldKey);
+      if (field && field.label) {
+        // Try to find file that matches the field label
+        const normalizedFieldLabel = field.label.toLowerCase().replace(/[^a-z0-9]/g, '');
+        matchingFile = request.files.find(f => {
+          const fileFileName = extractFileName(f).toLowerCase();
+          return fileFileName.includes(normalizedFieldLabel) || normalizedFieldLabel.includes(fileFileName.replace(/[^a-z0-9]/g, ''));
+        });
+      }
+    }
+    
+    // If still no match and there's only one file, use it
+    if (!matchingFile && request.files.length === 1) {
+      matchingFile = request.files[0];
+    }
+    
+    return matchingFile?.url || null;
+  };
+
   // Helper to format field value with label resolution
   const formatFieldValue = (key: string, value: unknown): string => {
     // Try to find option label (including country/state)
@@ -544,6 +631,7 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
       showToast?.('Copied to clipboard!');
     }
   };
+
 
   const LoadingSpinner = () => (
     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -779,20 +867,76 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
                                     <div className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1.5 sm:mb-2 leading-none">
                                       {getFieldDisplayLabel(k, v)}
                                     </div>
-                                    <div className="text-xs sm:text-sm text-slate-900 break-words font-normal leading-relaxed">
-                                      {formatFieldValue(k, v)}
-                                    </div>
+                                    {isFileField(k) ? (
+                                      (() => {
+                                        const filePath = String(v ?? '');
+                                        const fileName = filePath.replace(/^.*[\\/]/, '').replace(/^C:\\fakepath\\/, '');
+                                        const fileUrl = findFileUrl(fileName, k);
+                                        const fileFromRequest = fileUrl ? request.files?.find(f => f.url === fileUrl) : null;
+                                        const fileIcon = fileFromRequest ? getFileIcon(fileFromRequest) : getFileIcon({ name: fileName });
+                                        const IconComponent = fileIcon.icon;
+                                        const fileSize = fileFromRequest?.size ? `${Math.round((fileFromRequest.size / 1024) * 10) / 10} KB` : '';
+                                        
+                                        return (
+                                          <div className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-slate-50/50 border border-slate-200/70 hover:border-blue-300 hover:bg-slate-50 transition-all duration-200">
+                                            <div 
+                                              className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden shrink-0"
+                                              aria-hidden="true"
+                                            >
+                                              <IconComponent 
+                                                className="w-3.5 h-3.5 sm:w-4 sm:h-4" 
+                                                style={{ color: fileIcon.color }}
+                                                aria-hidden="true"
+                                              />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                              <div 
+                                                className="text-xs sm:text-sm font-medium text-slate-900 truncate leading-tight mb-0.5"
+                                                title={fileName}
+                                              >
+                                                {fileName}
+                                              </div>
+                                              {fileSize && (
+                                                <div className="text-[9px] sm:text-[10px] text-slate-500" aria-label={`File size: ${fileSize}`}>
+                                                  {fileSize}
+                                                </div>
+                                              )}
+                                            </div>
+                                            {fileUrl && (
+                                              <a
+                                                href={fileUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-colors shrink-0"
+                                                aria-label={`Open ${fileName} in new tab${fileSize ? ` (${fileSize})` : ''}`}
+                                                title={`Open ${fileName} in new tab (right-click to save)`}
+                                              >
+                                                <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+                                                <span className="text-[9px] sm:text-[10px] font-medium hidden sm:inline">View</span>
+                                              </a>
+                                            )}
+                                          </div>
+                                        );
+                                      })()
+                                    ) : (
+                                      <div className="text-xs sm:text-sm text-slate-900 break-words font-normal leading-relaxed">
+                                        {formatFieldValue(k, v)}
+                                      </div>
+                                    )}
                                   </div>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      copyToClipboard(String(v ?? ''));
-                                    }}
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 sm:p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
-                                    title="Copy"
-                                  >
-                                    <Copy className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                                  </button>
+                                  {!isFileField(k) && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        copyToClipboard(String(v ?? ''));
+                                      }}
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 sm:p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
+                                      title="Copy"
+                                    >
+                                      <Copy className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             ))}
@@ -810,20 +954,76 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
                                 <div className="text-[9px] sm:text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1.5 sm:mb-2 leading-none">
                                   {getFieldDisplayLabel(k, v)}
                                 </div>
-                                <div className="text-xs sm:text-sm text-slate-900 break-words font-normal leading-relaxed">
-                                  {formatFieldValue(k, v)}
-                                </div>
+                                {isFileField(k) ? (
+                                  (() => {
+                                    const filePath = String(v ?? '');
+                                    const fileName = filePath.replace(/^.*[\\/]/, '').replace(/^C:\\fakepath\\/, '');
+                                    const fileUrl = findFileUrl(fileName, k);
+                                    const fileFromRequest = fileUrl ? request.files?.find(f => f.url === fileUrl) : null;
+                                    const fileIcon = fileFromRequest ? getFileIcon(fileFromRequest) : getFileIcon({ name: fileName });
+                                    const IconComponent = fileIcon.icon;
+                                    const fileSize = fileFromRequest?.size ? `${Math.round((fileFromRequest.size / 1024) * 10) / 10} KB` : '';
+                                    
+                                    return (
+                                      <div className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-slate-50/50 border border-slate-200/70 hover:border-blue-300 hover:bg-slate-50 transition-all duration-200">
+                                        <div 
+                                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden shrink-0"
+                                          aria-hidden="true"
+                                        >
+                                          <IconComponent 
+                                            className="w-3.5 h-3.5 sm:w-4 sm:h-4" 
+                                            style={{ color: fileIcon.color }}
+                                            aria-hidden="true"
+                                          />
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <div 
+                                            className="text-xs sm:text-sm font-medium text-slate-900 truncate leading-tight mb-0.5"
+                                            title={fileName}
+                                          >
+                                            {fileName}
+                                          </div>
+                                          {fileSize && (
+                                            <div className="text-[9px] sm:text-[10px] text-slate-500" aria-label={`File size: ${fileSize}`}>
+                                              {fileSize}
+                                            </div>
+                                          )}
+                                        </div>
+                                        {fileUrl && (
+                                          <a
+                                            href={fileUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-colors shrink-0"
+                                            aria-label={`Open ${fileName} in new tab${fileSize ? ` (${fileSize})` : ''}`}
+                                            title={`Open ${fileName} in new tab (right-click to save)`}
+                                          >
+                                            <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" aria-hidden="true" />
+                                            <span className="text-[9px] sm:text-[10px] font-medium hidden sm:inline">View</span>
+                                          </a>
+                                        )}
+                                      </div>
+                                    );
+                                  })()
+                                ) : (
+                                  <div className="text-xs sm:text-sm text-slate-900 break-words font-normal leading-relaxed">
+                                    {formatFieldValue(k, v)}
+                                  </div>
+                                )}
                               </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  copyToClipboard(String(v ?? ''));
-                                }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 sm:p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
-                                title="Copy"
-                              >
-                                <Copy className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                              </button>
+                              {!isFileField(k) && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    copyToClipboard(String(v ?? ''));
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 sm:p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 cursor-pointer shrink-0"
+                                  title="Copy"
+                                >
+                                  <Copy className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         ));
@@ -845,42 +1045,69 @@ const RequestDetailsModal: React.FC<RequestDetailsModalProps> = ({
             })()}
 
             {request.files?.length ? (
-              <div className="mt-3 sm:mt-4 md:mt-5 pt-3 sm:pt-4 md:pt-5 border-t border-slate-200">
+              <div className="mt-3 sm:mt-4 md:mt-5 pt-3 sm:pt-4 md:pt-5 border-t border-slate-200" role="region" aria-label="Attachments">
                 <div className="flex items-center gap-1.5 sm:gap-2 mb-2.5 sm:mb-3 md:mb-4">
-                  <Paperclip className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-slate-400 shrink-0" />
+                  <Paperclip className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-slate-400 shrink-0" aria-hidden="true" />
                   <span className="font-semibold text-slate-700 text-[11px] sm:text-xs md:text-sm">Attachments</span>
-                  <span className="text-[9px] sm:text-[10px] bg-blue-100 text-blue-700 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md font-bold shrink-0">
+                  <span className="text-[9px] sm:text-[10px] bg-blue-100 text-blue-700 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md font-bold shrink-0" aria-label={`${request.files.length} file${request.files.length !== 1 ? 's' : ''}`}>
                     {request.files.length}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 md:gap-3">
-                  {request.files.map((f, idx) => (
-                    <a
-                      key={idx}
-                      href={f.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="group flex items-center gap-2 sm:gap-2.5 md:gap-3 p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl bg-white/80 hover:bg-white border border-slate-200/70 hover:border-blue-300 hover:shadow-md hover:shadow-blue-100/50 transition-all duration-200 cursor-pointer"
-                    >
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-200">
-                        {isImage(f) ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img alt={f.name} src={f.url} className="w-full h-full object-cover" />
-                        ) : (
-                          <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-slate-400" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[11px] sm:text-xs md:text-sm font-normal text-slate-700 truncate group-hover:text-blue-600 transition-colors leading-tight mb-0.5 sm:mb-1">
-                          {f.name}
+                  {request.files.map((f, idx) => {
+                    const fileName = extractFileName(f);
+                    const fileIcon = getFileIcon(f);
+                    const IconComponent = fileIcon.icon;
+                    const fileSize = f.size ? `${Math.round((f.size / 1024) * 10) / 10} KB` : '';
+                    
+                    return (
+                      <div
+                        key={idx}
+                        className="group flex items-center gap-2 sm:gap-2.5 md:gap-3 p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl bg-white/80 hover:bg-white border border-slate-200/70 hover:border-blue-300 hover:shadow-md hover:shadow-blue-100/50 transition-all duration-200"
+                        role="listitem"
+                      >
+                        <div 
+                          className="w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-200"
+                          aria-hidden="true"
+                        >
+                          {isImage(f) ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img alt={`Preview of ${fileName}`} src={f.url} className="w-full h-full object-cover" />
+                          ) : (
+                            <IconComponent 
+                              className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" 
+                              style={{ color: fileIcon.color }}
+                              aria-hidden="true"
+                            />
+                          )}
                         </div>
-                        <div className="text-[9px] sm:text-[10px] md:text-xs text-slate-400">
-                          {f.size ? `${Math.round((f.size / 1024) * 10) / 10} KB` : 'File'}
+                        <div className="min-w-0 flex-1">
+                          <div 
+                            className="text-[11px] sm:text-xs md:text-sm font-normal text-slate-700 truncate group-hover:text-blue-600 transition-colors leading-tight mb-0.5 sm:mb-1"
+                            title={fileName}
+                          >
+                            {fileName}
+                          </div>
+                          {fileSize && (
+                            <div className="text-[9px] sm:text-[10px] md:text-xs text-slate-400" aria-label={`File size: ${fileSize}`}>
+                              {fileSize}
+                            </div>
+                          )}
                         </div>
+                        <a
+                          href={f.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-colors shrink-0"
+                          aria-label={`Open ${fileName} in new tab${fileSize ? ` (${fileSize})` : ''}`}
+                          title={`Open ${fileName} in new tab (right-click to save)`}
+                        >
+                          <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4" aria-hidden="true" />
+                          <span className="text-[9px] sm:text-[10px] md:text-xs font-medium hidden sm:inline">View</span>
+                        </a>
                       </div>
-                      <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-slate-300 group-hover:text-blue-500 transition-colors shrink-0" />
-                    </a>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : null}

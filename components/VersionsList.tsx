@@ -296,7 +296,10 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean; currentFi
               display: 'block',
               marginBottom: `${6 * scale}px`,
               lineHeight: '1.2',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              wordWrap: 'break-word',
+              overflowWrap: 'anywhere',
+              maxWidth: '100%'
             }}
           >
             {checkboxLabel}{field.required ? <span style={{ color: 'red' }}> *</span> : ''}
@@ -397,7 +400,14 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean; currentFi
                   }}
                   className="radio-custom-preview"
                 />
-                <span style={{ fontSize: Math.max(9, parseFloat(fontSize) * scale) + 'px', color: textColor }}>
+                <span style={{ 
+                  fontSize: Math.max(9, parseFloat(fontSize) * scale) + 'px', 
+                  color: textColor,
+                  wordWrap: 'break-word',
+                  overflowWrap: 'anywhere',
+                  flex: '1',
+                  minWidth: 0
+                }}>
                   {opt.label}
                 </span>
               </label>
@@ -418,7 +428,14 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean; currentFi
                     }}
                     className="checkbox-custom-preview"
                   />
-                  <span style={{ fontSize: Math.max(9, parseFloat(fontSize) * scale) + 'px', color: textColor }}>
+                  <span style={{ 
+                    fontSize: Math.max(9, parseFloat(fontSize) * scale) + 'px', 
+                    color: textColor,
+                    wordWrap: 'break-word',
+                    overflowWrap: 'anywhere',
+                    flex: '1',
+                    minWidth: 0
+                  }}>
                     {opt.label}
                   </span>
                 </label>
@@ -435,7 +452,14 @@ const FormPreviewThumbnail: React.FC<{ form: any; isCompact?: boolean; currentFi
                     }}
                     className="checkbox-custom-preview"
                   />
-                  <span style={{ fontSize: Math.max(9, parseFloat(fontSize) * scale) + 'px', color: textColor }}>
+                  <span style={{ 
+                    fontSize: Math.max(9, parseFloat(fontSize) * scale) + 'px', 
+                    color: textColor,
+                    wordWrap: 'break-word',
+                    overflowWrap: 'anywhere',
+                    flex: '1',
+                    minWidth: 0
+                  }}>
                     {field.label}
                   </span>
                 </label>

@@ -1,6 +1,11 @@
 import { put, del } from '@vercel/blob';
 
 export async function uploadSignupFile(publicStoreId: string, requestId: string, fileName: string, contentType: string, buffer: Buffer) {
+  // Validate BLOB_READ_WRITE_TOKEN is configured
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error('BLOB_READ_WRITE_TOKEN environment variable is not configured. File uploads are not available.');
+  }
+  
   const safeName = String(fileName || 'file').replace(/[^\w.\-]+/g, '_');
   const objectPath = `signup-requests/${publicStoreId}/${requestId}/${Date.now()}-${safeName}`;
   const blob = await put(objectPath, buffer, {

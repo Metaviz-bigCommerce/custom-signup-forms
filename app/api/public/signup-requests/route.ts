@@ -216,8 +216,9 @@ export async function POST(req: NextRequest) {
       }
       
       // Upload files after request creation (with actual request ID)
+      // If ANY file upload fails, rollback the entire request
       const filesMeta: Array<{ name: string; url: string; contentType?: string; size?: number; path?: string }> = [];
-      const uploadErrors: string[] = [];
+      const uploadErrors: Array<{ fileName: string; error: string }> = [];
       
       for (const { file, buffer } of fileEntries) {
         try {
@@ -229,25 +230,58 @@ export async function POST(req: NextRequest) {
             buffer
           );
           filesMeta.push(meta);
-        } catch (uploadError) {
+        } catch (uploadError: unknown) {
+          const error = uploadError as Error;
+          const errorMessage = error.message || 'Upload failed';
           logger.error('File upload failed', uploadError, { ...logContext, fileName: file.name, requestId: created.id });
-          uploadErrors.push(`${file.name}: Upload failed`);
+          uploadErrors.push({ fileName: file.name, error: errorMessage });
         }
       }
       
-      // Add files to request (even if some failed, add the successful ones)
+      // If ANY file upload failed, rollback the request and return error
+      if (uploadErrors.length > 0) {
+        // Delete the created request from database
+        try {
+          await db.deleteSignupRequest(storeHash, created.id);
+          logger.info('Rolled back signup request due to file upload failure', { ...logContext, requestId: created.id });
+        } catch (deleteError) {
+          logger.error('Failed to rollback signup request after file upload failure', deleteError, { ...logContext, requestId: created.id });
+          // Continue even if rollback fails - we still need to return error to user
+        }
+        
+        // Build error message with file names
+        const failedFileNames = uploadErrors.map(e => e.fileName).join(', ');
+        const errorMessages = uploadErrors.map(e => `${e.fileName}: ${e.error}`).join('; ');
+        const res = errorResponse(
+          `File upload failed: ${errorMessages}. Please try again.`,
+          500,
+          ErrorCode.FILE_UPLOAD_ERROR,
+          requestId
+        );
+        return applyCorsHeaders(req, res);
+      }
+      
+      // All files uploaded successfully - add file metadata to request
       if (filesMeta.length > 0) {
         try {
           await db.addSignupRequestFiles(storeHash, created.id, filesMeta);
         } catch (addFilesError) {
           logger.error('Failed to add files metadata to request', addFilesError, { ...logContext, requestId: created.id });
-          // Don't fail the request if file metadata addition fails
+          // If we can't add file metadata, rollback the request
+          try {
+            await db.deleteSignupRequest(storeHash, created.id);
+            logger.info('Rolled back signup request due to file metadata addition failure', { ...logContext, requestId: created.id });
+          } catch (deleteError) {
+            logger.error('Failed to rollback signup request after file metadata addition failure', deleteError, { ...logContext, requestId: created.id });
+          }
+          const res = errorResponse(
+            'Failed to save file information. Please try again.',
+            500,
+            ErrorCode.FILE_UPLOAD_ERROR,
+            requestId
+          );
+          return applyCorsHeaders(req, res);
         }
-      }
-      
-      // Log upload errors but don't fail the request
-      if (uploadErrors.length > 0) {
-        logger.warn('Some files failed to upload', { ...logContext, errors: uploadErrors, requestId: created.id });
       }
       
       // Send emails (best-effort, don't fail request)

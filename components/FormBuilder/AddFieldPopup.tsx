@@ -306,6 +306,7 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                         onChange={(e) => handleChange({ label: e.target.value })}
                         className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         placeholder={localField.type === 'checkbox' ? 'Leave empty for option-only checkboxes' : ''}
+                        maxLength={localField.type === 'checkbox' ? 250 : 50}
                       />
                     </div>
                     {/* Hide placeholder for radio and checkbox fields */}
@@ -317,6 +318,7 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                           value={localField.placeholder}
                           onChange={(e) => handleChange({ placeholder: e.target.value })}
                           className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                          maxLength={50}
                         />
                       </div>
                     )}
@@ -411,6 +413,7 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                                     onChange={(e) => updateOption(index, { label: e.target.value })}
                                     className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     placeholder="Option label"
+                                    maxLength={localField.type === 'checkbox' ? 250 : 200}
                                   />
                                 </div>
                                 <div>
@@ -479,8 +482,21 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                         <input
                           type="number"
                           value={localField.labelSize}
-                          onChange={(e) => handleChange({ labelSize: e.target.value })}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '') {
+                              handleChange({ labelSize: '' });
+                              return;
+                            }
+                            const num = parseInt(value);
+                            if (!isNaN(num)) {
+                              const clamped = Math.max(10, Math.min(24, num));
+                              handleChange({ labelSize: String(clamped) });
+                            }
+                          }}
                           className="w-full px-3 py-2 h-10 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                          min={10}
+                          max={24}
                         />
                       </div>
                       <div className="w-full">
@@ -597,7 +613,10 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                         style={{ 
                           color: localField.labelColor, 
                           fontSize: localField.labelSize + 'px', 
-                          fontWeight: localField.labelWeight 
+                          fontWeight: localField.labelWeight,
+                          wordWrap: 'break-word',
+                          overflowWrap: 'anywhere',
+                          maxWidth: '100%'
                         }}
                         className="block"
                       >
@@ -691,7 +710,14 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                               }}
                               className="radio-custom-preview"
                             />
-                            <span style={{ fontSize: localField.fontSize + 'px', color: localField.textColor }}>
+                            <span style={{ 
+                              fontSize: localField.fontSize + 'px', 
+                              color: localField.textColor,
+                              wordWrap: 'break-word',
+                              overflowWrap: 'anywhere',
+                              flex: '1',
+                              minWidth: 0
+                            }}>
                               {opt.label}
                             </span>
                           </label>
@@ -712,7 +738,14 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                                 }}
                                 className="checkbox-custom-preview"
                               />
-                              <span style={{ fontSize: localField.fontSize + 'px', color: localField.textColor }}>
+                              <span style={{ 
+                                fontSize: localField.fontSize + 'px', 
+                                color: localField.textColor,
+                                wordWrap: 'break-word',
+                                overflowWrap: 'anywhere',
+                                flex: '1',
+                                minWidth: 0
+                              }}>
                                 {opt.label}
                               </span>
                             </label>
@@ -729,7 +762,14 @@ const AddFieldPopup: React.FC<AddFieldPopupProps> = ({ isOpen, pendingFieldType,
                                 }}
                                 className="checkbox-custom-preview"
                               />
-                              <span style={{ fontSize: localField.fontSize + 'px', color: localField.textColor }}>
+                              <span style={{ 
+                                fontSize: localField.fontSize + 'px', 
+                                color: localField.textColor,
+                                wordWrap: 'break-word',
+                                overflowWrap: 'anywhere',
+                                flex: '1',
+                                minWidth: 0
+                              }}>
                                 {localField.label}
                               </span>
                             </label>

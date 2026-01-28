@@ -29,6 +29,7 @@ const requiredEnvVars = [
 //   'BREVO_SMTP_USER',
 //   'BREVO_SMTP_KEY',
 //   'BREVO_SMTP_PASS',
+//   'BLOB_READ_WRITE_TOKEN', // Required for file uploads (Vercel Blob)
 //   'NODE_ENV',
 // ] as const;
 

@@ -55,6 +55,8 @@ export default function PreviewPage() {
   const [sourceTab, setSourceTab] = useState<number>(2); // Default to builder tab (2)
   const [countryData, setCountryData] = useState<Array<{ countryName: string; countryShortCode: string; regions: Array<{ name: string; shortCode?: string }>;}>>([]);
   const [selectedCountryCode, setSelectedCountryCode] = useState<string>('');
+  const [fileErrors, setFileErrors] = useState<Record<number, string>>({});
+  const [fileNames, setFileNames] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [hasActiveForm, setHasActiveForm] = useState(false);
   const [fromDashboard, setFromDashboard] = useState(false); // Track if we came from dashboard
@@ -323,6 +325,9 @@ export default function PreviewPage() {
               display: 'block',
               marginBottom: '6px',
               cursor: 'pointer',
+              wordWrap: 'break-word',
+              overflowWrap: 'anywhere',
+              maxWidth: '100%',
               lineHeight: '1.4'
             }}
           >
@@ -541,7 +546,15 @@ export default function PreviewPage() {
                   }}
                   className="radio-custom"
                 />
-                <span style={{ fontSize: responsiveFontSize + 'px', color: textColor, lineHeight: '1.4' }}>
+                <span style={{ 
+                  fontSize: responsiveFontSize + 'px', 
+                  color: textColor, 
+                  lineHeight: '1.4',
+                  wordWrap: 'break-word',
+                  overflowWrap: 'anywhere',
+                  flex: '1',
+                  minWidth: 0
+                }}>
                   {opt.label}
                 </span>
               </label>
@@ -563,7 +576,15 @@ export default function PreviewPage() {
                     }}
                     className="checkbox-custom"
                   />
-                  <span style={{ fontSize: responsiveFontSize + 'px', color: textColor, lineHeight: '1.4' }}>
+                  <span style={{ 
+                    fontSize: responsiveFontSize + 'px', 
+                    color: textColor, 
+                    lineHeight: '1.4',
+                    wordWrap: 'break-word',
+                    overflowWrap: 'anywhere',
+                    flex: '1',
+                    minWidth: 0
+                  }}>
                     {opt.label}
                   </span>
                 </label>
@@ -581,7 +602,15 @@ export default function PreviewPage() {
                     }}
                     className="checkbox-custom"
                   />
-                  <span style={{ fontSize: responsiveFontSize + 'px', color: textColor, lineHeight: '1.4' }}>
+                  <span style={{ 
+                    fontSize: responsiveFontSize + 'px', 
+                    color: textColor, 
+                    lineHeight: '1.4',
+                    wordWrap: 'break-word',
+                    overflowWrap: 'anywhere',
+                    flex: '1',
+                    minWidth: 0
+                  }}>
                     {field.label}
                   </span>
                 </label>
@@ -589,23 +618,132 @@ export default function PreviewPage() {
             )}
           </div>
         ) : field.type === 'file' ? (
-          <input
-            type="file"
-            style={{
-              borderColor: borderColor,
-              borderWidth: borderWidth + 'px',
-              borderStyle: 'solid',
-              borderRadius: borderRadius + 'px',
-              backgroundColor: bgColor,
-              padding: responsivePadding + 'px',
-              fontSize: responsiveFontSize + 'px',
-              color: textColor,
-              width: '100%',
-              outline: 'none',
-              boxSizing: 'border-box'
-            }}
-            aria-label={field.label}
-          />
+          <>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <input
+                type="file"
+                id={`file-input-preview-${field.id}`}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) {
+                    setFileErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors[field.id];
+                      return newErrors;
+                    });
+                    setFileNames(prev => {
+                      const newNames = { ...prev };
+                      delete newNames[field.id];
+                      return newNames;
+                    });
+                  } else {
+                    // Extract just the filename (remove path)
+                    const fileName = file.name.split(/[/\\]/).pop() || file.name;
+                    setFileNames(prev => ({ ...prev, [field.id]: fileName }));
+                    
+                    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+                    const ALLOWED_TYPES = [
+                      'application/pdf',
+                      'application/msword',
+                      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                      'application/vnd.ms-excel',
+                      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    ];
+                    
+                    let error = '';
+                    
+                    // Check file size
+                    if (file.size > MAX_SIZE) {
+                      error = `File size exceeds 10MB limit. Current size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`;
+                    }
+                    // Check file type
+                    else if (!ALLOWED_TYPES.includes(file.type)) {
+                      error = 'Only PDF, DOC, DOCX, XLS, and XLSX files are allowed';
+                    }
+                    
+                    if (error) {
+                      setFileErrors(prev => ({ ...prev, [field.id]: error }));
+                      setFileNames(prev => {
+                        const newNames = { ...prev };
+                        delete newNames[field.id];
+                        return newNames;
+                      });
+                      e.target.value = ''; // Clear the input
+                    } else {
+                      setFileErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors[field.id];
+                        return newErrors;
+                      });
+                    }
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  opacity: 0,
+                  width: '100%',
+                  height: '100%',
+                  cursor: 'pointer',
+                  zIndex: 2
+                }}
+                aria-label={field.label || 'File upload'}
+              />
+              <div
+                style={{
+                  borderColor: fileErrors[field.id] ? '#ef4444' : borderColor,
+                  borderWidth: borderWidth + 'px',
+                  borderStyle: 'solid',
+                  borderRadius: borderRadius + 'px',
+                  backgroundColor: bgColor,
+                  padding: responsivePadding + 'px',
+                  fontSize: responsiveFontSize + 'px',
+                  color: fileNames[field.id] ? textColor : '#9ca3af',
+                  width: '100%',
+                  minHeight: `${(typeof responsivePadding === 'number' ? responsivePadding : parseInt(String(responsivePadding))) * 2 + (typeof responsiveFontSize === 'number' ? responsiveFontSize : parseInt(String(responsiveFontSize))) + 4}px`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  boxSizing: 'border-box',
+                  pointerEvents: 'none'
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  const input = document.getElementById(`file-input-preview-${field.id}`) as HTMLInputElement;
+                  input?.click();
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const input = document.getElementById(`file-input-preview-${field.id}`) as HTMLInputElement;
+                    input?.click();
+                  }
+                }}
+                aria-label={`${field.label || 'File upload'} - Click to select file`}
+              >
+                <span style={{ 
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  flex: 1,
+                  pointerEvents: 'none'
+                }}>
+                  {fileNames[field.id] || 'Choose file...'}
+                </span>
+              </div>
+            </div>
+            {fileErrors[field.id] && (
+              <div style={{
+                color: '#ef4444',
+                fontSize: '12px',
+                marginTop: '6px'
+              }}>
+                {fileErrors[field.id]}
+              </div>
+            )}
+          </>
         ) : (
           <input
             type={field.role === 'password' ? 'password' : (field.type === 'phone' ? 'tel' : field.type)}

@@ -7,14 +7,11 @@ import { z } from 'zod';
 // File upload constraints
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 export const ALLOWED_FILE_TYPES = [
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/gif',
-  'image/webp',
   'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword', // .doc
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'application/vnd.ms-excel', // .xls
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
 ] as const;
 
 // Common validation schemas
@@ -64,11 +61,14 @@ export const fileSchema = z.object({
 export const formFieldSchema = z.object({
   id: z.number(),
   type: z.enum(['text', 'email', 'phone', 'number', 'textarea', 'select', 'radio', 'checkbox', 'date', 'file', 'url']),
-  label: z.string().max(200),
-  placeholder: z.string().max(200).optional(),
+  label: z.string(),
+  placeholder: z.string().optional(),
   required: z.boolean(),
   labelColor: z.string().max(20),
-  labelSize: z.string().max(10),
+  labelSize: z.string().max(10).refine((val) => {
+    const num = parseInt(val);
+    return !isNaN(num) && num >= 10 && num <= 24;
+  }, { message: 'Label size must be between 10 and 24px' }),
   labelWeight: z.string().max(10),
   borderColor: z.string().max(20),
   borderWidth: z.string().max(10),
@@ -80,13 +80,20 @@ export const formFieldSchema = z.object({
   role: z.enum(['first_name', 'last_name', 'email', 'password', 'country', 'state']).optional(),
   locked: z.boolean().optional(),
   options: z.array(z.object({
-    label: z.string().max(200),
+    label: z.string(),
     value: z.string().max(200),
   })).optional(),
   rowGroup: z.number().nullable().optional(),
 }).superRefine((data, ctx) => {
-  // For checkbox fields, allow empty label (label is optional)
+  // Label validation: 50 chars for non-checkbox, 250 for checkbox
   if (data.type === 'checkbox') {
+    if (data.label.length > 250) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Checkbox label must be 250 characters or less',
+        path: ['label'],
+      });
+    }
     // Allow empty string for checkbox labels
     if (data.label.length === 0) {
       // If label is empty, at least one option is required
@@ -98,13 +105,52 @@ export const formFieldSchema = z.object({
         });
       }
     }
+    // Validate checkbox option labels (250 chars max)
+    if (data.options) {
+      data.options.forEach((opt, index) => {
+        if (opt.label.length > 250) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Checkbox option label must be 250 characters or less',
+            path: ['options', index, 'label'],
+          });
+        }
+      });
+    }
   } else {
-    // For all other fields, require at least 1 character
+    // For all other fields, require at least 1 character and max 50
     if (data.label.length < 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Label must have at least 1 character',
         path: ['label'],
+      });
+    }
+    if (data.label.length > 50) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Label must be 50 characters or less',
+        path: ['label'],
+      });
+    }
+    // Validate placeholder (50 chars max for non-checkbox fields)
+    if (data.placeholder && data.placeholder.length > 50) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Placeholder must be 50 characters or less',
+        path: ['placeholder'],
+      });
+    }
+    // Validate option labels for select/radio (200 chars max, but we'll keep existing limit)
+    if (data.options) {
+      data.options.forEach((opt, index) => {
+        if (opt.label.length > 200) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Option label must be 200 characters or less',
+            path: ['options', index, 'label'],
+          });
+        }
       });
     }
   }
