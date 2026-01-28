@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server';
 import { successResponse, errorResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 

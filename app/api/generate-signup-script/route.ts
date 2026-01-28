@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import path from 'path';
 import { writeFile } from 'fs/promises';
 import { env } from '@/lib/env';

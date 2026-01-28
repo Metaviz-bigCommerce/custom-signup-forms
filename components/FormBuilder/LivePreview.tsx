@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Maximize2, Minimize2, Eye } from 'lucide-react';
+import { Maximize2, Eye } from 'lucide-react';
 import { FormField } from './types';
 import { normalizeThemeLayout } from './utils';
 

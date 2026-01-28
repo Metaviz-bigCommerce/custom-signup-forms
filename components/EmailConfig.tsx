@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Settings, Server, User, AtSign, Lock, Save, RefreshCw, CheckCircle2, AlertCircle, Sparkles, HelpCircle, X } from 'lucide-react';
 import { useSession } from '@/context/session';
