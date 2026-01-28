@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
           return applyCorsHeaders(req, res);
         }
         data = validation.data;
-      } catch (parseError) {
+      } catch {
         const res = errorResponse('Invalid JSON in form data', 400, ErrorCode.VALIDATION_ERROR, requestId);
         return applyCorsHeaders(req, res);
       }
@@ -342,7 +342,7 @@ export async function POST(req: NextRequest) {
       let body: unknown;
       try {
         body = await req.json();
-      } catch (parseError) {
+      } catch {
         const res = errorResponse('Invalid JSON in request body', 400, ErrorCode.VALIDATION_ERROR, requestId);
         return applyCorsHeaders(req, res);
       }

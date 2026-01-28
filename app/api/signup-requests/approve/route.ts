@@ -170,7 +170,7 @@ function getFieldValue(
 
 // Note: BigCommerce form_fields must match actual custom fields defined in the store
 // Sending arbitrary fields will cause a 422 error, so we skip form_fields for now
-function toFormFields(data: Record<string, any>): Array<{ name: string; value: string }> {
+function toFormFields(_data: Record<string, any>): Array<{ name: string; value: string }> {
   // Return empty array - form_fields should only contain fields that are
   // configured as custom customer fields in BigCommerce admin
   return [];

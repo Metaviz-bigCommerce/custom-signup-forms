@@ -202,12 +202,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <div className="space-y-2 sm:space-y-3">
                 {fieldGroups.map((group) => {
-                  const groupStartIndex = formFields.findIndex(f => f.id === group.fields[0].id);
-                  
                   if (group.isPaired && group.fields.length === 2) {
                     const [field1, field2] = group.fields;
-                    const isDragging1 = draggedFieldId === field1.id;
-                    const isDragging2 = draggedFieldId === field2.id;
                     
                     return (
                       <div 
@@ -304,8 +300,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                     const field = group.fields[0];
                     const fieldIndex = formFields.findIndex(f => f.id === field.id);
                     const isPaired = field.rowGroup != null;
-                    const nextField = fieldIndex < formFields.length - 1 ? formFields[fieldIndex + 1] : null;
-                    const isPairedWithNext = nextField && field.rowGroup != null && nextField.rowGroup === field.rowGroup;
                     const isDragging = draggedFieldId === field.id;
                     const isDragOver = dragOverIndex === fieldIndex;
                     

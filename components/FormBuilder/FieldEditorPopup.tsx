@@ -33,7 +33,7 @@ const FieldEditorPopup: React.FC<FieldEditorPopupProps> = ({ isOpen, selectedFie
       fieldIdRef.current = null;
       setOpenSection(null);
     }
-  }, [selectedField?.id, isOpen]);
+  }, [selectedField?.id, isOpen, selectedField, localField]);
 
   const hasChanges = useMemo(() => {
     if (!localField || !initialFieldRef.current) return false;

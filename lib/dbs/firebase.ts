@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, getFirestore, setDoc, updateDoc, deleteField, addDoc, serverTimestamp, query, orderBy, limit as fsLimit, startAfter, where } from 'firebase/firestore';
-import { SessionProps, UserData } from '../../types';
+import { SessionProps } from '../../types';
 import type { EmailConfig, EmailTemplates } from '../email';
 import { env } from '../env';
 
@@ -102,7 +102,7 @@ export async function deleteUser(userId: string, storeHash: string) {
     await updateDoc(userRef, {
       stores: arrayRemove(storeHash),
     });
-  } catch (error) {
+  } catch {
     return null;
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Mail, AlertTriangle } from 'lucide-react';
 import { getUserFriendlyError } from '@/lib/utils';
 import { useStoreForm } from '@/lib/hooks';
@@ -34,20 +34,14 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
-  // Word count helper functions
-  const countWords = (text: string): number => {
-    if (!text || !text.trim()) return 0;
-    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  // Character count helper function
+  const limitToMaxChars = (text: string, maxChars: number): string => {
+    if (text.length <= maxChars) return text;
+    return text.slice(0, maxChars);
   };
 
-  const limitToMaxWords = (text: string, maxWords: number): string => {
-    const words = text.trim().split(/\s+/).filter(word => word.length > 0);
-    if (words.length <= maxWords) return text;
-    return words.slice(0, maxWords).join(' ');
-  };
-
-  const wordCount = useMemo(() => countWords(message), [message]);
-  const maxWords = 500;
+  const charCount = message.length;
+  const maxChars = 500;
 
   // Get form fields from the form definition
   const formFields: FormField[] = useMemo(() => {
@@ -58,7 +52,7 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
   const normalizeKey = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
 
   // Helper to match request data key to form field label
-  const matchKeyToField = (key: string): FormField | null => {
+  const matchKeyToField = useCallback((key: string): FormField | null => {
     const normalizedKey = normalizeKey(key);
     for (const field of formFields) {
       const normalizedLabel = normalizeKey(field.label);
@@ -78,10 +72,10 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
       if (field.role === 'state' && /state|province/i.test(key)) return field;
     }
     return null;
-  };
+  }, [formFields]);
 
   // Sort fields according to form field order, with first name, last name, email first
-  const getFieldSortOrder = (key: string): number => {
+  const getFieldSortOrder = useCallback((key: string): number => {
     // Priority order: first_name (0), last_name (1), email (2), then by form field order
     const lowerKey = key.toLowerCase();
     if (/first[\s_-]?name/i.test(lowerKey)) return 0;
@@ -96,7 +90,7 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
       return index >= 0 ? index + 100 : 999;
     }
     return 999;
-  };
+  }, [formFields, matchKeyToField]);
 
   // Get field labels for checkbox list - only show fields that exist in the request data
   const availableFields = useMemo(() => {
@@ -145,7 +139,7 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
         sortOrder: data.sortOrder,
       }))
       .sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [requestData, formFields]);
+  }, [requestData, formFields, getFieldSortOrder, matchKeyToField]);
 
   if (!isOpen || !requestId) return null;
 
@@ -165,7 +159,7 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
-    const limitedValue = limitToMaxWords(newValue, maxWords);
+    const limitedValue = limitToMaxChars(newValue, maxChars);
     setMessage(limitedValue);
   };
 
@@ -173,8 +167,8 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
     const currentText = message;
-    const combinedText = currentText + (currentText && !currentText.endsWith(' ') ? ' ' : '') + pastedText;
-    const limitedValue = limitToMaxWords(combinedText, maxWords);
+    const combinedText = currentText + pastedText;
+    const limitedValue = limitToMaxChars(combinedText, maxChars);
     setMessage(limitedValue);
   };
 
@@ -283,13 +277,13 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
                 Additional Message (Optional)
               </label>
               <span className={`text-[10px] sm:text-xs font-medium ${
-                wordCount > maxWords 
+                charCount > maxChars 
                   ? 'text-red-600' 
-                  : wordCount > maxWords * 0.9 
+                  : charCount > maxChars * 0.9 
                     ? 'text-amber-600' 
                     : 'text-gray-500'
               }`}>
-                {wordCount} / {maxWords} words
+                {charCount} / {maxChars} characters
               </span>
             </div>
             <textarea
@@ -298,16 +292,16 @@ const RequestResubmissionModal: React.FC<RequestResubmissionModalProps> = ({
               onPaste={handleMessagePaste}
               placeholder="Add any additional instructions or context for the user..."
               className={`w-full px-2.5 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 border rounded-lg text-xs sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all resize-none ${
-                wordCount > maxWords
+                charCount > maxChars
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                   : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
               }`}
               rows={3}
               disabled={sending}
             />
-            {wordCount >= maxWords && (
+            {charCount >= maxChars && (
               <p className="mt-1 text-[10px] sm:text-xs text-red-600">
-                Maximum {maxWords} words reached. Further input will be ignored.
+                Maximum {maxChars} characters reached. Further input will be ignored.
               </p>
             )}
           </div>

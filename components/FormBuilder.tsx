@@ -5,7 +5,7 @@ import { flushSync } from 'react-dom';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { FilePlus, Wrench, FileText } from 'lucide-react';
 import { useBcScriptsActions, useStoreForm, useStoreFormActions, useFormVersionActions, useFormVersions } from '@/lib/hooks';
-import Skeleton from '@/components/Skeleton';
+// import Skeleton from '@/components/Skeleton';
 import VersionsList from '@/components/VersionsList';
 import LoadVersionConfirmModal from '@/components/LoadVersionConfirmModal';
 import { useToast } from '@/components/common/Toast';
@@ -28,14 +28,12 @@ const FormBuilder: React.FC = () => {
   const [formFields, setFormFields] = useState<FormField[]>([]);
   const [selectedField, setSelectedField] = useState<FormField | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [isToggling, setIsToggling] = useState<boolean>(false);
   const [showFieldEditor, setShowFieldEditor] = useState<boolean>(false);
   const [showAddFieldEditor, setShowAddFieldEditor] = useState<boolean>(false);
   const [pendingFieldType, setPendingFieldType] = useState<{ type: FieldType; role?: 'country' | 'state' } | null>(null);
   const [showThemeEditor, setShowThemeEditor] = useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
-  const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
   const [draggedFieldId, setDraggedFieldId] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [isTransitioningAfterSave, setIsTransitioningAfterSave] = useState<boolean>(false);
@@ -52,7 +50,7 @@ const FormBuilder: React.FC = () => {
           return tabNum;
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore errors
     }
     
@@ -81,7 +79,7 @@ const FormBuilder: React.FC = () => {
           return data.sourceTab;
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore errors
     }
     return 1; // Default to Forms tab
@@ -107,16 +105,15 @@ const FormBuilder: React.FC = () => {
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void; confirmVariant?: 'danger' | 'primary' }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   // Track last saved state for accurate dirty checking
   const [lastSavedState, setLastSavedState] = useState<{ fields: FormField[]; theme: any } | null>(null);
-  const [showDiscardConfirm, setShowDiscardConfirm] = useState<boolean>(false);
   const [hasInitializedForm, setHasInitializedForm] = useState<boolean>(false);
   const restoredFromPreviewRef = useRef<boolean>(false);
   const justSavedRef = useRef<boolean>(false); // Track when we've just saved to prevent loading stale form data
   const [isRestoring, setIsRestoring] = useState<boolean>(true); // Prevent flicker during restore
   const toast = useToast();
   const [theme, setTheme] = useState<any>(defaultTheme);
-  const { addScript, updateScript, deleteScript } = useBcScriptsActions();
+  const { addScript, updateScript } = useBcScriptsActions();
   const { form, active, scriptUuid, mutate: mutateStoreForm, isError, isLoading } = useStoreForm();
-  const { saveForm, setActive } = useStoreFormActions();
+  const { saveForm } = useStoreFormActions();
   const { saveAsVersion, updateVersion } = useFormVersionActions();
   const { versions, mutate: mutateVersions } = useFormVersions();
 
@@ -395,7 +392,7 @@ const FormBuilder: React.FC = () => {
 
   // Get active version name for display
   useEffect(() => {
-    console.log('[FormBuilder] Updating activeVersionName', { active, versionsCount: versions?.length, activeVersionName });
+    console.log('[FormBuilder] Updating activeVersionName', { active, versionsCount: versions?.length });
     if (active && versions?.length) {
       const activeVersion = versions.find((v: any) => v.isActive);
       if (activeVersion) {
@@ -472,33 +469,33 @@ const FormBuilder: React.FC = () => {
     }
   }, [lastSavedState, formFields, theme, hasInitializedForm]);
 
-  const handleReset = () => {
-    // Clear all form fields - reset to empty state
-    setFormFields([]);
-    
-    // Reset theme to defaults
-    const defaultThemeCopy = { ...defaultTheme };
-    setTheme(defaultThemeCopy);
-    
-    // Update last saved state to null (form is reset, not saved)
-    setLastSavedState(null);
-    
-    // Reset form name and version ID
-    setCurrentFormName('Unnamed');
-    setCurrentFormVersionId(null);
-    
-    // Reset editing flag and initialization flag
-    setIsEditing(false);
-    setHasInitializedForm(false);
-    
-    // Close any open popups
-    setShowFieldEditor(false);
-    setShowAddFieldEditor(false);
-    setPendingFieldType(null);
-    setShowThemeEditor(false);
-    setSelectedField(null);
-    setShowResetConfirm(false);
-  };
+  // const handleReset = () => {
+  //   // Clear all form fields - reset to empty state
+  //   setFormFields([]);
+  //   
+  //   // Reset theme to defaults
+  //   const defaultThemeCopy = { ...defaultTheme };
+  //   setTheme(defaultThemeCopy);
+  //   
+  //   // Update last saved state to null (form is reset, not saved)
+  //   setLastSavedState(null);
+  //   
+  //   // Reset form name and version ID
+  //   setCurrentFormName('Unnamed');
+  //   setCurrentFormVersionId(null);
+  //   
+  //   // Reset editing flag and initialization flag
+  //   setIsEditing(false);
+  //   setHasInitializedForm(false);
+  //   
+  //   // Close any open popups
+  //   setShowFieldEditor(false);
+  //   setShowAddFieldEditor(false);
+  //   setPendingFieldType(null);
+  //   setShowThemeEditor(false);
+  //   setSelectedField(null);
+  //   setShowResetConfirm(false);
+  // };
 
   const addField = (type: FieldType) => {
     // Open Add Field popup instead of immediately adding
@@ -512,22 +509,22 @@ const FormBuilder: React.FC = () => {
     setShowAddFieldEditor(true);
   };
 
-  async function addSignupFormScript() {
-    const payload = {
-      name: "Custom Signup Form",
-      description: "Injects custom signup form script into the theme",
-      src: typeof window !== 'undefined' ? `${window.location.origin}/custom-signup.min.js` : "/custom-signup.min.js",
-      auto_uninstall: true,
-      load_method: "default",
-      location: "head",
-      visibility: "all_pages",
-      kind: "src",
-      consent_category: "essential"
-    };
-    const data = await addScript(payload);
-    console.log('addScript data:', data);
-    return data;
-  }
+  // async function addSignupFormScript() {
+  //   const payload = {
+  //     name: "Custom Signup Form",
+  //     description: "Injects custom signup form script into the theme",
+  //     src: typeof window !== 'undefined' ? `${window.location.origin}/custom-signup.min.js` : "/custom-signup.min.js",
+  //     auto_uninstall: true,
+  //     load_method: "default",
+  //     location: "head",
+  //     visibility: "all_pages",
+  //     kind: "src",
+  //     consent_category: "essential"
+  //   };
+  //   const data = await addScript(payload);
+  //   console.log('addScript data:', data);
+  //   return data;
+  // }
 
   async function handleSaveForm() {
     setIsSaving(true);

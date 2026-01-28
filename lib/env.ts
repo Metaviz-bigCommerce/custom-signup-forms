@@ -12,24 +12,25 @@ const requiredEnvVars = [
   'JWT_KEY',
 ] as const;
 
-const optionalEnvVars = [
-  'FIRE_DOMAIN',
-  'AUTH_CALLBACK',
-  'BASE_URL',
-  'API_URL',
-  'LOGIN_URL',
-  'PLATFORM_NAME',
-  'ALLOWED_ORIGINS',
-  'EMAIL_FROM',
-  'EMAIL_FROM_NAME',
-  'EMAIL_REPLY_TO',
-  'BREVO_SMTP_HOST',
-  'BREVO_SMTP_PORT',
-  'BREVO_SMTP_USER',
-  'BREVO_SMTP_KEY',
-  'BREVO_SMTP_PASS',
-  'NODE_ENV',
-] as const;
+// Optional environment variables (kept for documentation purposes)
+// const optionalEnvVars = [
+//   'FIRE_DOMAIN',
+//   'AUTH_CALLBACK',
+//   'BASE_URL',
+//   'API_URL',
+//   'LOGIN_URL',
+//   'PLATFORM_NAME',
+//   'ALLOWED_ORIGINS',
+//   'EMAIL_FROM',
+//   'EMAIL_FROM_NAME',
+//   'EMAIL_REPLY_TO',
+//   'BREVO_SMTP_HOST',
+//   'BREVO_SMTP_PORT',
+//   'BREVO_SMTP_USER',
+//   'BREVO_SMTP_KEY',
+//   'BREVO_SMTP_PASS',
+//   'NODE_ENV',
+// ] as const;
 
 interface EnvConfig {
   // Required
@@ -62,7 +63,6 @@ interface EnvConfig {
 const isClient = typeof window !== 'undefined';
 
 let cachedEnv: EnvConfig | null = null;
-let validationAttempted = false;
 
 function validateEnv(): EnvConfig {
   // Return cached if already validated
@@ -97,7 +97,6 @@ function validateEnv(): EnvConfig {
       BREVO_SMTP_PASS: undefined,
       NODE_ENV: process.env.NODE_ENV,
     };
-    validationAttempted = true;
     return cachedEnv;
   }
 
@@ -145,7 +144,6 @@ function validateEnv(): EnvConfig {
         BREVO_SMTP_PASS: process.env.BREVO_SMTP_PASS,
         NODE_ENV: process.env.NODE_ENV,
       };
-      validationAttempted = true;
       return cachedEnv;
     }
   }
@@ -187,7 +185,6 @@ function validateEnv(): EnvConfig {
     NODE_ENV: process.env.NODE_ENV,
   };
   
-  validationAttempted = true;
   return cachedEnv;
 }
 

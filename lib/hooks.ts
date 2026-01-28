@@ -110,7 +110,7 @@ export function useBcScriptsActions() {
     let jsonResult: { success: boolean; deleted?: boolean; [key: string]: any } = { success: true };
     try {
       jsonResult = { ...JSON.parse(responseText), success: true };
-    } catch (parseError) {
+    } catch {
       // If JSON parse fails but status is ok, treat as success
       jsonResult = { success: true, deleted: true };
     }

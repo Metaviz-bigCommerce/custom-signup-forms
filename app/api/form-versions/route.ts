@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch (parseError) {
+    } catch {
       return errorResponse('Invalid JSON in request body', 400, 'VALIDATION_ERROR' as any, requestId);
     }
     
@@ -189,7 +189,7 @@ export async function PUT(req: NextRequest) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch (parseError) {
+    } catch {
       return errorResponse('Invalid JSON in request body', 400, 'VALIDATION_ERROR' as any, requestId);
     }
     

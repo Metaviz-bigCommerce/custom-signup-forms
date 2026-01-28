@@ -45,7 +45,7 @@ const Dashboard: React.FC = () => {
   const router = useRouter();
   const [allRequests, setAllRequests] = useState<SignupRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<SignupRequestItem | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
@@ -160,7 +160,7 @@ const Dashboard: React.FC = () => {
     setShowApproveDialog(true);
   };
 
-  const handleApprovalComplete = async (id: string) => {
+  const handleApprovalComplete = async (_id: string) => {
     // Close modal first, then toast will be shown by ApprovalDialog
     setSelectedRequest(null);
     setShowApproveDialog(false);

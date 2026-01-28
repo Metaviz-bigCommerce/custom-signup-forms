@@ -120,7 +120,7 @@ export const ensureCoreFields = (fields: FormField[]): FormField[] => {
 
 // Helper function to normalize fields for comparison (remove IDs for comparison)
 export const normalizeFieldsForComparison = (fields: FormField[]): any[] => {
-  return fields.map(({ id, ...rest }) => rest).sort((a, b) => {
+  return fields.map(({ id: _id, ...rest }) => rest).sort((a, b) => {
     // Sort by role first (core fields first), then by label
     const roleOrder = ['first_name', 'last_name', 'email', 'password'];
     const aRoleIndex = roleOrder.indexOf(a.role || '');

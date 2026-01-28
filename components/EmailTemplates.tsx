@@ -1215,6 +1215,7 @@ const EmailTemplates: React.FC = () => {
                     {/* Icon Preview */}
                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {social.iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={social.iconUrl} alt={social.name} className="w-6 h-6 sm:w-8 sm:h-8 object-contain" />
                       ) : (
                         <span className="text-xs font-bold text-slate-400">?</span>
@@ -1300,6 +1301,7 @@ const EmailTemplates: React.FC = () => {
                             : 'bg-white border-slate-200 text-slate-700 hover:border-blue-400 hover:bg-blue-50'
                         }`}
                       >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={preset.iconUrl} alt={preset.name} className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                         <span className="whitespace-nowrap">{preset.name}</span>
                         {alreadyAdded && <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" />}

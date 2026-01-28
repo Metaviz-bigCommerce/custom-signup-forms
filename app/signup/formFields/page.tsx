@@ -106,49 +106,49 @@ const formFieldTypes: DropdownItem[] = [
 ]
 
 export default function FormFieldsSelection () {
-    const [formFields, setFormFields] = useState<FormFieldType[]>(initialFormFields);
+    const [formFields] = useState<FormFieldType[]>(initialFormFields);
 
     const tabs = [
         {
             id: 1,
             label: 'General Fields',
             content: (
-                <Table columns={columns} data={formFields} actions={(row) => <DropdownWithMenuIcon dropdownItems={actions}/>} />
+                <Table columns={columns} data={formFields} actions={() => <DropdownWithMenuIcon dropdownItems={actions}/>} />
             )
         },
         {
             id: 2,
             label: 'Address Fields',
             content: (
-                <Table columns={columns} data={formFields} actions={(row) => <DropdownWithMenuIcon dropdownItems={actions}/>} />
+                <Table columns={columns} data={formFields} actions={() => <DropdownWithMenuIcon dropdownItems={actions}/>} />
             )
         }
     ]
 
-    async function addSignupFormScript() {
-        try {
-            const res = await fetch("/api/bc-scripts", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: "Bootstrap",
-                    description: "Build responsive websites",
-                    src: "https://bigcommerce-custom-signup-app.vercel.app/custom-signup.min.js",
-                    auto_uninstall: true,
-                    load_method: "default",
-                    location: "footer",
-                    visibility: "all_pages",
-                    kind: "src",
-                    consent_category: "essential"
-                }),
-            });
+    // async function addSignupFormScript() {
+    //     try {
+    //         const res = await fetch("/api/bc-scripts", {
+    //             method: "POST",
+    //             headers: { "Content-Type": "application/json" },
+    //             body: JSON.stringify({
+    //                 name: "Bootstrap",
+    //                 description: "Build responsive websites",
+    //                 src: "https://bigcommerce-custom-signup-app.vercel.app/custom-signup.min.js",
+    //                 auto_uninstall: true,
+    //                 load_method: "default",
+    //                 location: "footer",
+    //                 visibility: "all_pages",
+    //                 kind: "src",
+    //                 consent_category: "essential"
+    //             }),
+    //         });
 
-            const data = await res.json();
-            console.log(data);
-        } catch (error) {
-            console.error(error);
-        }
-    }
+    //         const data = await res.json();
+    //         console.log(data);
+    //     } catch (error) {
+    //         console.error(error);
+    //     }
+    // }
 
     useEffect(() => {
         // addSignupFormScript();

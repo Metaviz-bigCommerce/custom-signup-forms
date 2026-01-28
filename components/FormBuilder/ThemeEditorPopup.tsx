@@ -347,7 +347,8 @@ const ThemeEditorPopup: React.FC<ThemeEditorPopupProps> = ({ isOpen, theme, onSa
                             <div className="relative group">
                               <Image className="w-10 h-10 p-2 text-gray-400 border border-slate-300 rounded-md cursor-pointer hover:bg-slate-50" />
                               <div className="absolute bottom-full mb-2 left-0 w-48 p-2 bg-white rounded-md shadow-lg border border-slate-200 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                <img src={localTheme.splitImageUrl} alt="Preview" className="w-full h-32 object-cover rounded" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={localTheme.splitImageUrl} alt="Split layout preview" className="w-full h-32 object-cover rounded" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                               </div>
                             </div>
                           )}

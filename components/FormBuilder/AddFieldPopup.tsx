@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { X, FilePlus, Type, ChevronDown, ChevronUp, MousePointerClick, Eye, Plus, Trash2 } from 'lucide-react';
 import { FormField, FieldType } from './types';
 import { ColorPicker } from './ColorPicker';
-import { ensureCoreFields } from './utils';
+// import { ensureCoreFields } from './utils';
 
 interface AddFieldPopupProps {
   isOpen: boolean;

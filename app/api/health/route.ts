@@ -1,9 +1,8 @@
 import { NextRequest } from 'next/server';
 import { successResponse, errorResponse } from '@/lib/api-response';
-import db from '@/lib/db';
 import { logger } from '@/lib/logger';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const startTime = Date.now();
   
   try {

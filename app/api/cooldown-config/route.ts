@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch (parseError) {
+    } catch {
       return errorResponse('Invalid JSON in request body', 400, ErrorCode.VALIDATION_ERROR, requestId);
     }
     

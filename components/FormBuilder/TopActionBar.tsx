@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react';
-import { RotateCcw, X, Edit2, Check } from 'lucide-react';
+import { X, Edit2, Check } from 'lucide-react';
 import SaveFormDropdown from '@/components/SaveFormDropdown';
 
 interface TopActionBarProps {
@@ -33,11 +33,9 @@ const TopActionBar: React.FC<TopActionBarProps> = ({
   onStartEditing,
   onSaveName,
   onCancelEditing,
-  onReset,
   onDiscard,
   onSaveToExisting,
   onSaveAsNew,
-  onBeforeSave,
 }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-2 sm:mb-3 md:mb-4">

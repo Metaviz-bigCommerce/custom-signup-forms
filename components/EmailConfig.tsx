@@ -62,17 +62,17 @@ const EmailConfigForm: React.FC = () => {
 	};
 	
 	// Helper function to check if all required fields are filled
-	const areRequiredFieldsFilled = (): boolean => {
-		return !!(
-			fromEmail?.trim() &&
-			fromName?.trim() &&
-			replyTo?.trim() &&
-			smtp.host?.trim() &&
-			smtp.port &&
-			smtp.user?.trim() &&
-			smtp.pass?.trim()
-		);
-	};
+	// const areRequiredFieldsFilled = (): boolean => {
+	// 	return !!(
+	// 		fromEmail?.trim() &&
+	// 		fromName?.trim() &&
+	// 		replyTo?.trim() &&
+	// 		smtp.host?.trim() &&
+	// 		smtp.port &&
+	// 		smtp.user?.trim() &&
+	// 		smtp.pass?.trim()
+	// 	);
+	// };
 
 	const normalized = (cfg: EmailConfig): EmailConfig => {
 		// Migrate old useShared to customerEmailsEnabled
@@ -171,14 +171,14 @@ const EmailConfigForm: React.FC = () => {
 	}, [hasUnsavedChanges]);
 	
 	// Intercept navigation when there are unsaved changes
-	const handleNavigation = useCallback((url: string) => {
-		if (hasUnsavedChanges) {
-			setPendingNavigation(url);
-			setShowUnsavedDialog(true);
-		} else {
-			router.push(url);
-		}
-	}, [hasUnsavedChanges, router]);
+	// const handleNavigation = useCallback((url: string) => {
+	// 	if (hasUnsavedChanges) {
+	// 		setPendingNavigation(url);
+	// 		setShowUnsavedDialog(true);
+	// 	} else {
+	// 		router.push(url);
+	// 	}
+	// }, [hasUnsavedChanges, router]);
 	
   // Enter edit mode
   const handleEdit = () => {

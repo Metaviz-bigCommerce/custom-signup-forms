@@ -52,8 +52,9 @@ type Theme = {
 /**
  * Get maximum character length for a field based on its type and role.
  * This ensures consistent validation across Form Builder, Live Preview, and embedded forms.
+ * @deprecated Not currently used but kept for potential future use
  */
-function getMaxLength(field: FormField): number | null {
+function _getMaxLength(field: FormField): number | null {
   // Email fields: reasonable limit for email addresses
   if (field.type === 'email' || field.role === 'email') {
     return 50;
@@ -89,7 +90,7 @@ function getMaxLength(field: FormField): number | null {
   return null;
 }
 
-async function fetchCountryData(): Promise<Array<{ countryName: string; countryShortCode: string; regions: Array<{ name: string; shortCode?: string }> }>> {
+async function _fetchCountryData(): Promise<Array<{ countryName: string; countryShortCode: string; regions: Array<{ name: string; shortCode?: string }> }>> {
   try {
     const res = await fetch('https://cdn.jsdelivr.net/npm/country-region-data@3.0.0/data.json');
     const json = await res.json();
@@ -110,7 +111,7 @@ async function fetchCountryData(): Promise<Array<{ countryName: string; countryS
   ];
 }
 
-function toMinifiedScript(fields: FormField[], containerId: string, theme?: Theme, countryData?: Array<{ countryName: string; countryShortCode: string; regions: Array<{ name: string; shortCode?: string }> }>) {
+function _toMinifiedScript(fields: FormField[], containerId: string, theme?: Theme, countryData?: Array<{ countryName: string; countryShortCode: string; regions: Array<{ name: string; shortCode?: string }> }>) {
   // Normalize theme layout - if split layout but no valid image URL, use center
   const normalizedTheme = theme ? { ...theme } : {};
   if (normalizedTheme.layout === 'split') {
@@ -198,9 +199,9 @@ async function generateScript() {
   return { script, baseUrl };
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const { script, baseUrl } = await generateScript();
+    const { baseUrl } = await generateScript();
     return NextResponse.json({ 
       ok: true, 
       path: '/custom-signup.min.js', 
@@ -212,7 +213,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
     const { script, baseUrl } = await generateScript();
     // Return content so callers can store inline in BigCommerce to avoid external dependency

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth';
 import db from '@/lib/db';
-import { errorResponse, successResponse, apiErrors } from '@/lib/api-response';
+import { successResponse, apiErrors } from '@/lib/api-response';
 import { generateRequestId } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 
