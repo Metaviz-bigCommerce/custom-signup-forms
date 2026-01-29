@@ -140,12 +140,14 @@ const EmailConfigForm: React.FC = () => {
 					const hasCustom = !!(cfg?.smtp && (cfg.smtp as any));
 					if (hasCustom) {
 						const s = (cfg.smtp as SmtpConfig) || ({} as SmtpConfig);
+						// Ensure port is either 587 or 465, default to 587 if it's anything else
+						const loadedPort = s.port === 465 ? 465 : 587;
 						setSmtp({
 							host: s.host || 'smtp-relay.brevo.com',
-							port: s.port ?? 587,
+							port: loadedPort,
 							user: s.user || '',
 							pass: s.pass || '',
-							secure: !!s.secure,
+							secure: loadedPort === 465,
 						});
 					}
 					setOriginal(normalized(cfg));
@@ -357,6 +359,41 @@ const EmailConfigForm: React.FC = () => {
 					isEditing ? 'border-blue-300 ring-2 ring-blue-100' : 'border-slate-200'
 				}`}>
 					<div className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-5 md:space-y-6 lg:space-y-8">
+						{/* Purpose & Information Section */}
+						<div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg sm:rounded-xl p-4 sm:p-5 md:p-6">
+							<div className="flex items-start gap-3 sm:gap-4">
+								<div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 flex-shrink-0">
+									<Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-white" />
+								</div>
+								<div className="flex-1 min-w-0">
+									<h3 className="text-sm sm:text-base md:text-lg font-semibold text-slate-800 break-words mb-2 sm:mb-3">About This Page</h3>
+									<div className="space-y-2 text-[11px] sm:text-xs md:text-sm text-slate-600 break-words">
+										<p>
+											<strong className="text-slate-700">Purpose:</strong> Configure your SMTP settings to send emails to customers. SMTP setup is mandatory — if not configured, no customer emails will be sent.
+										</p>
+										<p>
+											<strong className="text-slate-700">Store owner emails</strong> always use the company SMTP (configured in system settings).<br/>
+											<strong className="text-slate-700">Customer emails</strong> require your own SMTP configuration below.
+										</p>
+										<p>
+											Need help setting up SMTP?{' '}
+											<a 
+												href="https://www.cloudways.com/blog/smtp-port/" 
+												target="_blank" 
+												rel="noopener noreferrer"
+												className="text-blue-600 hover:text-blue-700 underline font-medium transition-colors"
+											>
+												View SMTP Setup Guide
+											</a>
+										</p>
+										<p className="text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2 mt-2">
+											<strong>⚠️ Important:</strong> All fields marked with <span className="text-red-600 font-bold">*</span> are required. You must click &quot;Save Settings&quot; to apply changes.
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+						
 						{/* Edit Mode Header */}
 						{!isEditing && (
 							<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-slate-200">
@@ -386,30 +423,6 @@ const EmailConfigForm: React.FC = () => {
 								</div>
 							</div>
 						)}
-						
-						{/* Purpose & Information Section */}
-						<div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg sm:rounded-xl p-4 sm:p-5 md:p-6">
-							<div className="flex items-start gap-3 sm:gap-4">
-								<div className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 flex-shrink-0">
-									<Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-white" />
-								</div>
-								<div className="flex-1 min-w-0">
-									<h3 className="text-sm sm:text-base md:text-lg font-semibold text-slate-800 break-words mb-2 sm:mb-3">About This Page</h3>
-									<div className="space-y-2 text-[11px] sm:text-xs md:text-sm text-slate-600 break-words">
-										<p>
-											<strong className="text-slate-700">Purpose:</strong> Configure your SMTP settings to send emails to customers. SMTP setup is mandatory — if not configured, no customer emails will be sent.
-										</p>
-										<p>
-											<strong className="text-slate-700">Store owner emails</strong> always use the company SMTP (configured in system settings).<br/>
-											<strong className="text-slate-700">Customer emails</strong> require your own SMTP configuration below.
-										</p>
-										<p className="text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2 mt-2">
-											<strong>⚠️ Important:</strong> All fields marked with <span className="text-red-600 font-bold">*</span> are required. You must click &quot;Save Settings&quot; to apply changes.
-										</p>
-									</div>
-								</div>
-							</div>
-						</div>
 						
 						{/* Enable Customer Emails Toggle Section */}
 						<div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6">
@@ -667,23 +680,20 @@ const EmailConfigForm: React.FC = () => {
 											<HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 cursor-help" />
 											<div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
 												<div className="bg-slate-900 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap shadow-lg">
-													SMTP port number (587 for TLS, 465 for SSL)
+													Select port: 587 for TLS or 465 for SSL
 													<div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900"></div>
 												</div>
 											</div>
 										</div>
 									</label>
-									<input
-										type="number"
+									<select
 										value={smtp.port}
 										onChange={(e) => {
-											setSmtp({ ...smtp, port: Number(e.target.value || 0) });
+											const selectedPort = Number(e.target.value);
+											setSmtp({ ...smtp, port: selectedPort, secure: selectedPort === 465 });
 											setTouchedFields(prev => new Set(prev).add('smtpPort'));
 										}}
 										onBlur={() => setTouchedFields(prev => new Set(prev).add('smtpPort'))}
-										placeholder="587"
-										min="1"
-										max="65535"
 										disabled={!isEditing}
 										className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border rounded-lg sm:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${
 											!isEditing
@@ -692,9 +702,12 @@ const EmailConfigForm: React.FC = () => {
 												? 'border-red-300 focus:border-red-500 focus:ring-red-500/20 bg-white text-slate-900'
 												: 'border-slate-200 bg-white text-slate-900'
 										}`}
-									/>
+									>
+										<option value={587}>Port 587 (TLS/STARTTLS) - Recommended</option>
+										<option value={465}>Port 465 (SSL/TLS)</option>
+									</select>
 									<p className="text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-1.5 break-words">
-										Required: Port number (587 for TLS, 465 for SSL)
+										Required: Select the SMTP port for your email provider
 									</p>
 								</div>
 								<div className="space-y-1.5 sm:space-y-2 min-w-0">
@@ -769,28 +782,6 @@ const EmailConfigForm: React.FC = () => {
 									/>
 									<p className="text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-1.5 break-words">
 										Required: Your SMTP authentication password or API key
-									</p>
-								</div>
-							</div>
-
-							<div className={`flex items-start sm:items-center gap-2 sm:gap-3 p-3 sm:p-4 border rounded-lg sm:rounded-xl transition-all ${
-								isEditing ? 'bg-slate-50 border-slate-200' : 'bg-slate-100/50 border-slate-200'
-							}`}>
-								<input
-									type="checkbox"
-									checked={!!smtp.secure}
-									onChange={(e) => setSmtp({ ...smtp, secure: e.target.checked })}
-									disabled={!isEditing}
-									className={`w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-500/20 flex-shrink-0 touch-manipulation mt-0.5 sm:mt-0 ${
-										isEditing ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
-									}`}
-								/>
-								<div className="min-w-0 flex-1">
-									<label className="text-xs sm:text-sm font-medium text-slate-700 cursor-pointer break-words block">
-										Use SSL/TLS (port 465)
-									</label>
-									<p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 break-words">
-										Enable for secure connections on port 465
 									</p>
 								</div>
 							</div>
